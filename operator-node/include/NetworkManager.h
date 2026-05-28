@@ -5,7 +5,13 @@
 // This module owns the complete LwIP-backed networking stack:
 //   1. Wi-Fi SoftAP configuration (WPA2-PSK, static IP, subnet, gateway)
 //   2. DNS server on UDP port 53 (wildcard → gateway IP)
-//   3. HTTP server on TCP port 80 (dashboard page + 302 captive-portal redirects)
+//   3. HTTP server on TCP port 80 (React PWA from LittleFS + JSON API)
+//
+// Storage strategy (LittleFS-first, PROGMEM fallback):
+//   • On boot, LittleFS is mounted from the internal flash partition.
+//   • If /index.html exists, all static assets are served from LittleFS.
+//   • If LittleFS fails or index.html is missing, the PROGMEM dashboard
+//     from WebAssets.h is served as a safe fallback.
 //
 // Usage (in main.cpp):
 //   NetworkManager nm;
@@ -20,6 +26,10 @@
 #include <WiFi.h>
 #include <DNSServer.h>
 #include <WebServer.h>
+
+#if defined(LITTLEFS_ENABLED) && LITTLEFS_ENABLED
+  #include <LittleFS.h>
+#endif
 
 // ── Compile-time configuration constants ────────────────────────────────────
 // (Centralised here so they never leak as unnamed literals into .cpp files)
@@ -70,9 +80,10 @@ public:
    *
    * Must be called once during setup(). Performs:
    *   1. Serial initialisation (if not already started)
-   *   2. Wi-Fi SoftAP bring-up with static IP configuration
-   *   3. DNS server start (wildcard hijack)
-   *   4. HTTP route registration + server start
+   *   2. LittleFS mount (if LITTLEFS_ENABLED)
+   *   3. Wi-Fi SoftAP bring-up with static IP configuration
+   *   4. DNS server start (wildcard hijack)
+   *   5. HTTP route registration + server start
    *
    * @return true if the SoftAP was successfully started, false otherwise.
    */
@@ -101,6 +112,9 @@ private:
   // Incremented on every DNS query processed (diagnostic counter)
   uint32_t   _dnsQueryCount;
 
+  // True if LittleFS was successfully mounted and index.html is present
+  bool       _littleFsMounted;
+
   // ── Private Helpers ──────────────────────────────────────────────────────
 
   /**
@@ -115,21 +129,43 @@ private:
   void _initDNS();
 
   /**
+   * @brief  Mount the LittleFS partition and verify index.html is present.
+   *         Sets _littleFsMounted accordingly.
+   */
+  void _initLittleFS();
+
+  /**
    * @brief  Register all HTTP routes and start the web server.
    *         Routes:
-   *           GET  /           → serve dashboard HTML (200 OK)
+   *           GET  /               → index.html from LittleFS (or PROGMEM fallback)
+   *           GET  /assets/\*      → static JS/CSS bundles from LittleFS
+   *           GET  /api/stats      → JSON telemetry (uptime, heap, clients)
    *           GET  /generate_204   → 302 redirect (Android captive-portal probe)
-   *           GET  /hotspot-detect.html → 302 redirect (Apple captive-portal probe)
-   *           ALL  *           → 302 redirect to dashboard (catch-all)
+   *           GET  /hotspot-detect.html → 302 redirect (Apple probe)
+   *           ALL  \*              → 302 redirect to dashboard (catch-all)
    */
   void _initHTTP();
 
   // ── HTTP Route Handlers (registered via lambda in _initHTTP) ─────────────
 
   /**
-   * @brief  Serve the PROGMEM dashboard page.
+   * @brief  Serve index.html from LittleFS, or fall back to PROGMEM WebAssets.
    */
   void _handleRoot();
+
+  /**
+   * @brief  Serve any static file from LittleFS (e.g. /assets/index-xxx.js).
+   *         Returns 404 if the file is not found in LittleFS.
+   */
+  void _handleStaticFile();
+
+  /**
+   * @brief  Serve real-time telemetry as a JSON object.
+   *         Payload: { uptime_ms, free_heap, total_heap, clients,
+   *                    dns_intercepts, ssid, ip, channel, mac,
+   *                    subnet, gateway, cpu_freq_mhz, security }
+   */
+  void _handleApiStats();
 
   /**
    * @brief  Emit a 302 redirect to the dashboard gateway IP.

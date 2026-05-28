@@ -5,13 +5,14 @@
 // ============================================================================
 
 #include "NetworkManager.h"
-#include "WebAssets.h"        // PROGMEM dashboard HTML payload
+#include "WebAssets.h"        // PROGMEM dashboard HTML payload (fallback)
 
 // ── Constructor ──────────────────────────────────────────────────────────────
 
 NetworkManager::NetworkManager()
   : _httpServer(OperatorConfig::HTTP_PORT),
-    _dnsQueryCount(0)
+    _dnsQueryCount(0),
+    _littleFsMounted(false)
 {
   // Member objects are default-constructed here.
   // No hardware access — that is deferred to begin().
@@ -44,10 +45,13 @@ bool NetworkManager::begin() {
   // ── Step 2: DNS Server ───────────────────────────────────────────────────
   _initDNS();
 
-  // ── Step 3: HTTP Server ──────────────────────────────────────────────────
+  // ── Step 3: LittleFS ─────────────────────────────────────────────────────
+  _initLittleFS();
+
+  // ── Step 4: HTTP Server ──────────────────────────────────────────────────
   _initHTTP();
 
-  // ── Step 4: Print summary ────────────────────────────────────────────────
+  // ── Step 5: Print summary ────────────────────────────────────────────────
   _printNetworkInfo();
 
   Serial.println(F("[BOOT] All subsystems nominal. Entering main loop."));
@@ -154,6 +158,40 @@ void NetworkManager::_initDNS() {
                 OperatorConfig::AP_IP);
 }
 
+// ── Private: _initLittleFS() ─────────────────────────────────────────────────
+
+void NetworkManager::_initLittleFS() {
+#if defined(LITTLEFS_ENABLED) && LITTLEFS_ENABLED
+  Serial.println(F("[LFS ] Mounting LittleFS partition..."));
+
+  if (!LittleFS.begin(true)) {  // true = format on failure
+    Serial.println(F("[LFS ] Mount FAILED — falling back to PROGMEM WebAssets."));
+    _littleFsMounted = false;
+    return;
+  }
+
+  // Verify the React build artifact is present
+  if (!LittleFS.exists("/index.html")) {
+    Serial.println(F("[LFS ] /index.html not found — run 'npm run build' then 'Upload Filesystem Image'."));
+    Serial.println(F("[LFS ] Falling back to PROGMEM WebAssets."));
+    _littleFsMounted = false;
+    return;
+  }
+
+  _littleFsMounted = true;
+
+  // Log filesystem stats
+  size_t total = LittleFS.totalBytes();
+  size_t used  = LittleFS.usedBytes();
+  Serial.printf("[LFS ] Mounted OK — %u KB used / %u KB total (%.1f%% full)\r\n",
+                used  / 1024, total / 1024,
+                total > 0 ? (float)used / total * 100.0f : 0.0f);
+#else
+  Serial.println(F("[LFS ] LITTLEFS_ENABLED not set — using PROGMEM WebAssets."));
+  _littleFsMounted = false;
+#endif
+}
+
 // ── Private: _initHTTP() ─────────────────────────────────────────────────────
 
 void NetworkManager::_initHTTP() {
@@ -161,16 +199,18 @@ void NetworkManager::_initHTTP() {
                 OperatorConfig::HTTP_PORT);
 
   // ── Route: GET / ─────────────────────────────────────────────────────────
-  // Serves the full PROGMEM dashboard HTML. This is the landing page.
   _httpServer.on("/", HTTP_GET, [this]() {
-    Serial.printf("[HTTP] GET / from %s — serving dashboard\r\n",
+    Serial.printf("[HTTP] GET / from %s\r\n",
                   _httpServer.client().remoteIP().toString().c_str());
     _handleRoot();
   });
 
+  // ── Route: GET /api/stats ────────────────────────────────────────────────
+  _httpServer.on("/api/stats", HTTP_GET, [this]() {
+    _handleApiStats();
+  });
+
   // ── Route: GET /generate_204 ─────────────────────────────────────────────
-  // Android captive-portal probe. Normally expects HTTP 204 No Content.
-  // Returning 302 forces Android to show the captive portal login notification.
   _httpServer.on("/generate_204", HTTP_GET, [this]() {
     Serial.printf("[HTTP] GET /generate_204 (Android probe) from %s — issuing 302\r\n",
                   _httpServer.client().remoteIP().toString().c_str());
@@ -178,8 +218,6 @@ void NetworkManager::_initHTTP() {
   });
 
   // ── Route: GET /hotspot-detect.html ──────────────────────────────────────
-  // Apple iOS/macOS captive-portal probe. Expects "Success" body.
-  // 302 redirect triggers the Apple captive portal pop-up.
   _httpServer.on("/hotspot-detect.html", HTTP_GET, [this]() {
     Serial.printf("[HTTP] GET /hotspot-detect.html (Apple probe) from %s — issuing 302\r\n",
                   _httpServer.client().remoteIP().toString().c_str());
@@ -187,7 +225,6 @@ void NetworkManager::_initHTTP() {
   });
 
   // ── Route: GET /connecttest.txt ──────────────────────────────────────────
-  // Windows NCSI (Network Connectivity Status Indicator) probe.
   _httpServer.on("/connecttest.txt", HTTP_GET, [this]() {
     Serial.printf("[HTTP] GET /connecttest.txt (Windows NCSI probe) from %s — issuing 302\r\n",
                   _httpServer.client().remoteIP().toString().c_str());
@@ -195,36 +232,123 @@ void NetworkManager::_initHTTP() {
   });
 
   // ── Route: GET /ncsi.txt ─────────────────────────────────────────────────
-  // Alternate Windows NCSI probe path.
   _httpServer.on("/ncsi.txt", HTTP_GET, [this]() {
     Serial.printf("[HTTP] GET /ncsi.txt (Windows NCSI probe) from %s — issuing 302\r\n",
                   _httpServer.client().remoteIP().toString().c_str());
     _handleRedirect();
   });
 
-  // ── Catch-all: any unmatched URI ─────────────────────────────────────────
-  // This is the critical captive-portal hook: any page the device tries to
-  // load (e.g., http://example.com/anything) is intercepted and redirected.
+  // ── Catch-all ────────────────────────────────────────────────────────────
   _httpServer.onNotFound([this]() {
+    const String uri = _httpServer.uri();
+
+#if defined(LITTLEFS_ENABLED) && LITTLEFS_ENABLED
+    if (_littleFsMounted && LittleFS.exists(uri)) {
+      _handleStaticFile();
+      return;
+    }
+#endif
+
     Serial.printf("[HTTP] 404 catch-all for URI=%s from %s — issuing 302\r\n",
-                  _httpServer.uri().c_str(),
+                  uri.c_str(),
                   _httpServer.client().remoteIP().toString().c_str());
     _handleRedirect();
   });
 
   _httpServer.begin();
-  Serial.println(F("[HTTP] WebServer started. Routes: /, /generate_204, /hotspot-detect.html, /connecttest.txt, /ncsi.txt, *"));
+  Serial.println(F("[HTTP] WebServer started."));
+  Serial.printf ("[HTTP] Routes: /, /api/stats, /generate_204, /hotspot-detect.html, /connecttest.txt, /ncsi.txt, *(LittleFS|302)\r\n");
 }
 
 // ── Private: _handleRoot() ───────────────────────────────────────────────────
 
 void NetworkManager::_handleRoot() {
-  // send_P() streams directly from PROGMEM — no heap copy required.
-  _httpServer.send_P(
-    200,
-    "text/html; charset=utf-8",
-    OPERATOR_DASHBOARD_HTML
+#if defined(LITTLEFS_ENABLED) && LITTLEFS_ENABLED
+  if (_littleFsMounted) {
+    File f = LittleFS.open("/index.html", "r");
+    if (f) {
+      _httpServer.streamFile(f, "text/html; charset=utf-8");
+      f.close();
+      return;
+    }
+  }
+#endif
+  // Fallback: serve PROGMEM dashboard if LittleFS is unavailable
+  Serial.println(F("[HTTP] Serving PROGMEM fallback dashboard."));
+  _httpServer.send_P(200, "text/html; charset=utf-8", OPERATOR_DASHBOARD_HTML);
+}
+
+// ── Private: _handleStaticFile() ─────────────────────────────────────────────
+
+void NetworkManager::_handleStaticFile() {
+#if defined(LITTLEFS_ENABLED) && LITTLEFS_ENABLED
+  const String path = _httpServer.uri();
+
+  String contentType = "application/octet-stream";
+  if      (path.endsWith(".html")) contentType = "text/html; charset=utf-8";
+  else if (path.endsWith(".js"))   contentType = "application/javascript";
+  else if (path.endsWith(".css"))  contentType = "text/css";
+  else if (path.endsWith(".svg"))  contentType = "image/svg+xml";
+  else if (path.endsWith(".ico"))  contentType = "image/x-icon";
+  else if (path.endsWith(".json")) contentType = "application/json";
+  else if (path.endsWith(".png"))  contentType = "image/png";
+  else if (path.endsWith(".woff2"))contentType = "font/woff2";
+
+  File f = LittleFS.open(path, "r");
+  if (!f || f.isDirectory()) {
+    if (f) f.close();
+    _httpServer.send(404, "text/plain", "Not found");
+    return;
+  }
+
+  if (path.startsWith("/assets/")) {
+    _httpServer.sendHeader("Cache-Control", "public, max-age=31536000, immutable");
+  }
+
+  _httpServer.streamFile(f, contentType);
+  f.close();
+#else
+  _httpServer.send(404, "text/plain", "LittleFS not enabled");
+#endif
+}
+
+// ── Private: _handleApiStats() ───────────────────────────────────────────────
+
+void NetworkManager::_handleApiStats() {
+  char buf[512];
+  snprintf(buf, sizeof(buf),
+    "{"
+      "\"uptime_ms\":%lu,"
+      "\"free_heap\":%u,"
+      "\"total_heap\":%u,"
+      "\"clients\":%d,"
+      "\"dns_intercepts\":%lu,"
+      "\"ssid\":\"%s\","
+      "\"ip\":\"%s\","
+      "\"channel\":%d,"
+      "\"mac\":\"%s\","
+      "\"subnet\":\"%s\","
+      "\"gateway\":\"%s\","
+      "\"cpu_freq_mhz\":%u,"
+      "\"security\":\"WPA2-PSK\""
+    "}",
+    (unsigned long)millis(),
+    (unsigned int)ESP.getFreeHeap(),
+    (unsigned int)ESP.getHeapSize(),
+    (int)WiFi.softAPgetStationNum(),
+    (unsigned long)_dnsQueryCount,
+    OperatorConfig::AP_SSID,
+    WiFi.softAPIP().toString().c_str(),
+    (int)OperatorConfig::AP_CHANNEL,
+    WiFi.softAPmacAddress().c_str(),
+    OperatorConfig::AP_SUBNET,
+    OperatorConfig::AP_GATEWAY,
+    (unsigned int)getCpuFrequencyMhz()
   );
+
+  _httpServer.sendHeader("Access-Control-Allow-Origin", "*");
+  _httpServer.sendHeader("Cache-Control", "no-store");
+  _httpServer.send(200, "application/json", buf);
 }
 
 // ── Private: _handleRedirect() ───────────────────────────────────────────────

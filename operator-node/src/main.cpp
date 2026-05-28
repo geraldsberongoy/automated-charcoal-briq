@@ -79,7 +79,7 @@ void loop() {
     _lastStatusPrintMs = now;
 
     Serial.println(F("[MAIN] ─── Heartbeat ────────────────────────────────────────"));
-    Serial.printf ("[MAIN]  Uptime        : %lu ms\r\n",     now);
+    Serial.printf ("[MAIN]  Uptime        : %lu ms\r\n",     (unsigned long)now);
     Serial.printf ("[MAIN]  Free Heap     : %u bytes\r\n",   ESP.getFreeHeap());
     Serial.printf ("[MAIN]  Min Free Heap : %u bytes\r\n",   ESP.getMinFreeHeap());
     Serial.printf ("[MAIN]  Active Clients: %d\r\n",         networkManager.getClientCount());
