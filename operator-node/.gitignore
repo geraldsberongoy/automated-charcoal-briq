@@ -1,0 +1,17 @@
+# PlatformIO build artifacts
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# VS Code workspace settings (keep only project-level settings if needed)
+.vscode/
+
+# PlatformIO Library data
+lib_deps/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
