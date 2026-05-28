@@ -1,4 +1,4 @@
-# ☀️ DEVELOPMENT OF SEMI-AUTOMATED PAPER-CHARCOAL BRIQUETTE PRODUCTION WITH GRAPHICAL USER INTERFACE
+# DEVELOPMENT OF SEMI-AUTOMATED PAPER-CHARCOAL BRIQUETTE PRODUCTION WITH GRAPHICAL USER INTERFACE
 
 > 🎓 **Bachelor of Science in Computer Engineering (BSCpE) Thesis Project**  
 > **Faculty of Computer Engineering | Polytechnic University of the Philippines, Sta. Mesa, Manila**  
@@ -6,7 +6,7 @@
 
 ---
 
-## 🔬 Executive Research Summary
+## Executive Research Summary
 
 This repository contains the complete cyber-physical system (CPS) architecture, mathematical calibration matrices, off-grid power sizing equations, and embedded firmware/software designs for the **Semi-Automated Paper-Charcoal Briquette Production System**.
 
@@ -26,7 +26,7 @@ Designed as a sustainable, community-scale waste-to-energy utility, this system 
 
 ---
 
-## 📂 Repository Structural Map
+## Repository Structural Map
 
 This workspace organizes the theoretical research, mathematical sizing models, and empirical testing parameters:
 
@@ -38,7 +38,7 @@ This workspace organizes the theoretical research, mathematical sizing models, a
 
 ---
 
-## 📐 Material Science: Cellulose Adhesion & Mix Design
+## Material Science: Cellulose Adhesion & Mix Design
 
 The mechanical strength of the briquettes relies on **100% chemical-free adhesion**, completely removing the need for costly starch binders or toxic synthetic glues.
 
@@ -56,7 +56,7 @@ Intra-chain H-bonds      Fiber Swelling/Libration     Inter-chain H-bonds
 - **Water Holding Capacity (WHC):** Residual charcoal fines hold a WHC of **$2.0 - 3.0$**.
 - **Volumetric Mixture Ratios:** To yield a **$1:1$ dry-weight ratio**, the initial wet mixture is prepared within a wet mass ratio of **$1.0 : 1.0 : 3.0$ to $1.0 : 1.0 : 4.2$** (Charcoal : Paper : Water).
 
-### 🧪 Evaluated Composition Matrix (Dry-Weight Ratios)
+### Evaluated Composition Matrix (Dry-Weight Ratios)
 
 - **10:90 Formulation:** Minimal binder threshold. Extreme calorific output, but prone to mechanical shattering during transport.
 - **20:80 Formulation (Recommended):** The optimal balance of thermodynamic output and structural durability.
@@ -64,7 +64,7 @@ Intra-chain H-bonds      Fiber Swelling/Libration     Inter-chain H-bonds
 
 ---
 
-## ⚡ Cyber-Physical System (CPS) Architecture
+## Cyber-Physical System (CPS) Architecture
 
 ```mermaid
 graph TD
@@ -111,7 +111,7 @@ graph TD
     MCU -- Isolated Relays --> Curing
 ```
 
-### 🔧 Component Specifications (Table 2 - 5 Mapping)
+### Component Specifications (Table 2 - 5 Mapping)
 
 #### 1. Central Processing & HMI Interfacing
 
@@ -137,11 +137,11 @@ graph TD
 
 ---
 
-## 📊 Sensor Calibration & Mathematical Models
+## Sensor Calibration & Mathematical Models
 
 The system relies on high-accuracy calibration curves configured in the microcontroller firmware to translate raw electrical signals into physical units:
 
-### 💧 1. YF-S201 Water Flow Sensor
+### 1. YF-S201 Water Flow Sensor
 
 Integrates digital pulse counts over time to calculate volumetric water infusion:
 $$V_w = \sum_{i=1}^{P} \frac{1}{C_{\text{flow}}}$$
@@ -151,7 +151,7 @@ $$V_w = \sum_{i=1}^{P} \frac{1}{C_{\text{flow}}}$$
   $$Q_{\text{actual}} = 0.00222 \cdot f + 0.015 \text{ (L/min)}$$
   _(where $f$ represents pulse frequency in Hz)._
 
-### ⚖️ 2. Compaction Load Cell (HX711)
+### 2. Compaction Load Cell (HX711)
 
 Converts 24-bit digital ADC inputs from the S-type strain gauge load cell into linear force ($F$):
 $$F\text{ (N)} = \left( \frac{ADC_{\text{raw}} - 142,500}{22,480.0} \right) \times 9.80665$$
@@ -159,7 +159,7 @@ $$F\text{ (N)} = \left( \frac{ADC_{\text{raw}} - 142,500}{22,480.0} \right) \tim
 - **Scale Factor:** **$22,480\text{ LSB/kg}$** ($R^2 = 0.9999$).
 - **Compaction Threshold:** The firmware triggers linear actuator retraction immediately upon reaching **$2000.0\text{ N}$** of force, matching a compaction pressure of $400.0\text{ kPa}$ over the $10\times5\text{ cm}$ mold surface.
 
-### 🌡️ 3. DHT22 Humidity Polynomial Correction
+### 3. DHT22 Humidity Polynomial Correction
 
 Compensates for humidity drift caused by high thermal levels inside the curing chamber:
 $$\text{RH}_{\text{calibrated}} = a_3 \cdot \text{RH}_{\text{raw}}^3 + a_2 \cdot \text{RH}_{\text{raw}}^2 + a_1 \cdot \text{RH}_{\text{raw}} + a_0 + \beta \cdot (T_{\text{sensor}} - 25.0)$$
@@ -174,11 +174,11 @@ $$\text{RH}_{\text{calibrated}} = a_3 \cdot \text{RH}_{\text{raw}}^3 + a_2 \cdot
 
 ---
 
-## 🔋 Solar Power Budgeting & Sizing Equations
+## Solar Power Budgeting & Sizing Equations
 
 The energy harvesting system was designed around mathematical power budgets to guarantee continuous, off-grid self-sufficiency:
 
-### ⚡ 1. Daily Electrical Consumption Sizing
+### 1. Daily Electrical Consumption Sizing
 
 - **Logic Draw (ESP32, screen, sensors):** $2.5\text{ W} \times 8\text{ hr} = 20.0\text{ Wh}$
 - **Actuator Power Per 10-Batch Run:**
@@ -190,19 +190,19 @@ The energy harvesting system was designed around mathematical power budgets to g
   - _Exhaust Ventilation:_ $8.0\text{ Wh}$
 - **Cumulative Daily Load ($E_{\text{total}}$):** **$261.9\text{ Wh}$**
 
-### 🔋 2. Battery Storage Capacity Sizing ($LiFePO_4$)
+### 2. Battery Storage Capacity Sizing ($LiFePO_4$)
 
 Calculated with a safety factor ($S_f = 1.2$) and an $80\%$ depth of discharge ($DoD$) limit:
 $$C_{\text{batt}} = \frac{E_{\text{total}} \times S_f}{V_{\text{sys}} \times DoD} = \frac{261.9\text{ Wh} \times 1.2}{12.8\text{ V} \times 0.8} \approx 30.7\text{ Ah} \implies \text{\bf 12V 30Ah LiFePO4 Battery Pack}$$
 
-### ☀️ 3. Solar PV Panel Sizing
+### 3. Solar PV Panel Sizing
 
 Based on local peak sun hours ($H_{\text{peak}} = 4.0\text{ hours}$) and system loss coefficient ($\eta_{\text{sys}} = 0.75$):
 $$P_{\text{PV}} = \frac{E_{\text{total}}}{H_{\text{peak}} \times \eta_{\text{sys}}} = \frac{261.9\text{ Wh}}{4.0\text{ hours} \times 0.75} \approx 87.3\text{ W} \implies \text{\bf 100W Monocrystalline PV Panel}$$
 
 ---
 
-## 🧪 Quantitative Verification Framework
+## Quantitative Verification Framework
 
 To systematically evaluate the mechanical, thermal, and software interfaces, the following empirical formulas are used:
 
@@ -220,7 +220,7 @@ To systematically evaluate the mechanical, thermal, and software interfaces, the
 
 ---
 
-## 🚀 Build & Deployment Instructions
+## Build & Deployment Instructions
 
 ### 1. ESP32 Firmware Installation
 
@@ -257,7 +257,7 @@ pio run --target uploadfs
 
 ---
 
-## ⚠️ Safety Protocols & Multiple Constraints
+## Safety Protocols & Multiple Constraints
 
 1.  > [!IMPORTANT]
     > **Human-in-the-Loop Safeguard:** The machine is strictly _semi-automated_. For safety, the operator must manually load the dry inputs into the hoppers and physically trigger the next phase using the touch screen graphical interface.
