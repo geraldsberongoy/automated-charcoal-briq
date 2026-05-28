@@ -1,6 +1,6 @@
 # DEVELOPMENT OF SEMI-AUTOMATED PAPER-CHARCOAL BRIQUETTE PRODUCTION WITH GRAPHICAL USER INTERFACE
 
-> 🎓 **Bachelor of Science in Computer Engineering (BSCpE) Thesis Project**  
+> **Bachelor of Science in Computer Engineering (BSCpE) Thesis Project**  
 > **Faculty of Computer Engineering | Polytechnic University of the Philippines, Sta. Mesa, Manila**  
 > _Target Field Deployment Area: Cavinti, Laguna, Philippines (Off-Grid Communities)_
 
