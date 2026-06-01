@@ -25,7 +25,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <DNSServer.h>
-#include <WebServer.h>
+#include <ESPAsyncWebServer.h>
 
 #if defined(LITTLEFS_ENABLED) && LITTLEFS_ENABLED
   #include <LittleFS.h>
@@ -106,11 +106,13 @@ public:
 private:
   // ── Private Members ──────────────────────────────────────────────────────
 
-  DNSServer  _dnsServer;   // Owns the UDP:53 listening socket
-  WebServer  _httpServer;  // Owns the TCP:80 listening socket
+  DNSServer      _dnsServer;   // Owns the UDP:53 listening socket
+  AsyncWebServer _httpServer;  // Owns the TCP:80 listening socket
+  AsyncWebSocket _ws;          // Owns the WebSockets interface at /ws
 
-  // Incremented on every DNS query processed (diagnostic counter)
-  uint32_t   _dnsQueryCount;
+  // FreeRTOS Task and telemetry members
+  TaskHandle_t   _telemetryTaskHandle;
+  volatile uint32_t _dnsQueryCount; // Mark volatile as it may be accessed by multiple tasks
 
   // True if LittleFS was successfully mounted and index.html is present
   bool       _littleFsMounted;
@@ -151,13 +153,13 @@ private:
   /**
    * @brief  Serve index.html from LittleFS, or fall back to PROGMEM WebAssets.
    */
-  void _handleRoot();
+  void _handleRoot(AsyncWebServerRequest *request);
 
   /**
    * @brief  Serve any static file from LittleFS (e.g. /assets/index-xxx.js).
    *         Returns 404 if the file is not found in LittleFS.
    */
-  void _handleStaticFile();
+  void _handleStaticFile(AsyncWebServerRequest *request);
 
   /**
    * @brief  Serve real-time telemetry as a JSON object.
@@ -165,13 +167,29 @@ private:
    *                    dns_intercepts, ssid, ip, channel, mac,
    *                    subnet, gateway, cpu_freq_mhz, security }
    */
-  void _handleApiStats();
+  void _handleApiStats(AsyncWebServerRequest *request);
 
   /**
    * @brief  Emit a 302 redirect to the dashboard gateway IP.
    *         Called for all non-root URIs to trigger the OS captive portal flow.
    */
-  void _handleRedirect();
+  void _handleRedirect(AsyncWebServerRequest *request);
+
+  /**
+   * @brief  Callback handler for incoming WebSocket messages and lifecycle events.
+   */
+  void _handleWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, 
+                      AwsEventType type, void *arg, uint8_t *data, size_t len);
+
+  /**
+   * @brief  Broadcasts the JSON stats payload to all active WebSocket connections.
+   */
+  void _broadcastTelemetry();
+
+  /**
+   * @brief  FreeRTOS task entry point for telemetry broadcasting. Pinned to Core 1.
+   */
+  static void _telemetryTask(void *pvParameters);
 
   /**
    * @brief  Pretty-print the current IP configuration to Serial.

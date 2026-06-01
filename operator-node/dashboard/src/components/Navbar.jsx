@@ -1,18 +1,37 @@
 // Navbar.jsx — Top navigation bar with live clock, API health badge
 import { useClock } from "../hooks/useClock";
 
-export default function Navbar({ error, lastUpdated, ip }) {
+export default function Navbar({ error, lastUpdated, ip, connectionType }) {
   const time = useClock();
 
   let apiBadgeClass = "fetching";
   let apiBadgeText = "CONNECTING";
-  if (lastUpdated && !error) {
+  let label = "WS TELEMETRY";
+
+  if (connectionType === 'WS') {
     apiBadgeClass = "ok";
     apiBadgeText = "LIVE";
-  }
-  if (error) {
+  } else if (connectionType === 'MOCK') {
+    apiBadgeClass = "ok";
+    apiBadgeText = "DEV MODE";
+    label = "MOCK STREAM";
+  } else if (connectionType === 'CONNECTING') {
+    apiBadgeClass = "fetching";
+    apiBadgeText = "CONNECTING";
+  } else if (connectionType === 'OFFLINE') {
     apiBadgeClass = "err";
-    apiBadgeText = "OFFLINE";
+    apiBadgeText = "DISCONNECTED";
+  } else {
+    // Fallback/Legacy HTTP polling
+    label = "/api/stats";
+    if (lastUpdated && !error) {
+      apiBadgeClass = "ok";
+      apiBadgeText = "LIVE";
+    }
+    if (error) {
+      apiBadgeClass = "err";
+      apiBadgeText = "OFFLINE";
+    }
   }
 
   return (
@@ -31,7 +50,7 @@ export default function Navbar({ error, lastUpdated, ip }) {
 
       <div className="navbar__right">
         <span className={`navbar__api-badge ${apiBadgeClass}`}>
-          /api/stats · {apiBadgeText}
+          {label} · {apiBadgeText}
         </span>
 
         <div className="navbar__status" aria-live="polite">

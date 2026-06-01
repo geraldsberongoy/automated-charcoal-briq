@@ -36,7 +36,7 @@ const BOOT_LOG = [
 
 // ── App ───────────────────────────────────────────────────────────────────────
 export default function App() {
-  const { stats, loading, error, lastUpdated } = useStats();
+  const { stats, loading, error, lastUpdated, connectionType } = useStats();
   const [logEntries, setLogEntries] = useState(BOOT_LOG);
   const prevStatsRef = useRef(null);
 
@@ -60,7 +60,7 @@ export default function App() {
       }
     } else {
       // First fetch
-      addLog('ok', `Dashboard connected — polling /api/stats every 5 s`);
+      addLog('ok', `Dashboard connected via WebSocket real-time telemetry stream`);
     }
 
     prevStatsRef.current = stats;
@@ -111,6 +111,7 @@ export default function App() {
         error={error}
         lastUpdated={lastUpdated}
         ip={stats?.ip}
+        connectionType={connectionType}
       />
 
       <main id="dashboard" role="main">

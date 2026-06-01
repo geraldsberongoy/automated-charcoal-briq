@@ -11,6 +11,8 @@
 
 NetworkManager::NetworkManager()
   : _httpServer(OperatorConfig::HTTP_PORT),
+    _ws("/ws"),
+    _telemetryTaskHandle(nullptr),
     _dnsQueryCount(0),
     _littleFsMounted(false)
 {
@@ -51,6 +53,22 @@ bool NetworkManager::begin() {
   // ── Step 4: HTTP Server ──────────────────────────────────────────────────
   _initHTTP();
 
+  // ── Step 4.5: Spawn Real-time Telemetry task on Core 1 ───────────────────
+  Serial.println(F("[RTOS] Spawning telemetry WebSocket task pinned to Core 1..."));
+  BaseType_t taskCreated = xTaskCreatePinnedToCore(
+    _telemetryTask,             // Task function
+    "telemetry_ws",             // Task name
+    4096,                       // Stack size in words (16KB)
+    this,                       // Pass our class instance
+    1,                          // Priority
+    &_telemetryTaskHandle,      // Task handle
+    1                           // CPU core (Core 1)
+  );
+
+  if (taskCreated != pdPASS) {
+    Serial.println(F("[ERROR] Failed to create telemetry task — running on loop fallback."));
+  }
+
   // ── Step 5: Print summary ────────────────────────────────────────────────
   _printNetworkInfo();
 
@@ -66,8 +84,8 @@ void NetworkManager::handle() {
   // Pump the DNS server — processes one UDP packet per call (non-blocking)
   _dnsServer.processNextRequest();
 
-  // Pump the HTTP server — handles one pending TCP client per call (non-blocking)
-  _httpServer.handleClient();
+  // Clean up any stale/disconnected WebSocket clients
+  _ws.cleanupClients();
 }
 
 // ── Public: getClientCount() ─────────────────────────────────────────────────
@@ -198,61 +216,68 @@ void NetworkManager::_initHTTP() {
   Serial.printf("[HTTP] Registering HTTP routes on TCP port %d\r\n",
                 OperatorConfig::HTTP_PORT);
 
+  // ── WebSocket Handler ─────────────────────────────────────────────────────
+  _ws.onEvent([this](AsyncWebSocket *server, AsyncWebSocketClient *client, 
+                     AwsEventType type, void *arg, uint8_t *data, size_t len) {
+    _handleWsEvent(server, client, type, arg, data, len);
+  });
+  _httpServer.addHandler(&_ws);
+
   // ── Route: GET / ─────────────────────────────────────────────────────────
-  _httpServer.on("/", HTTP_GET, [this]() {
+  _httpServer.on("/", HTTP_GET, [this](AsyncWebServerRequest *request) {
     Serial.printf("[HTTP] GET / from %s\r\n",
-                  _httpServer.client().remoteIP().toString().c_str());
-    _handleRoot();
+                  request->client()->remoteIP().toString().c_str());
+    _handleRoot(request);
   });
 
   // ── Route: GET /api/stats ────────────────────────────────────────────────
-  _httpServer.on("/api/stats", HTTP_GET, [this]() {
-    _handleApiStats();
+  _httpServer.on("/api/stats", HTTP_GET, [this](AsyncWebServerRequest *request) {
+    _handleApiStats(request);
   });
 
   // ── Route: GET /generate_204 ─────────────────────────────────────────────
-  _httpServer.on("/generate_204", HTTP_GET, [this]() {
+  _httpServer.on("/generate_204", HTTP_GET, [this](AsyncWebServerRequest *request) {
     Serial.printf("[HTTP] GET /generate_204 (Android probe) from %s — issuing 302\r\n",
-                  _httpServer.client().remoteIP().toString().c_str());
-    _handleRedirect();
+                  request->client()->remoteIP().toString().c_str());
+    _handleRedirect(request);
   });
 
   // ── Route: GET /hotspot-detect.html ──────────────────────────────────────
-  _httpServer.on("/hotspot-detect.html", HTTP_GET, [this]() {
+  _httpServer.on("/hotspot-detect.html", HTTP_GET, [this](AsyncWebServerRequest *request) {
     Serial.printf("[HTTP] GET /hotspot-detect.html (Apple probe) from %s — issuing 302\r\n",
-                  _httpServer.client().remoteIP().toString().c_str());
-    _handleRedirect();
+                  request->client()->remoteIP().toString().c_str());
+    _handleRedirect(request);
   });
 
   // ── Route: GET /connecttest.txt ──────────────────────────────────────────
-  _httpServer.on("/connecttest.txt", HTTP_GET, [this]() {
+  _httpServer.on("/connecttest.txt", HTTP_GET, [this](AsyncWebServerRequest *request) {
     Serial.printf("[HTTP] GET /connecttest.txt (Windows NCSI probe) from %s — issuing 302\r\n",
-                  _httpServer.client().remoteIP().toString().c_str());
-    _handleRedirect();
+                  request->client()->remoteIP().toString().c_str());
+    _handleRedirect(request);
   });
 
   // ── Route: GET /ncsi.txt ─────────────────────────────────────────────────
-  _httpServer.on("/ncsi.txt", HTTP_GET, [this]() {
+  _httpServer.on("/ncsi.txt", HTTP_GET, [this](AsyncWebServerRequest *request) {
     Serial.printf("[HTTP] GET /ncsi.txt (Windows NCSI probe) from %s — issuing 302\r\n",
-                  _httpServer.client().remoteIP().toString().c_str());
-    _handleRedirect();
+                  request->client()->remoteIP().toString().c_str());
+    _handleRedirect(request);
   });
 
   // ── Catch-all ────────────────────────────────────────────────────────────
-  _httpServer.onNotFound([this]() {
-    const String uri = _httpServer.uri();
+  _httpServer.onNotFound([this](AsyncWebServerRequest *request) {
+    const String uri = request->url();
 
 #if defined(LITTLEFS_ENABLED) && LITTLEFS_ENABLED
     if (_littleFsMounted && LittleFS.exists(uri)) {
-      _handleStaticFile();
+      _handleStaticFile(request);
       return;
     }
 #endif
 
     Serial.printf("[HTTP] 404 catch-all for URI=%s from %s — issuing 302\r\n",
                   uri.c_str(),
-                  _httpServer.client().remoteIP().toString().c_str());
-    _handleRedirect();
+                  request->client()->remoteIP().toString().c_str());
+    _handleRedirect(request);
   });
 
   _httpServer.begin();
@@ -262,27 +287,23 @@ void NetworkManager::_initHTTP() {
 
 // ── Private: _handleRoot() ───────────────────────────────────────────────────
 
-void NetworkManager::_handleRoot() {
+void NetworkManager::_handleRoot(AsyncWebServerRequest *request) {
 #if defined(LITTLEFS_ENABLED) && LITTLEFS_ENABLED
-  if (_littleFsMounted) {
-    File f = LittleFS.open("/index.html", "r");
-    if (f) {
-      _httpServer.streamFile(f, "text/html; charset=utf-8");
-      f.close();
-      return;
-    }
+  if (_littleFsMounted && LittleFS.exists("/index.html")) {
+    request->send(LittleFS, "/index.html", "text/html; charset=utf-8");
+    return;
   }
 #endif
   // Fallback: serve PROGMEM dashboard if LittleFS is unavailable
   Serial.println(F("[HTTP] Serving PROGMEM fallback dashboard."));
-  _httpServer.send_P(200, "text/html; charset=utf-8", OPERATOR_DASHBOARD_HTML);
+  request->send(200, "text/html; charset=utf-8", (const uint8_t*)OPERATOR_DASHBOARD_HTML, strlen_P(OPERATOR_DASHBOARD_HTML));
 }
 
 // ── Private: _handleStaticFile() ─────────────────────────────────────────────
 
-void NetworkManager::_handleStaticFile() {
+void NetworkManager::_handleStaticFile(AsyncWebServerRequest *request) {
 #if defined(LITTLEFS_ENABLED) && LITTLEFS_ENABLED
-  const String path = _httpServer.uri();
+  const String path = request->url();
 
   String contentType = "application/octet-stream";
   if      (path.endsWith(".html")) contentType = "text/html; charset=utf-8";
@@ -294,27 +315,19 @@ void NetworkManager::_handleStaticFile() {
   else if (path.endsWith(".png"))  contentType = "image/png";
   else if (path.endsWith(".woff2"))contentType = "font/woff2";
 
-  File f = LittleFS.open(path, "r");
-  if (!f || f.isDirectory()) {
-    if (f) f.close();
-    _httpServer.send(404, "text/plain", "Not found");
-    return;
-  }
-
+  AsyncWebServerResponse *response = request->beginResponse(LittleFS, path, contentType);
   if (path.startsWith("/assets/")) {
-    _httpServer.sendHeader("Cache-Control", "public, max-age=31536000, immutable");
+    response->addHeader("Cache-Control", "public, max-age=31536000, immutable");
   }
-
-  _httpServer.streamFile(f, contentType);
-  f.close();
+  request->send(response);
 #else
-  _httpServer.send(404, "text/plain", "LittleFS not enabled");
+  request->send(404, "text/plain", "LittleFS not enabled");
 #endif
 }
 
 // ── Private: _handleApiStats() ───────────────────────────────────────────────
 
-void NetworkManager::_handleApiStats() {
+void NetworkManager::_handleApiStats(AsyncWebServerRequest *request) {
   char buf[512];
   snprintf(buf, sizeof(buf),
     "{"
@@ -346,25 +359,121 @@ void NetworkManager::_handleApiStats() {
     (unsigned int)getCpuFrequencyMhz()
   );
 
-  _httpServer.sendHeader("Access-Control-Allow-Origin", "*");
-  _httpServer.sendHeader("Cache-Control", "no-store");
-  _httpServer.send(200, "application/json", buf);
+  AsyncWebServerResponse *response = request->beginResponse(200, "application/json", buf);
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  response->addHeader("Cache-Control", "no-store");
+  request->send(response);
 }
 
 // ── Private: _handleRedirect() ───────────────────────────────────────────────
 
-void NetworkManager::_handleRedirect() {
+void NetworkManager::_handleRedirect(AsyncWebServerRequest *request) {
   // Build the destination URL from our configured gateway IP.
-  // Using a String here is acceptable — this path is infrequent (one redirect per client).
   String redirectURL = "http://";
   redirectURL += OperatorConfig::AP_IP;
   redirectURL += "/";
 
-  // HTTP 302 Found — temporary redirect.
-  // The "Location" header is what triggers the OS captive portal flow.
-  _httpServer.sendHeader("Location", redirectURL, true);
-  _httpServer.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
-  _httpServer.send(302, "text/plain", "Redirecting to Operator Dashboard...");
+  AsyncWebServerResponse *response = request->beginResponse(302, "text/plain", "Redirecting to Operator Dashboard...");
+  response->addHeader("Location", redirectURL);
+  response->addHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  request->send(response);
+}
+
+// ── Private: _handleWsEvent() ────────────────────────────────────────────────
+
+void NetworkManager::_handleWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, 
+                                    AwsEventType type, void *arg, uint8_t *data, size_t len) {
+  if (type == WS_EVT_CONNECT) {
+    Serial.printf("[WS  ] Client connected: ID=%u, IP=%s\r\n", 
+                  client->id(), client->remoteIP().toString().c_str());
+    
+    // Provide an immediate telemetry update so the joining device gets instant status
+    char buf[512];
+    snprintf(buf, sizeof(buf),
+      "{"
+        "\"uptime_ms\":%lu,"
+        "\"free_heap\":%u,"
+        "\"total_heap\":%u,"
+        "\"clients\":%d,"
+        "\"dns_intercepts\":%lu,"
+        "\"ssid\":\"%s\","
+        "\"ip\":\"%s\","
+        "\"channel\":%d,"
+        "\"mac\":\"%s\","
+        "\"subnet\":\"%s\","
+        "\"gateway\":\"%s\","
+        "\"cpu_freq_mhz\":%u,"
+        "\"security\":\"WPA2-PSK\""
+      "}",
+      (unsigned long)millis(),
+      (unsigned int)ESP.getFreeHeap(),
+      (unsigned int)ESP.getHeapSize(),
+      (int)WiFi.softAPgetStationNum(),
+      (unsigned long)_dnsQueryCount,
+      OperatorConfig::AP_SSID,
+      WiFi.softAPIP().toString().c_str(),
+      (int)OperatorConfig::AP_CHANNEL,
+      WiFi.softAPmacAddress().c_str(),
+      OperatorConfig::AP_SUBNET,
+      OperatorConfig::AP_GATEWAY,
+      (unsigned int)getCpuFrequencyMhz()
+    );
+    client->text(buf);
+  } 
+  else if (type == WS_EVT_DISCONNECT) {
+    Serial.printf("[WS  ] Client disconnected: ID=%u\r\n", client->id());
+  }
+}
+
+// ── Private: _broadcastTelemetry() ───────────────────────────────────────────
+
+void NetworkManager::_broadcastTelemetry() {
+  if (_ws.count() == 0) return; // Only construct JSON if we have active clients
+
+  char buf[512];
+  snprintf(buf, sizeof(buf),
+    "{"
+      "\"uptime_ms\":%lu,"
+      "\"free_heap\":%u,"
+      "\"total_heap\":%u,"
+      "\"clients\":%d,"
+      "\"dns_intercepts\":%lu,"
+      "\"ssid\":\"%s\","
+      "\"ip\":\"%s\","
+      "\"channel\":%d,"
+      "\"mac\":\"%s\","
+      "\"subnet\":\"%s\","
+      "\"gateway\":\"%s\","
+      "\"cpu_freq_mhz\":%u,"
+      "\"security\":\"WPA2-PSK\""
+    "}",
+    (unsigned long)millis(),
+    (unsigned int)ESP.getFreeHeap(),
+    (unsigned int)ESP.getHeapSize(),
+    (int)WiFi.softAPgetStationNum(),
+    (unsigned long)_dnsQueryCount,
+    OperatorConfig::AP_SSID,
+    WiFi.softAPIP().toString().c_str(),
+    (int)OperatorConfig::AP_CHANNEL,
+    WiFi.softAPmacAddress().c_str(),
+    OperatorConfig::AP_SUBNET,
+    OperatorConfig::AP_GATEWAY,
+    (unsigned int)getCpuFrequencyMhz()
+  );
+
+  _ws.textAll(buf);
+}
+
+// ── Private: _telemetryTask() ────────────────────────────────────────────────
+
+void NetworkManager::_telemetryTask(void *pvParameters) {
+  NetworkManager *instance = static_cast<NetworkManager*>(pvParameters);
+  Serial.printf("[RTOS] Telemetry WebSocket task started on CPU core: %d\r\n", xPortGetCoreID());
+
+  for (;;) {
+    instance->_broadcastTelemetry();
+    vTaskDelay(pdMS_TO_TICKS(1000)); // Update telemetry every 1 second
+  }
 }
 
 // ── Private: _printNetworkInfo() ─────────────────────────────────────────────
