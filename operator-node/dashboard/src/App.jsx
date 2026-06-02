@@ -420,7 +420,7 @@ export default function App() {
                     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
                       <div className="nextion-lcd-header" style={{ color: 'var(--clr-danger)' }}>
                         <span>PAGE: fault</span>
-                        <span>[CRITICAL BREACH]</span>
+                        <span>[ BAT: {stats?.power?.battery_voltage_v ? `${stats.power.battery_voltage_v}V` : '—'} ]</span>
                       </div>
                       <div className="nextion-lcd-body">
                         <div className="nextion-lcd-alert">
@@ -447,7 +447,7 @@ export default function App() {
                           stats?.active_state === 3 ? 'mix' :
                           stats?.active_state === 4 ? 'mold' : 'dry'
                         }</span>
-                        <span>[ {stats?.active_state === 4 ? 'LIMITS: SAFE' : 'AP ACTIVE'} ]</span>
+                        <span>[ BAT: {stats?.power?.battery_voltage_v ? `${stats.power.battery_voltage_v}V` : '—'} | PV: {stats?.power?.solar_amperage_a ? `${stats.power.solar_amperage_a}A` : '—'} ]</span>
                       </div>
                       
                       <div className="nextion-lcd-body">
