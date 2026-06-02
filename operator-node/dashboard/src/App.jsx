@@ -1,5 +1,4 @@
-// App.jsx — Root application component
-// Composes all dashboard panels and manages global state (stats polling, event log)
+// App.jsx — Upgraded React PWA Dashboard for the Semi-Automated Briquette Machine
 import { useState, useEffect, useRef } from 'react';
 
 import { useStats }  from './hooks/useStats';
@@ -27,48 +26,66 @@ function fmtKB(bytes) {
 
 // ── Initial boot log entries ──────────────────────────────────────────────────
 const BOOT_LOG = [
+  { level: 'ok',   msg: 'System Boot — FSM mounted on LittleFS partition',  time: new Date() },
   { level: 'ok',   msg: 'SoftAP initialized — SSID: Operator-Node-01',     time: new Date() },
-  { level: 'ok',   msg: 'IP address assigned: 192.168.4.1',                  time: new Date() },
-  { level: 'ok',   msg: 'DNS server started on UDP port 53',                 time: new Date() },
-  { level: 'ok',   msg: 'HTTP server started on TCP port 80 (LittleFS)',     time: new Date() },
-  { level: 'info', msg: 'Captive portal active — awaiting client connections', time: new Date() },
+  { level: 'ok',   msg: 'Wireless Dashboard connected via local edge node',  time: new Date() },
+  { level: 'info', msg: 'Captive portal active on port 80 — redirect Mode: 302', time: new Date() },
 ];
 
-// ── App ───────────────────────────────────────────────────────────────────────
+const FSM_STEPS = [
+  { num: 1, name: 'Boot / Idle', desc: 'Ready' },
+  { num: 2, name: 'Prep (Soak)', desc: 'Water Flow' },
+  { num: 3, name: 'Mixing', desc: 'Slurry Homogenize' },
+  { num: 4, name: 'Molding', desc: 'Press (2000N)' },
+  { num: 5, name: 'Curing', desc: 'Drying (<=15% RH)' }
+];
+
+// Mock historical logs for tab 3
+const MOCK_RUNS = [
+  { id: 125, timestamp: '2026-06-03 00:15', grind: '12s', water: '3.00 L', mix: '30s', force: '2005 N', dry: '420s', rh: '14.8 %', status: 'OK' },
+  { id: 124, timestamp: '2026-06-02 23:40', grind: '12s', water: '2.98 L', mix: '30s', force: '2008 N', dry: '415s', rh: '15.0 %', status: 'OK' },
+  { id: 123, timestamp: '2026-06-02 23:05', grind: '12s', water: '3.00 L', mix: '10s', force: '850 N',  dry: '—',    rh: '—',      status: 'FAULT' },
+  { id: 122, timestamp: '2026-06-02 22:15', grind: '12s', water: '3.02 L', mix: '30s', force: '2012 N', dry: '435s', rh: '14.5 %', status: 'OK' }
+];
+
 export default function App() {
   const { stats, loading, error, lastUpdated, connectionType } = useStats();
   const [logEntries, setLogEntries] = useState(BOOT_LOG);
+  const [activeTab, setActiveTab] = useState('workspace'); // workspace, power, logs
   const prevStatsRef = useRef(null);
 
-  // Generate log entries when stats change (client joins/leaves, DNS spikes)
+  // Generate log entries when stats change (state transitions, client events, safety faults)
   useEffect(() => {
     if (!stats) return;
     const prev = prevStatsRef.current;
 
     if (prev) {
-      if (stats.clients > prev.clients) {
-        addLog('info', `Client device joined — total: ${stats.clients}`);
-      } else if (stats.clients < prev.clients) {
-        addLog('warn', `Client device left — total: ${stats.clients}`);
+      if (stats.active_state !== prev.active_state) {
+        const stepName = FSM_STEPS.find(s => s.num === stats.active_state)?.name || 'Unknown';
+        addLog('ok', `FSM transition into State ${stats.active_state}: ${stepName}`);
       }
-
-      if (stats.dns_intercepts > prev.dns_intercepts) {
-        const delta = stats.dns_intercepts - prev.dns_intercepts;
-        if (delta > 0) {
-          addLog('warn', `${delta} DNS quer${delta === 1 ? 'y' : 'ies'} intercepted — redirected to ${stats.ip}`);
+      
+      if (stats.safety_switch !== prev.safety_switch) {
+        if (stats.safety_switch === 0) {
+          addLog('err', 'CRITICAL SAFETY ALERT: Limit switch triggered / casing breach detected!');
+        } else {
+          addLog('ok', 'Safety interlock restored. Operation resumed.');
         }
       }
-    } else {
-      // First fetch
-      addLog('ok', `Dashboard connected via WebSocket real-time telemetry stream`);
+
+      if (stats.clients > prev.clients) {
+        addLog('info', `Client device connected to SoftAP — total clients: ${stats.clients}`);
+      } else if (stats.clients < prev.clients) {
+        addLog('warn', `Client device disconnected — total clients: ${stats.clients}`);
+      }
     }
 
     prevStatsRef.current = stats;
   }, [stats]);
 
-  // Log errors
+  // Log connection errors
   useEffect(() => {
-    if (error) addLog('err', `API error: ${error}`);
+    if (error) addLog('err', `AP Telemetry error: ${error}`);
   }, [error]);
 
   function addLog(level, msg) {
@@ -89,12 +106,11 @@ export default function App() {
   ] : [];
 
   const svcRows = [
-    { key: 'DNS Server',    value: <Badge variant="green">✓ UDP :53</Badge> },
+    { key: 'DNS Server',    value: <Badge variant="green">✓ UDP :53 (Captive Redirect)</Badge> },
     { key: 'HTTP Server',   value: <Badge variant="green">✓ TCP :80</Badge> },
-    { key: 'Storage',       value: <Badge variant="blue">LittleFS</Badge> },
+    { key: 'Storage Type',  value: <Badge variant="blue">LittleFS (Flash)</Badge> },
+    { key: 'Run Logger',    value: <Badge variant="green">✓ Micro-SD (CSV)</Badge> },
     { key: 'Captive Portal',value: <Badge variant="green">✓ ACTIVE</Badge> },
-    { key: 'Redirect Mode', value: <Badge variant="warn">302 FOUND</Badge> },
-    { key: 'Internet',      value: <Badge variant="warn">✗ OFFLINE</Badge> },
   ];
 
   const sysRows = stats ? [
@@ -107,6 +123,20 @@ export default function App() {
 
   return (
     <>
+      {/* ── Safety interlock fault overlay (CRITICAL SAFETY SHUTDOWN) ─────── */}
+      {stats && stats.safety_switch === 0 && (
+        <div className="safety-overlay">
+          <div className="safety-box">
+            <div className="safety-icon">⚠️</div>
+            <div className="safety-title">Safety Breach Detected</div>
+            <div className="safety-desc">
+              The casing safety interlock switch has been opened. The compactor linear actuator duty cycle has been set to 0% to prevent mechanical hazard.
+            </div>
+            <Badge variant="red">CRITICAL HALT STATE</Badge>
+          </div>
+        </div>
+      )}
+
       <Navbar
         error={error}
         lastUpdated={lastUpdated}
@@ -115,84 +145,339 @@ export default function App() {
       />
 
       <main id="dashboard" role="main">
-
-        {/* ── KPI Row ─────────────────────────────────────────────────────── */}
-        <p className="section-label">System Telemetry fuck</p>
-        <div className="kpi-grid" role="region" aria-label="Key performance indicators">
-          <KpiCard
-            id="card-uptime"
-            icon="⏱"
-            label="Node Uptime"
-            value={fmtHMS(stats?.uptime_ms)}
-            unit="hh:mm:ss since boot"
-            variant="accent"
-            loading={loading}
-          />
-          <KpiCard
-            id="card-clients"
-            icon="📡"
-            label="Connected Clients"
-            value={stats?.clients}
-            unit="devices on AP"
-            variant="info"
-            loading={loading}
-          />
-          <KpiCard
-            id="card-channel"
-            icon="📶"
-            label="Wi-Fi Channel"
-            value={stats?.channel ?? 6}
-            unit="802.11 b/g/n"
-            loading={loading}
-          />
-          <KpiCard
-            id="card-dns"
-            icon="🔀"
-            label="DNS Intercepts"
-            value={stats?.dns_intercepts ?? 0}
-            unit="queries hijacked"
-            variant="warn"
-            loading={loading}
-          />
+        {/* ── Navigation Tabs ─────────────────────────────────────────────── */}
+        <div className="tabs-container">
+          <button
+            className={`tab-btn ${activeTab === 'workspace' ? 'active' : ''}`}
+            onClick={() => setActiveTab('workspace')}
+          >
+            ⚙️ Workspace
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'power' ? 'active' : ''}`}
+            onClick={() => setActiveTab('power')}
+          >
+            🔋 System & Power
+          </button>
+          <button
+            className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
+            onClick={() => setActiveTab('logs')}
+          >
+            📊 Production Logs
+          </button>
         </div>
 
-        {/* ── Heap Bar ────────────────────────────────────────────────────── */}
-        {stats && (
-          <div style={{ marginBottom: '2rem' }}>
-            <p className="section-label">Heap Memory</p>
-            <div style={{
-              background: 'var(--clr-surface)',
-              border: '1px solid var(--clr-border)',
-              borderRadius: 'var(--radius-md)',
-              padding: '1.25rem 1.5rem',
-              boxShadow: 'var(--shadow-card)',
-            }}>
-              <HeapBar freeHeap={stats.free_heap} totalHeap={stats.total_heap ?? 327680} />
+        {/* ── Tab 1: Operator Workspace ──────────────────────────────────── */}
+        {activeTab === 'workspace' && (
+          <>
+            {/* Wizard Steps Flow */}
+            <p className="section-label">Finite State Machine (FSM) Progress</p>
+            <div className="wizard">
+              {FSM_STEPS.map((step, idx) => {
+                const isActive = stats?.active_state === step.num;
+                const isCompleted = stats?.active_state > step.num;
+                return (
+                  <div key={step.num} className={`wizard-step ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
+                    <div className="wizard-step__circle">
+                      {isCompleted ? '✓' : step.num}
+                    </div>
+                    <div className="wizard-step__info">
+                      <span className="wizard-step__name">{step.name}</span>
+                      <span className="wizard-step__desc">{step.desc}</span>
+                    </div>
+                    {idx < FSM_STEPS.length - 1 && (
+                      <div className={`wizard-connector ${isCompleted ? 'completed' : ''}`} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          </div>
+
+            {/* Active Workflow Confirm Panel */}
+            <p className="section-label">Operator Work Instructions & Gates</p>
+            <div className="prompt-card active-step">
+              {stats?.active_state === 1 && (
+                <>
+                  <div className="prompt-title">Stage 1: System Boot & Idle Checks</div>
+                  <p className="prompt-desc">
+                    Machine diagnostics completed successfully. Solar power bank is active. Please load raw paper waste and water slurry (1:1 weight ratio) into the hopper to begin.
+                  </p>
+                  <button className="action-btn" disabled>Awaiting Material Load</button>
+                </>
+              )}
+              {stats?.active_state === 2 && (
+                <>
+                  <div className="prompt-title">Stage 2: Pulverizing & Soaking Phase</div>
+                  <p className="prompt-desc">
+                    The 12V 775 high-speed grinder is running. Solenoid water valve is open, injecting moisture slurry into the waste tank. Monitoring volume count.
+                  </p>
+                  <div className="gauge-wrap">
+                    <div className="gauge-label">
+                      <span>Volumetric Flow (Target: 3.00 L)</span>
+                      <span>{stats?.sensors?.volumetric_flow_l || 0} L</span>
+                    </div>
+                    <div className="gauge-track">
+                      <div className="gauge-fill" style={{ width: `${Math.min(100, ((stats?.sensors?.volumetric_flow_l || 0) / 3) * 100)}%` }} />
+                    </div>
+                  </div>
+                  <button className="action-btn" disabled={parseFloat(stats?.sensors?.volumetric_flow_l) < 3.0}>
+                    Confirm Water Fill Complete
+                  </button>
+                </>
+              )}
+              {stats?.active_state === 3 && (
+                <>
+                  <div className="prompt-title">Stage 3: Mixing & Homogenization</div>
+                  <p className="prompt-desc">
+                    PLANETARY MIXER MOTOR ACTIVE. The mechanical mixer is blending the charcoal dust binder with the lignocellulosic paper pulp slurry. Please ensure even consistency.
+                  </p>
+                  <button className="action-btn">Confirm Mixing Completed</button>
+                </>
+              )}
+              {stats?.active_state === 4 && (
+                <>
+                  <div className="prompt-title">Stage 4: Compression & Compaction</div>
+                  <p className="prompt-desc">
+                    BTS7960 COMPACTOR ACTUATOR DRIVING DOWN. Applying compaction force to mold the rectangular briquette chunk. Keep hands clear! Target: 2000N.
+                  </p>
+                  <div className="gauge-wrap">
+                    <div className="gauge-label">
+                      <span>Compaction Load (Target: 2000 N)</span>
+                      <span>{stats?.sensors?.compaction_force_n || 0} N</span>
+                    </div>
+                    <div className="gauge-track">
+                      <div className="gauge-fill" style={{ width: `${Math.min(100, ((stats?.sensors?.compaction_force_n || 0) / 2000) * 100)}%` }} />
+                    </div>
+                  </div>
+                  <button className="action-btn" disabled={stats?.sensors?.compaction_force_n < 2000}>
+                    {stats?.sensors?.compaction_force_n >= 2000 ? 'Target Reached! Confirm Molding' : 'Awaiting 2000N Pressure'}
+                  </button>
+                </>
+              )}
+              {stats?.active_state === 5 && (
+                <>
+                  <div className="prompt-title">Stage 5: Thermal Curing & Data Log</div>
+                  <p className="prompt-desc">
+                    Halogen thermal arrays and exhaust ventilation fans are active. Drying wet briquette structure down to target &lt;= 15% exhaust relative humidity.
+                  </p>
+                  <div className="gauge-wrap">
+                    <div className="gauge-label">
+                      <span>Exhaust Relative Humidity (Target: &lt;= 15.0%)</span>
+                      <span>{stats?.sensors?.relative_humidity || 0}%</span>
+                    </div>
+                    <div className="gauge-track">
+                      {/* Inverse filling bar since we want relative humidity to go down */}
+                      <div
+                        className={`gauge-fill ${parseFloat(stats?.sensors?.relative_humidity) <= 15 ? 'success' : 'warning'}`}
+                        style={{ width: `${Math.max(15, stats?.sensors?.relative_humidity || 0)}%` }}
+                      />
+                    </div>
+                  </div>
+                  <button className="action-btn" disabled={parseFloat(stats?.sensors?.relative_humidity) > 15}>
+                    Unload Briquette & Terminate Run
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Live Telemetry KPI Cards */}
+            <p className="section-label">Active Sensory Telemetry</p>
+            <div className="kpi-grid" role="region" aria-label="Live sensors">
+              <KpiCard
+                id="card-force"
+                icon="⚖️"
+                label="Compaction Force"
+                value={stats?.sensors?.compaction_force_n ? `${stats.sensors.compaction_force_n} N` : '—'}
+                unit="S-Type Load Cell"
+                variant={stats?.sensors?.compaction_force_n >= 2000 ? 'accent' : ''}
+                loading={loading}
+              />
+              <KpiCard
+                id="card-flow"
+                icon="💧"
+                label="Volumetric Inflow"
+                value={stats?.sensors?.volumetric_flow_l ? `${stats.sensors.volumetric_flow_l} L` : '—'}
+                unit="YF-S201 Flow Meter"
+                variant={stats?.sensors?.volumetric_flow_l >= 3.0 ? 'info' : ''}
+                loading={loading}
+              />
+              <KpiCard
+                id="card-temp"
+                icon="🌡️"
+                label="Curing Enclosure Temp"
+                value={stats?.sensors?.curing_temp_c ? `${stats.sensors.curing_temp_c} °C` : '—'}
+                unit="DS18B20 Enclosure Array"
+                loading={loading}
+              />
+              <KpiCard
+                id="card-humidity"
+                icon="🌫️"
+                label="Exhaust Humidity"
+                value={stats?.sensors?.relative_humidity ? `${stats.sensors.relative_humidity} %` : '—'}
+                unit="DHT22 Sensor"
+                variant={stats?.sensors?.relative_humidity <= 15 ? 'accent' : 'warn'}
+                loading={loading}
+              />
+            </div>
+
+            {/* Event Log */}
+            <p className="section-label">Operational Diagnostics Log</p>
+            <EventLog entries={logEntries} />
+          </>
         )}
 
-        {/* ── Info Panels ─────────────────────────────────────────────────── */}
-        <p className="section-label">Network Configuration</p>
-        <div className="info-grid" role="region" aria-label="Network configuration panels">
-          {stats && (
-            <InfoPanel id="panel-ap"       icon="◲" title="Access Point"   rows={apRows}  />
-          )}
-          <InfoPanel   id="panel-services" icon="▶" title="Active Services" rows={svcRows} />
-          {stats && sysRows.length > 0 && (
-            <InfoPanel id="panel-system"   icon="⚙" title="System Info"    rows={sysRows} />
-          )}
-        </div>
+        {/* ── Tab 2: System & Power HUD ──────────────────────────────────── */}
+        {activeTab === 'power' && (
+          <>
+            <p className="section-label">Solar Power infrastructure</p>
+            <div className="kpi-grid" role="region" aria-label="Power Telemetry">
+              <KpiCard
+                id="card-voltage"
+                icon="🔋"
+                label="Battery Voltage"
+                value={stats?.power?.battery_voltage_v ? `${stats.power.battery_voltage_v} V` : '—'}
+                unit="12V 30Ah LiFePO4 Pack"
+                variant="info"
+                loading={loading}
+              />
+              <KpiCard
+                id="card-solar"
+                icon="☀️"
+                label="Solar Input Current"
+                value={stats?.power?.solar_amperage_a ? `${stats.power.solar_amperage_a} A` : '—'}
+                unit="100W Monocrystalline PV"
+                variant="accent"
+                loading={loading}
+              />
+              <KpiCard
+                id="card-battery-soc"
+                icon="🔌"
+                label="State of Charge"
+                value={stats?.power?.battery_voltage_v ? `${Math.floor(((stats.power.battery_voltage_v - 11.5) / (14.2 - 11.5)) * 100)} %` : '—'}
+                unit="Charge Capacity"
+                variant={stats?.power?.battery_voltage_v > 12.8 ? 'accent' : 'warn'}
+                loading={loading}
+              />
+            </div>
 
-        {/* ── Event Log ───────────────────────────────────────────────────── */}
-        <p className="section-label">Event Log</p>
-        <EventLog entries={logEntries} />
+            {stats && (
+              <div style={{ marginBottom: '2rem' }}>
+                <p className="section-label">Battery Level Gauge</p>
+                <div style={{
+                  background: 'var(--clr-surface)',
+                  border: '1px solid var(--clr-border)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '1.25rem 1.5rem',
+                  boxShadow: 'var(--shadow-card)',
+                }}>
+                  <div className="gauge-wrap" style={{ margin: 0 }}>
+                    <div className="gauge-label" style={{ marginBottom: '0.5rem' }}>
+                      <span>LiFePO4 Energy Reservoir Status</span>
+                      <span>{Math.floor(((stats.power.battery_voltage_v - 11.5) / 2.7) * 100)}%</span>
+                    </div>
+                    <div className="gauge-track" style={{ height: '14px', borderRadius: '7px' }}>
+                      <div
+                        className="gauge-fill"
+                        style={{
+                          width: `${Math.min(100, Math.max(5, Math.floor(((stats.power.battery_voltage_v - 11.5) / 2.7) * 100)))}%`,
+                          background: 'linear-gradient(90deg, #10b981, var(--clr-accent))'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Heap Memory Indicator */}
+            {stats && (
+              <div style={{ marginBottom: '2rem' }}>
+                <p className="section-label">Microcontroller Heap Memory</p>
+                <div style={{
+                  background: 'var(--clr-surface)',
+                  border: '1px solid var(--clr-border)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '1.25rem 1.5rem',
+                  boxShadow: 'var(--shadow-card)',
+                }}>
+                  <HeapBar freeHeap={stats.free_heap} totalHeap={stats.total_heap ?? 327680} />
+                </div>
+              </div>
+            )}
+
+            {/* Network Info */}
+            <p className="section-label">Edge Web Settings</p>
+            <div className="info-grid" role="region" aria-label="Web Config">
+              {stats && (
+                <InfoPanel id="panel-ap"       icon="◲" title="Access Point Broadcast" rows={apRows}  />
+              )}
+              <InfoPanel   id="panel-services" icon="▶" title="Microcontroller Services" rows={svcRows} />
+              {stats && sysRows.length > 0 && (
+                <InfoPanel id="panel-system"   icon="⚙" title="Core Firmware Diagnostics" rows={sysRows} />
+              )}
+            </div>
+          </>
+        )}
+
+        {/* ── Tab 3: Historical Production Logs ──────────────────────────── */}
+        {activeTab === 'logs' && (
+          <>
+            <div className="logs-action-bar">
+              <p className="section-label" style={{ margin: 0 }}>SD Card CSV Batch Logs</p>
+              <button
+                className="action-btn"
+                style={{ padding: '0.4rem 1rem', fontSize: '0.78rem' }}
+                onClick={() => alert('Downloading production_runs.csv...')}
+              >
+                📥 Download CSV Log
+              </button>
+            </div>
+
+            <div className="logs-table-card">
+              <table className="logs-table">
+                <thead>
+                  <tr>
+                    <th>Batch ID</th>
+                    <th>Timestamp</th>
+                    <th>Pulverize Time</th>
+                    <th>Water Vol</th>
+                    <th>Mixing Time</th>
+                    <th>Compaction Load</th>
+                    <th>Drying Duration</th>
+                    <th>Final RH</th>
+                    <th>Run Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {MOCK_RUNS.map(run => (
+                    <tr key={run.id}>
+                      <td>#{run.id}</td>
+                      <td>{run.timestamp}</td>
+                      <td>{run.grind}</td>
+                      <td>{run.water}</td>
+                      <td>{run.mix}</td>
+                      <td>{run.force}</td>
+                      <td>{run.dry}</td>
+                      <td>{run.rh}</td>
+                      <td>
+                        <Badge variant={run.status === 'OK' ? 'green' : 'red'}>
+                          {run.status}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
 
       </main>
 
       <footer role="contentinfo">
-        ESP32 Operator Node v2.0.0 &mdash; LittleFS Mode &mdash; React PWA &mdash; Polls /api/stats every 5 s
+        ESP32 Operator Node v3.0.0 &mdash; LFS PWA Mode &mdash; local edge node &mdash; real-time ws telemetry
       </footer>
     </>
   );
 }
+
