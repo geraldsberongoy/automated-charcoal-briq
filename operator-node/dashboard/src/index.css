@@ -480,6 +480,7 @@ footer {
   .navbar            { padding: 0 1rem; }
   .navbar__subtitle  { display: none; }
   .navbar__api-badge { display: none; }
+  .navbar__title-suffix { display: none; }
   .kpi-card__value   { font-size: 1.5rem; }
   main               { padding: 1.25rem 1rem; }
   .wizard            { flex-direction: column; gap: 0.5rem; align-items: flex-start !important; padding: 1rem; }
@@ -489,7 +490,8 @@ footer {
   .kpi-card          { padding: 1rem 1.25rem; }
   .panel__header     { padding: 0.9rem 1rem; }
   .info-row          { padding: 0.6rem 1rem; }
-  .tab-btn           { padding: 0.6rem 0.75rem; font-size: 0.78rem; gap: 0.25rem; }
+  .tab-btn           { padding: 0.6rem 1.25rem; font-size: 1.1rem; gap: 0.25rem; justify-content: center; flex: 1; }
+  .tab-btn__text     { display: none; }
 }
 
 /* ──────────────────────────────────────────────────────────────────────────── */

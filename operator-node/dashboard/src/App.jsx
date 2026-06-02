@@ -219,19 +219,19 @@ export default function App() {
             className={`tab-btn ${activeTab === 'workspace' ? 'active' : ''}`}
             onClick={() => setActiveTab('workspace')}
           >
-            <FiCpu /> Workspace
+            <FiCpu /> <span className="tab-btn__text">Workspace</span>
           </button>
           <button
             className={`tab-btn ${activeTab === 'power' ? 'active' : ''}`}
             onClick={() => setActiveTab('power')}
           >
-            <FiBatteryCharging /> System & Power
+            <FiBatteryCharging /> <span className="tab-btn__text">System & Power</span>
           </button>
           <button
             className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
             onClick={() => runAdminAction(() => setActiveTab('logs'))}
           >
-            <FiDatabase /> Production Logs
+            <FiDatabase /> <span className="tab-btn__text">Production Logs</span>
           </button>
         </div>
 

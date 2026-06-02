@@ -41,7 +41,9 @@ export default function Navbar({ error, lastUpdated, ip, connectionType, isAdmin
           ⬡
         </div>
         <div>
-          <div className="navbar__title">Operator Node from React</div>
+          <div className="navbar__title">
+            Operator Node<span className="navbar__title-suffix"> from React</span>
+          </div>
           <div className="navbar__subtitle">
             {ip ?? "192.168.4.1"} — SoftAP Mode
           </div>
