@@ -821,3 +821,131 @@ footer {
   margin-bottom: 1rem;
 }
 
+/* Nextion HMI Touchscreen Simulator CSS */
+.nextion-simulator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 2.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.nextion-bezel {
+  background: #1f232b;
+  border: 12px solid #2d333f;
+  border-radius: var(--radius-lg);
+  max-width: 504px;
+  width: 100%;
+  aspect-ratio: 480/272;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), inset 0 0 10px rgba(0, 0, 0, 0.8);
+  position: relative;
+  overflow: hidden;
+  padding: 2px;
+}
+
+.nextion-brand {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.55rem;
+  font-family: var(--font-sans);
+  color: #4a5468;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.nextion-lcd {
+  background: #080a0d;
+  width: 100%;
+  height: 100%;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: inset 0 0 12px rgba(0, 212, 170, 0.05);
+  user-select: none;
+}
+
+.nextion-lcd-header {
+  border-bottom: 1px solid #1a2333;
+  padding-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  color: var(--clr-accent);
+  font-weight: 700;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+}
+
+.nextion-lcd-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.nextion-lcd-footer {
+  border-top: 1px solid #1a2333;
+  padding-top: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nextion-btn {
+  background: #1a2030;
+  border: 1px solid var(--clr-border);
+  color: #fff;
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.nextion-btn:hover {
+  background: var(--clr-border);
+}
+
+.nextion-btn.accent {
+  background: var(--clr-accent);
+  color: var(--clr-bg-0);
+  border-color: var(--clr-accent);
+}
+
+.nextion-btn.accent:hover {
+  background: var(--clr-accent-dim);
+}
+
+.nextion-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.nextion-lcd-alert {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid var(--clr-danger);
+  padding: 0.5rem;
+  border-radius: var(--radius-sm);
+  text-align: center;
+  color: #f87171;
+  animation: flash 1s infinite alternate;
+}
+
+@keyframes flash {
+  from { opacity: 0.6; }
+  to   { opacity: 1; }
+}
+
+

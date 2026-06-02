@@ -320,6 +320,114 @@ export default function App() {
               />
             </div>
 
+            {/* Nextion HMI Simulator */}
+            <p className="section-label">On-Machine Nextion Touchscreen Simulator</p>
+            <div className="nextion-simulator">
+              <div className="nextion-bezel">
+                <div className="nextion-lcd">
+                  {stats && stats.safety_switch === 0 ? (
+                    // Safety Alert Page
+                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
+                      <div className="nextion-lcd-header" style={{ color: 'var(--clr-danger)' }}>
+                        <span>PAGE: fault</span>
+                        <span>[CRITICAL BREACH]</span>
+                      </div>
+                      <div className="nextion-lcd-body">
+                        <div className="nextion-lcd-alert">
+                          <div>CRITICAL SAFETY HALT</div>
+                          <div style={{ fontSize: '0.6rem', marginTop: '0.25rem' }}>
+                            CASING SWITCH TRIGGERED — MOTOR RELAYS OPENED
+                          </div>
+                        </div>
+                      </div>
+                      <div className="nextion-lcd-footer">
+                        <span style={{ fontSize: '0.6rem', color: 'var(--clr-text-2)' }}>Nextion 4.3" Intelligent HUD</span>
+                        <button className="nextion-btn" style={{ background: 'var(--clr-danger)', color: '#fff', borderColor: 'var(--clr-danger)' }}>
+                          RESET FAULT
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    // Normal Pages (State 1 to 5)
+                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
+                      <div className="nextion-lcd-header">
+                        <span>PAGE: {
+                          stats?.active_state === 1 ? 'init' :
+                          stats?.active_state === 2 ? 'soak' :
+                          stats?.active_state === 3 ? 'mix' :
+                          stats?.active_state === 4 ? 'mold' : 'dry'
+                        }</span>
+                        <span>[ {stats?.active_state === 4 ? 'LIMITS: SAFE' : 'AP ACTIVE'} ]</span>
+                      </div>
+                      
+                      <div className="nextion-lcd-body">
+                        {stats?.active_state === 1 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div>[SYSTEM BOOTING...]</div>
+                            <div style={{ color: 'var(--clr-accent)' }}>[✓] LITTLEFS MOUNTED</div>
+                            <div style={{ color: 'var(--clr-accent)' }}>[✓] SD CARD FAT32 ACTIVE</div>
+                            <div style={{ color: 'var(--clr-accent)' }}>[✓] SOFTAP SSID BROADCAST</div>
+                          </div>
+                        )}
+                        {stats?.active_state === 2 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>GRINDER: <span style={{ color: stats.sensors.grinder_current_a > 0 ? 'var(--clr-accent)' : 'var(--clr-text-2)' }}>{stats.sensors.grinder_current_a > 0 ? 'RUNNING' : 'OFF'}</span></span>
+                              <span>SOLENOID: <span style={{ color: 'var(--clr-accent)' }}>OPEN</span></span>
+                            </div>
+                            <div>WATER INTAKE: {stats.sensors.volumetric_flow_l} L / 3.00 L</div>
+                            <div className="gauge-track" style={{ height: '6px' }}>
+                              <div className="gauge-fill" style={{ width: `${Math.min(100, (stats.sensors.volumetric_flow_l / 3.00) * 100)}%` }} />
+                            </div>
+                          </div>
+                        )}
+                        {stats?.active_state === 3 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div>MIXER STATE: <span style={{ color: 'var(--clr-accent)' }}>ACTIVE</span> (60 RPM)</div>
+                            <div>TIMER COUNTDOWN: 00:18</div>
+                            <div className="gauge-track" style={{ height: '6px' }}>
+                              <div className="gauge-fill" style={{ width: '40%' }} />
+                            </div>
+                          </div>
+                        )}
+                        {stats?.active_state === 4 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div>FORCE: {stats.sensors.compaction_force_n} N / 2000 N</div>
+                            <div className="gauge-track" style={{ height: '6px' }}>
+                              <div className="gauge-fill" style={{ width: `${Math.min(100, (stats.sensors.compaction_force_n / 2000) * 100)}%` }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: '4px', marginTop: '2px' }}>
+                              <button className="nextion-btn" style={{ flex: 1 }} disabled>EXTEND</button>
+                              <button className="nextion-btn" style={{ flex: 1 }} disabled>RETRACT</button>
+                            </div>
+                          </div>
+                        )}
+                        {stats?.active_state === 5 && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div>DRYER: <span style={{ color: 'var(--clr-accent)' }}>ACTIVE</span> (50W THERMAL)</div>
+                            <div>TEMP: {stats.sensors.curing_temp_c} C | HUMID: {stats.sensors.relative_humidity}%</div>
+                            <div className="gauge-track" style={{ height: '6px' }}>
+                              <div className="gauge-fill" style={{ width: `${Math.max(15, stats.sensors.relative_humidity)}%` }} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="nextion-lcd-footer">
+                        <span style={{ fontSize: '0.6rem', color: 'var(--clr-text-2)' }}>Nextion 4.3" HMI</span>
+                        {stats?.active_state === 1 && <span style={{ color: 'var(--clr-accent)' }}>SYS OK</span>}
+                        {stats?.active_state === 2 && <button className="nextion-btn accent" disabled={stats.sensors.volumetric_flow_l < 3.0}>SOAK DONE</button>}
+                        {stats?.active_state === 3 && <button className="nextion-btn accent">MIX DONE</button>}
+                        {stats?.active_state === 4 && <button className="nextion-btn accent" disabled={stats.sensors.compaction_force_n < 2000}>CONFIRM MOLD</button>}
+                        {stats?.active_state === 5 && <button className="nextion-btn accent" disabled={stats.sensors.relative_humidity > 15.0}>UNLOAD CHUNK</button>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="nextion-brand">NEXTION</div>
+              </div>
+            </div>
+
             {/* Event Log */}
             <p className="section-label">Operational Diagnostics Log</p>
             <EventLog entries={logEntries} />
