@@ -60,23 +60,22 @@ function updateMockTelemetry(prev, bootTs) {
   // State-specific sensor simulation
   switch (next.active_state) {
     case 1:
-      // Boot / Idle
-      next.sensors.volumetric_flow_l = 0.0;
-      next.sensors.compaction_force_n = 0.0;
+      // Soaking (Water flowing up to 3.0 L)
+      if (next.sensors.volumetric_flow_l < 3.0) {
+        next.sensors.volumetric_flow_l = parseFloat((next.sensors.volumetric_flow_l + 0.25).toFixed(2));
+      } else {
+        next.sensors.volumetric_flow_l = 3.00;
+      }
       next.sensors.grinder_current_a = 0.0;
+      next.sensors.compaction_force_n = 0.0;
       next.sensors.curing_temp_c = 27.5;
       next.sensors.relative_humidity = 62.0;
       break;
 
     case 2:
-      // Prep & Soaking (Grinder active, water flowing)
-      if (next.sensors.volumetric_flow_l < 3.0) {
-        next.sensors.volumetric_flow_l = parseFloat((next.sensors.volumetric_flow_l + 0.25).toFixed(2));
-        next.sensors.grinder_current_a = parseFloat((3.8 + Math.random() * 0.6).toFixed(1));
-      } else {
-        next.sensors.volumetric_flow_l = 3.00;
-        next.sensors.grinder_current_a = 0.0;
-      }
+      // Grinding (Grinder motor active, pulverizing)
+      next.sensors.volumetric_flow_l = 3.00;
+      next.sensors.grinder_current_a = parseFloat((3.8 + Math.random() * 0.6).toFixed(1));
       break;
 
     case 3:
@@ -86,14 +85,14 @@ function updateMockTelemetry(prev, bootTs) {
       break;
 
     case 4:
-      // Compression
+      // Compaction
       if (next.sensors.compaction_force_n < 2000) {
         next.sensors.compaction_force_n = Math.min(2000, next.sensors.compaction_force_n + 150);
       }
       break;
 
     case 5:
-      // Curing
+      // Drying
       if (next.sensors.relative_humidity > 14.5) {
         next.sensors.relative_humidity = parseFloat(Math.max(14.5, next.sensors.relative_humidity - 3.5).toFixed(1));
         next.sensors.curing_temp_c = parseFloat((next.sensors.curing_temp_c + 1.8).toFixed(1));
@@ -211,7 +210,7 @@ export function useStats() {
             next.sensors.curing_temp_c = 27.5;
             next.sensors.relative_humidity = 62.0;
           } else if (payload.state === 2) {
-            next.sensors.volumetric_flow_l = 0.0;
+            next.sensors.volumetric_flow_l = 3.0;
             next.sensors.grinder_current_a = 4.2;
           } else if (payload.state === 3) {
             next.sensors.volumetric_flow_l = 3.0;

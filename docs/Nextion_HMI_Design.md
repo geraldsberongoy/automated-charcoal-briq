@@ -19,47 +19,46 @@ This document serves as the UI blueprint for designing the on-machine operator c
 
 Below are the 6 screens to create in the Nextion project:
 
-### Page 0: `init` (Initialization & Boot Diagnostics)
-*   **Purpose:** Displays startup health checklist.
-*   **Visual Layout Mockup:**
-    ```
-    +-------------------------------------------------------------+
-    | [SYSTEM BOOTING...]                                         |
-    |                                                             |
-    |  [✓] LITTLEFS FLASH MOUNTED                                 |
-    |  [✓] SD CARD LOG FILE READY                                 |
-    |  [✓] LOCAL WI-FI AP ACTIVE                                  |
-    |                                                             |
-    |  Loading telemetry framework...                             |
-    +-------------------------------------------------------------+
-    ```
-*   **Component Inventory:**
-    *   `t0` (Text): "System Booting..."
-    *   `t1` to `t3` (Text): Diagnostics list.
-    *   `p0` (Progress Bar): Startup countdown.
-
----
-
-### Page 1: `soak` (Pulverizing & Soaking workspace)
-*   **Purpose:** Allows grinder activation and monitors water volume.
+### Page 0: `soak` (Paper Soaking workspace)
+*   **Purpose:** Monitors liquid levels during initial paper soaking.
 *   **Visual Layout Mockup:**
     ```
     +-------------------------------------------------------------+
     | PREPARATION PHASE (SOAKING)                     [AP ACTIVE] |
     |                                                             |
-    |  GRINDER: [ RUNNING ]                    [ START PULVERIZE ]|
-    |  SOLENOID: [ OPEN ]                      [ STOP PULVERIZE  ]|
+    |  SOLENOID VALVE: [ OPEN ]                                   |
+    |  GRINDER MOTOR: [ OFF ]                                     |
     |                                                             |
     |  WATER FLOW INTAKE:  2.45 L / 3.00 L                        |
     |  [=========PROGRESS BAR=========               ] 81%        |
     +-------------------------------------------------------------+
     ```
 *   **Component Inventory:**
-    *   `b0` (Button): "Start Pulverize" (Sends Serial trigger `grind=1`)
-    *   `b1` (Button): "Stop Pulverize" (Sends Serial trigger `grind=0`)
     *   `t0` (Text): "Water Flow Intake: X.XX L / 3.00 L"
     *   `j0` (Progress Bar): Volumetric flow progress bar.
-    *   `b2` (Button): "Confirm Water Complete" (Unlocked when flow >= 3.0L)
+    *   `b0` (Button): "SOAK DONE" (Unlocked when flow >= 3.0L, sends trigger `state=2`)
+
+---
+
+### Page 1: `grind` (Paper Slurry Grinding workspace)
+*   **Purpose:** Allows grinder activation and monitors current draw.
+*   **Visual Layout Mockup:**
+    ```
+    +-------------------------------------------------------------+
+    | GRINDING PHASE                                  [AP ACTIVE] |
+    |                                                             |
+    |  GRINDER: [ RUNNING ]                    [ START PULVERIZE ]|
+    |  CURRENT DRAW: 4.2 A                     [ STOP PULVERIZE  ]|
+    |                                                             |
+    |  [========================PROGRESS BAR=====================] |
+    +-------------------------------------------------------------+
+    ```
+*   **Component Inventory:**
+    *   `b0` (Button): "Start Pulverize" (Sends Serial trigger `grind=1`)
+    *   `b1` (Button): "Stop Pulverize" (Sends Serial trigger `grind=0`)
+    *   `t0` (Text): "Current Draw: X.X A"
+    *   `j0` (Progress Bar): Grinder current level progress bar.
+    *   `b2` (Button): "GRIND DONE" (Sends Serial trigger `state=3`)
 
 ---
 
@@ -81,7 +80,7 @@ Below are the 6 screens to create in the Nextion project:
     *   `t0` (Text): "Planetary Mixer Motor: ACTIVE"
     *   `t1` (Text): "Timer Remaining: MM:SS"
     *   `j0` (Progress Bar): Count down percentage fill.
-    *   `b0` (Button): "Confirm Mix Complete" (Sends Serial trigger `state=4`)
+    *   `b0` (Button): "MIX DONE" (Sends Serial trigger `state=4`)
 
 ---
 
@@ -90,7 +89,7 @@ Below are the 6 screens to create in the Nextion project:
 *   **Visual Layout Mockup:**
     ```
     +-------------------------------------------------------------+
-    | COMPRESSION PHASE (MOLDING)                 [LIMITS: SAFE]  |
+    | COMPRESSION PHASE (COMPACTION)              [LIMITS: SAFE]  |
     |                                                             |
     |  COMPACTION PRESSURE: 1450 N / 2000 N                       |
     |  [=========================>                   ] 72%        |
@@ -103,11 +102,11 @@ Below are the 6 screens to create in the Nextion project:
     *   `j0` (Progress Bar): Pressure percentage.
     *   `b0` (Button): "Manual Extend" (Sends trigger `actuator=down`)
     *   `b1` (Button): "Manual Retract" (Sends trigger `actuator=up`)
-    *   `b2` (Button): "Confirm Mold" (Unlocked when load >= 2000N)
+    *   `b2` (Button): "CONFIRM MOLD" (Unlocked when load >= 2000N, sends trigger `state=5`)
 
 ---
 
-### Page 4: `dry` (Thermal Curing oven workspace)
+### Page 4: `dry` (Thermal Curing/Drying oven workspace)
 *   **Purpose:** Monitors halogen oven temperature and relative humidity.
 *   **Visual Layout Mockup:**
     ```
@@ -125,7 +124,7 @@ Below are the 6 screens to create in the Nextion project:
     *   `t0` (Text): "Enclosure Temp: XX.X C"
     *   `t1` (Text): "Exhaust Humidity: XX.X %"
     *   `j0` (Progress Bar): Humidity level progress bar (inverse fill).
-    *   `b0` (Button): "Unload Chunk" (Unlocked when RH <= 15%)
+    *   `b0` (Button): "UNLOAD CHUNK" (Unlocked when RH <= 15%, sends trigger `state=1`)
 
 ---
 

@@ -51,11 +51,11 @@ const BOOT_LOG = [
 ];
 
 const FSM_STEPS = [
-  { num: 1, name: 'Boot / Idle', desc: 'Ready' },
-  { num: 2, name: 'Prep (Soak)', desc: 'Water Flow' },
+  { num: 1, name: 'Soaking', desc: 'Water Flow (3.0L)' },
+  { num: 2, name: 'Grinding', desc: 'Fiber Pulverize' },
   { num: 3, name: 'Mixing', desc: 'Slurry Homogenize' },
-  { num: 4, name: 'Molding', desc: 'Press (2000N)' },
-  { num: 5, name: 'Curing', desc: 'Drying (<=15% RH)' }
+  { num: 4, name: 'Compaction', desc: 'Press (2000N)' },
+  { num: 5, name: 'Drying', desc: 'Curing (<=15% RH)' }
 ];
 
 // Mock historical logs for tab 3
@@ -266,23 +266,9 @@ export default function App() {
             <div className="prompt-card active-step">
               {stats?.active_state === 1 && (
                 <>
-                  <div className="prompt-title">Stage 1: System Boot & Idle Checks</div>
+                  <div className="prompt-title">Stage 1: Paper Soaking Phase</div>
                   <p className="prompt-desc">
-                    Machine diagnostics completed successfully. Solar power bank is active. Please load raw paper waste and water slurry (1:1 weight ratio) into the hopper to begin.
-                  </p>
-                  <button
-                    className="action-btn"
-                    onClick={() => sendCommand('SET_STATE', { state: 2 })}
-                  >
-                    <FiPlay /> Start Run (Load Slurry)
-                  </button>
-                </>
-              )}
-              {stats?.active_state === 2 && (
-                <>
-                  <div className="prompt-title">Stage 2: Pulverizing & Soaking Phase</div>
-                  <p className="prompt-desc">
-                    The 12V 775 high-speed grinder is running. Solenoid water valve is open, injecting moisture slurry into the waste tank. Monitoring volume count.
+                    Solenoid water valve is open, injecting moisture into the waste tank to soak the raw paper waste. Monitoring water volume intake. Target: 3.00 L.
                   </p>
                   <div className="gauge-wrap">
                     <div className="gauge-label">
@@ -296,15 +282,38 @@ export default function App() {
                   <button
                     className="action-btn"
                     disabled={parseFloat(stats?.sensors?.volumetric_flow_l) < 3.0}
-                    onClick={() => sendCommand('SET_STATE', { state: 3 })}
+                    onClick={() => sendCommand('SET_STATE', { state: 2 })}
                   >
                     Confirm Water Fill Complete
                   </button>
                 </>
               )}
+              {stats?.active_state === 2 && (
+                <>
+                  <div className="prompt-title">Stage 2: Paper Slurry Grinding</div>
+                  <p className="prompt-desc">
+                    The 12V 775 high-speed grinder is active, pulverizing the soaked paper waste into fine fiber pulp.
+                  </p>
+                  <div className="gauge-wrap">
+                    <div className="gauge-label">
+                      <span>Grinder Current (Target: ~4.0 A)</span>
+                      <span>{stats?.sensors?.grinder_current_a || 0} A</span>
+                    </div>
+                    <div className="gauge-track">
+                      <div className="gauge-fill" style={{ width: `${Math.min(100, ((stats?.sensors?.grinder_current_a || 0) / 6) * 100)}%` }} />
+                    </div>
+                  </div>
+                  <button
+                    className="action-btn"
+                    onClick={() => sendCommand('SET_STATE', { state: 3 })}
+                  >
+                    Confirm Grinding Completed
+                  </button>
+                </>
+              )}
               {stats?.active_state === 3 && (
                 <>
-                  <div className="prompt-title">Stage 3: Mixing & Homogenization</div>
+                  <div className="prompt-title">Stage 3: Slurry & Charcoal Mixing</div>
                   <p className="prompt-desc">
                     PLANETARY MIXER MOTOR ACTIVE. The mechanical mixer is blending the charcoal dust binder with the lignocellulosic paper pulp slurry. Please ensure even consistency.
                   </p>
@@ -318,7 +327,7 @@ export default function App() {
               )}
               {stats?.active_state === 4 && (
                 <>
-                  <div className="prompt-title">Stage 4: Compression & Compaction</div>
+                  <div className="prompt-title">Stage 4: Molding Compaction</div>
                   <p className="prompt-desc">
                     BTS7960 COMPACTOR ACTUATOR DRIVING DOWN. Applying compaction force to mold the rectangular briquette chunk. Keep hands clear! Target: 2000N.
                   </p>
@@ -336,13 +345,13 @@ export default function App() {
                     disabled={stats?.sensors?.compaction_force_n < 2000}
                     onClick={() => sendCommand('SET_STATE', { state: 5 })}
                   >
-                    {stats?.sensors?.compaction_force_n >= 2000 ? 'Target Reached! Confirm Molding' : 'Awaiting 2000N Pressure'}
+                    {stats?.sensors?.compaction_force_n >= 2000 ? 'Target Reached! Confirm Compaction' : 'Awaiting 2000N Pressure'}
                   </button>
                 </>
               )}
               {stats?.active_state === 5 && (
                 <>
-                  <div className="prompt-title">Stage 5: Thermal Curing & Data Log</div>
+                  <div className="prompt-title">Stage 5: Thermal Curing & Drying</div>
                   <p className="prompt-desc">
                     Halogen thermal arrays and exhaust ventilation fans are active. Drying wet briquette structure down to target &lt;= 15% exhaust relative humidity.
                   </p>
@@ -352,7 +361,6 @@ export default function App() {
                       <span>{stats?.sensors?.relative_humidity || 0}%</span>
                     </div>
                     <div className="gauge-track">
-                      {/* Inverse filling bar since we want relative humidity to go down */}
                       <div
                         className={`gauge-fill ${parseFloat(stats?.sensors?.relative_humidity) <= 15 ? 'success' : 'warning'}`}
                         style={{ width: `${Math.max(15, stats?.sensors?.relative_humidity || 0)}%` }}
@@ -442,8 +450,8 @@ export default function App() {
                     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }}>
                       <div className="nextion-lcd-header">
                         <span>PAGE: {
-                          stats?.active_state === 1 ? 'init' :
-                          stats?.active_state === 2 ? 'soak' :
+                          stats?.active_state === 1 ? 'soak' :
+                          stats?.active_state === 2 ? 'grind' :
                           stats?.active_state === 3 ? 'mix' :
                           stats?.active_state === 4 ? 'mold' : 'dry'
                         }</span>
@@ -452,22 +460,25 @@ export default function App() {
                       
                       <div className="nextion-lcd-body">
                         {stats?.active_state === 1 && (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div>[SYSTEM BOOTING...]</div>
-                            <div style={{ color: 'var(--clr-accent)' }}>[✓] LITTLEFS MOUNTED</div>
-                            <div style={{ color: 'var(--clr-accent)' }}>[✓] SD CARD FAT32 ACTIVE</div>
-                            <div style={{ color: 'var(--clr-accent)' }}>[✓] SOFTAP SSID BROADCAST</div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>SOLENOID: <span style={{ color: 'var(--clr-accent)' }}>OPEN</span></span>
+                              <span>GRINDER: <span style={{ color: 'var(--clr-text-2)' }}>OFF</span></span>
+                            </div>
+                            <div>WATER INTAKE: {stats.sensors.volumetric_flow_l} L / 3.00 L</div>
+                            <div className="gauge-track" style={{ height: '6px' }}>
+                              <div className="gauge-fill" style={{ width: `${Math.min(100, (stats.sensors.volumetric_flow_l / 3.00) * 100)}%` }} />
+                            </div>
                           </div>
                         )}
                         {stats?.active_state === 2 && (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                              <span>GRINDER: <span style={{ color: stats.sensors.grinder_current_a > 0 ? 'var(--clr-accent)' : 'var(--clr-text-2)' }}>{stats.sensors.grinder_current_a > 0 ? 'RUNNING' : 'OFF'}</span></span>
-                              <span>SOLENOID: <span style={{ color: 'var(--clr-accent)' }}>OPEN</span></span>
+                              <span>GRINDER: <span style={{ color: 'var(--clr-accent)' }}>RUNNING</span></span>
+                              <span>CURRENT: <span style={{ color: 'var(--clr-accent)' }}>{stats.sensors.grinder_current_a} A</span></span>
                             </div>
-                            <div>WATER INTAKE: {stats.sensors.volumetric_flow_l} L / 3.00 L</div>
                             <div className="gauge-track" style={{ height: '6px' }}>
-                              <div className="gauge-fill" style={{ width: `${Math.min(100, (stats.sensors.volumetric_flow_l / 3.00) * 100)}%` }} />
+                              <div className="gauge-fill" style={{ width: `${Math.min(100, (stats.sensors.grinder_current_a / 6.0) * 100)}%` }} />
                             </div>
                           </div>
                         )}
@@ -508,18 +519,18 @@ export default function App() {
                         {stats?.active_state === 1 && (
                           <button
                             className="nextion-btn accent"
+                            disabled={stats.sensors.volumetric_flow_l < 3.0}
                             onClick={() => sendCommand('SET_STATE', { state: 2 })}
                           >
-                            START RUN
+                            SOAK DONE
                           </button>
                         )}
                         {stats?.active_state === 2 && (
                           <button
                             className="nextion-btn accent"
-                            disabled={stats.sensors.volumetric_flow_l < 3.0}
                             onClick={() => sendCommand('SET_STATE', { state: 3 })}
                           >
-                            SOAK DONE
+                            GRIND DONE
                           </button>
                         )}
                         {stats?.active_state === 3 && (
