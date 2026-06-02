@@ -318,6 +318,8 @@ void NetworkManager::_handleStaticFile(AsyncWebServerRequest *request) {
   AsyncWebServerResponse *response = request->beginResponse(LittleFS, path, contentType);
   if (path.startsWith("/assets/")) {
     response->addHeader("Cache-Control", "public, max-age=31536000, immutable");
+  } else if (path == "/sw.js") {
+    response->addHeader("Cache-Control", "no-store, no-cache, must-revalidate");
   }
   request->send(response);
 #else
