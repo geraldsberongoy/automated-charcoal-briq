@@ -8,6 +8,23 @@ import InfoPanel     from './components/InfoPanel';
 import HeapBar       from './components/HeapBar';
 import EventLog      from './components/EventLog';
 import Badge         from './components/Badge';
+import { 
+  FiCpu, 
+  FiBatteryCharging, 
+  FiDatabase, 
+  FiActivity, 
+  FiDroplet, 
+  FiThermometer, 
+  FiWind, 
+  FiSun, 
+  FiZap, 
+  FiWifi, 
+  FiLayers, 
+  FiSettings, 
+  FiKey, 
+  FiAlertTriangle, 
+  FiDownload 
+} from 'react-icons/fi';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function fmtHMS(ms) {
@@ -172,7 +189,7 @@ export default function App() {
       {stats && stats.safety_switch === 0 && (
         <div className="safety-overlay">
           <div className="safety-box">
-            <div className="safety-icon">⚠️</div>
+            <div className="safety-icon"><FiAlertTriangle /></div>
             <div className="safety-title">Safety Breach Detected</div>
             <div className="safety-desc">
               The casing safety interlock switch has been opened. The compactor linear actuator duty cycle has been set to 0% to prevent mechanical hazard.
@@ -198,19 +215,19 @@ export default function App() {
             className={`tab-btn ${activeTab === 'workspace' ? 'active' : ''}`}
             onClick={() => setActiveTab('workspace')}
           >
-            ⚙️ Workspace
+            <FiCpu /> Workspace
           </button>
           <button
             className={`tab-btn ${activeTab === 'power' ? 'active' : ''}`}
             onClick={() => setActiveTab('power')}
           >
-            🔋 System & Power
+            <FiBatteryCharging /> System & Power
           </button>
           <button
             className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
             onClick={() => setActiveTab('logs')}
           >
-            📊 Production Logs
+            <FiDatabase /> Production Logs
           </button>
         </div>
 
@@ -354,7 +371,7 @@ export default function App() {
             <div className="kpi-grid" role="region" aria-label="Live sensors">
               <KpiCard
                 id="card-force"
-                icon="⚖️"
+                icon={<FiActivity />}
                 label="Compaction Force"
                 value={stats?.sensors?.compaction_force_n ? `${stats.sensors.compaction_force_n} N` : '—'}
                 unit="S-Type Load Cell"
@@ -363,7 +380,7 @@ export default function App() {
               />
               <KpiCard
                 id="card-flow"
-                icon="💧"
+                icon={<FiDroplet />}
                 label="Volumetric Inflow"
                 value={stats?.sensors?.volumetric_flow_l ? `${stats.sensors.volumetric_flow_l} L` : '—'}
                 unit="YF-S201 Flow Meter"
@@ -372,7 +389,7 @@ export default function App() {
               />
               <KpiCard
                 id="card-temp"
-                icon="🌡️"
+                icon={<FiThermometer />}
                 label="Curing Enclosure Temp"
                 value={stats?.sensors?.curing_temp_c ? `${stats.sensors.curing_temp_c} °C` : '—'}
                 unit="DS18B20 Enclosure Array"
@@ -380,7 +397,7 @@ export default function App() {
               />
               <KpiCard
                 id="card-humidity"
-                icon="🌫️"
+                icon={<FiWind />}
                 label="Exhaust Humidity"
                 value={stats?.sensors?.relative_humidity ? `${stats.sensors.relative_humidity} %` : '—'}
                 unit="DHT22 Sensor"
@@ -588,7 +605,7 @@ export default function App() {
             <div className="kpi-grid" role="region" aria-label="Power Telemetry">
               <KpiCard
                 id="card-voltage"
-                icon="🔋"
+                icon={<FiBatteryCharging />}
                 label="Battery Voltage"
                 value={stats?.power?.battery_voltage_v ? `${stats.power.battery_voltage_v} V` : '—'}
                 unit="12V 30Ah LiFePO4 Pack"
@@ -597,7 +614,7 @@ export default function App() {
               />
               <KpiCard
                 id="card-solar"
-                icon="☀️"
+                icon={<FiSun />}
                 label="Solar Input Current"
                 value={stats?.power?.solar_amperage_a ? `${stats.power.solar_amperage_a} A` : '—'}
                 unit="100W Monocrystalline PV"
@@ -606,7 +623,7 @@ export default function App() {
               />
               <KpiCard
                 id="card-battery-soc"
-                icon="🔌"
+                icon={<FiZap />}
                 label="State of Charge"
                 value={stats?.power?.battery_voltage_v ? `${Math.floor(((stats.power.battery_voltage_v - 11.5) / (14.2 - 11.5)) * 100)} %` : '—'}
                 unit="Charge Capacity"
@@ -664,11 +681,11 @@ export default function App() {
             <p className="section-label">Edge Web Settings</p>
             <div className="info-grid" role="region" aria-label="Web Config">
               {stats && (
-                <InfoPanel id="panel-ap"       icon="◲" title="Access Point Broadcast" rows={apRows}  />
+                <InfoPanel id="panel-ap"       icon={<FiWifi />} title="Access Point Broadcast" rows={apRows}  />
               )}
-              <InfoPanel   id="panel-services" icon="▶" title="Microcontroller Services" rows={svcRows} />
+              <InfoPanel   id="panel-services" icon={<FiLayers />} title="Microcontroller Services" rows={svcRows} />
               {stats && sysRows.length > 0 && (
-                <InfoPanel id="panel-system"   icon="⚙" title="Core Firmware Diagnostics" rows={sysRows} />
+                <InfoPanel id="panel-system"   icon={<FiSettings />} title="Core Firmware Diagnostics" rows={sysRows} />
               )}
             </div>
           </>
@@ -681,10 +698,10 @@ export default function App() {
               <p className="section-label" style={{ margin: 0 }}>SD Card CSV Batch Logs</p>
               <button
                 className="action-btn"
-                style={{ padding: '0.4rem 1rem', fontSize: '0.78rem' }}
+                style={{ padding: '0.4rem 1rem', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                 onClick={() => alert('Downloading production_runs.csv...')}
               >
-                📥 Download CSV Log
+                <FiDownload /> Download CSV Log
               </button>
             </div>
 
@@ -737,7 +754,7 @@ export default function App() {
       {showPinModal && (
         <div className="safety-overlay" style={{ zIndex: 110 }}>
           <div className="safety-box" style={{ borderColor: 'var(--clr-border)', background: 'var(--clr-bg-1)', maxWidth: '360px' }}>
-            <div className="safety-icon" style={{ textShadow: 'none' }}>🔑</div>
+            <div className="safety-icon" style={{ textShadow: 'none' }}><FiKey /></div>
             <div className="safety-title" style={{ fontSize: '1.15rem' }}>Admin Authentication</div>
             <div className="safety-desc" style={{ fontSize: '0.78rem', marginBottom: '1rem' }}>
               Entering Admin Mode is required to perform system gates, manual overrides, or calibration. 
