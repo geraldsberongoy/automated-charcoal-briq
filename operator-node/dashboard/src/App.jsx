@@ -23,7 +23,8 @@ import {
   FiSettings, 
   FiKey, 
   FiAlertTriangle, 
-  FiDownload 
+  FiDownload,
+  FiPlay 
 } from 'react-icons/fi';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -273,7 +274,7 @@ export default function App() {
                     className="action-btn"
                     onClick={() => sendCommand('SET_STATE', { state: 2 })}
                   >
-                    🚀 Start Run (Load Slurry)
+                    <FiPlay /> Start Run (Load Slurry)
                   </button>
                 </>
               )}
