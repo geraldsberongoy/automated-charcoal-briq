@@ -81,6 +81,9 @@ export default function App() {
     if (isAdmin) {
       setIsAdmin(false);
       addLog('info', 'Admin session locked. Returned to standard Operator role.');
+      if (activeTab === 'logs') {
+        setActiveTab('workspace');
+      }
     } else {
       setShowPinModal(true);
       setPinError('');
@@ -225,7 +228,7 @@ export default function App() {
           </button>
           <button
             className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
-            onClick={() => setActiveTab('logs')}
+            onClick={() => runAdminAction(() => setActiveTab('logs'))}
           >
             <FiDatabase /> Production Logs
           </button>
@@ -268,7 +271,7 @@ export default function App() {
                   </p>
                   <button
                     className="action-btn"
-                    onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 2 }))}
+                    onClick={() => sendCommand('SET_STATE', { state: 2 })}
                   >
                     🚀 Start Run (Load Slurry)
                   </button>
@@ -292,7 +295,7 @@ export default function App() {
                   <button
                     className="action-btn"
                     disabled={parseFloat(stats?.sensors?.volumetric_flow_l) < 3.0}
-                    onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 3 }))}
+                    onClick={() => sendCommand('SET_STATE', { state: 3 })}
                   >
                     Confirm Water Fill Complete
                   </button>
@@ -306,7 +309,7 @@ export default function App() {
                   </p>
                   <button
                     className="action-btn"
-                    onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 4 }))}
+                    onClick={() => sendCommand('SET_STATE', { state: 4 })}
                   >
                     Confirm Mixing Completed
                   </button>
@@ -330,7 +333,7 @@ export default function App() {
                   <button
                     className="action-btn"
                     disabled={stats?.sensors?.compaction_force_n < 2000}
-                    onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 5 }))}
+                    onClick={() => sendCommand('SET_STATE', { state: 5 })}
                   >
                     {stats?.sensors?.compaction_force_n >= 2000 ? 'Target Reached! Confirm Molding' : 'Awaiting 2000N Pressure'}
                   </button>
@@ -358,7 +361,7 @@ export default function App() {
                   <button
                     className="action-btn"
                     disabled={parseFloat(stats?.sensors?.relative_humidity) > 15}
-                    onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 1 }))}
+                    onClick={() => sendCommand('SET_STATE', { state: 1 })}
                   >
                     Unload Briquette & Terminate Run
                   </button>
@@ -504,7 +507,7 @@ export default function App() {
                         {stats?.active_state === 1 && (
                           <button
                             className="nextion-btn accent"
-                            onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 2 }))}
+                            onClick={() => sendCommand('SET_STATE', { state: 2 })}
                           >
                             START RUN
                           </button>
@@ -513,7 +516,7 @@ export default function App() {
                           <button
                             className="nextion-btn accent"
                             disabled={stats.sensors.volumetric_flow_l < 3.0}
-                            onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 3 }))}
+                            onClick={() => sendCommand('SET_STATE', { state: 3 })}
                           >
                             SOAK DONE
                           </button>
@@ -521,7 +524,7 @@ export default function App() {
                         {stats?.active_state === 3 && (
                           <button
                             className="nextion-btn accent"
-                            onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 4 }))}
+                            onClick={() => sendCommand('SET_STATE', { state: 4 })}
                           >
                             MIX DONE
                           </button>
@@ -530,7 +533,7 @@ export default function App() {
                           <button
                             className="nextion-btn accent"
                             disabled={stats.sensors.compaction_force_n < 2000}
-                            onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 5 }))}
+                            onClick={() => sendCommand('SET_STATE', { state: 5 })}
                           >
                             CONFIRM MOLD
                           </button>
@@ -539,7 +542,7 @@ export default function App() {
                           <button
                             className="nextion-btn accent"
                             disabled={stats.sensors.relative_humidity > 15.0}
-                            onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 1 }))}
+                            onClick={() => sendCommand('SET_STATE', { state: 1 })}
                           >
                             UNLOAD CHUNK
                           </button>
