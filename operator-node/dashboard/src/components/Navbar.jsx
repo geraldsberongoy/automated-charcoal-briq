@@ -1,7 +1,7 @@
 // Navbar.jsx — Top navigation bar with live clock, API health badge
 import { useClock } from "../hooks/useClock";
 
-export default function Navbar({ error, lastUpdated, ip, connectionType }) {
+export default function Navbar({ error, lastUpdated, ip, connectionType, isAdmin, onToggleAdmin }) {
   const time = useClock();
 
   let apiBadgeClass = "fetching";
@@ -49,6 +49,31 @@ export default function Navbar({ error, lastUpdated, ip, connectionType }) {
       </div>
 
       <div className="navbar__right">
+        <button
+          className={`admin-toggle-btn ${isAdmin ? 'admin-active' : ''}`}
+          onClick={onToggleAdmin}
+          title={isAdmin ? "Click to lock Admin Mode" : "Click to unlock Admin Mode"}
+          style={{
+            background: 'none',
+            color: isAdmin ? 'var(--clr-accent)' : 'var(--clr-text-2)',
+            cursor: 'pointer',
+            fontSize: '0.72rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontFamily: 'var(--font-mono)',
+            padding: '3px 8px',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid',
+            borderColor: isAdmin ? 'rgba(0,212,170,0.3)' : 'var(--clr-border)',
+            backgroundColor: isAdmin ? 'rgba(0,212,170,0.05)' : 'transparent',
+            outline: 'none',
+            transition: 'all 0.15s ease',
+          }}
+        >
+          {isAdmin ? '🔓 ADMIN' : '🔒 OPERATOR'}
+        </button>
+
         <span className={`navbar__api-badge ${apiBadgeClass}`}>
           {label} · {apiBadgeText}
         </span>

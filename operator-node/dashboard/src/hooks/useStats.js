@@ -11,89 +11,101 @@ const MOCK_BASE = {
   total_heap:    327680,
 };
 
-function buildMockStats(bootTs) {
+function updateMockTelemetry(prev, bootTs) {
   const now = Date.now();
   const uptimeMs = now - bootTs;
-  
-  // 60-second operational cycle simulation
-  const cycleDuration = 60000;
-  const elapsed = uptimeMs % cycleDuration;
-  
-  let activeState = 1;
-  let safetySwitch = 1; // 1 = closed/safe, 0 = open/breached
-  
-  let flow = 0.0;
-  let force = 0.0;
-  let temp = 27.5; // ambient base
-  let rh = 62.0;    // ambient base
-  let grinderA = 0.0;
-  
-  if (elapsed < 5000) {
-    // Stage 1: Initialization
-    activeState = 1;
-  } else if (elapsed < 18000) {
-    // Stage 2: Grinding & Soaking (13 seconds)
-    activeState = 2;
-    const p = (elapsed - 5000) / 13000;
-    flow = (p * 3.0).toFixed(2); // filling up to 3 liters
-    grinderA = (3.5 + Math.random() * 0.8).toFixed(1); // active grinding current
-  } else if (elapsed < 30000) {
-    // Stage 3: Combining & Mixing (12 seconds)
-    activeState = 3;
-  } else if (elapsed < 45000) {
-    // Stage 4: Compression & Molding (15 seconds)
-    activeState = 4;
-    const stageElapsed = elapsed - 30000;
-    
-    // Simulate a brief casing breach / emergency halt between 34s and 37s (3 seconds)
-    if (stageElapsed > 4000 && stageElapsed < 7000) {
-      safetySwitch = 0;
-      force = 850.0; // frozen during breach
-    } else {
-      safetySwitch = 1;
-      // adjust interpolation to skip breach duration
-      let p = stageElapsed / 15000;
-      if (stageElapsed >= 7000) {
-        p = (stageElapsed - 3000) / 12000;
+
+  if (!prev) {
+    return {
+      ...MOCK_BASE,
+      uptime_ms: 0,
+      free_heap: 247680,
+      clients: 2,
+      dns_intercepts: 0,
+      cpu_freq_mhz: 240,
+      active_state: 1,
+      safety_switch: 1,
+      sensors: {
+        volumetric_flow_l: 0.0,
+        compaction_force_n: 0.0,
+        curing_temp_c: 27.5,
+        relative_humidity: 62.0,
+        grinder_current_a: 0.0
+      },
+      power: {
+        battery_voltage_v: 13.1,
+        solar_amperage_a: 1.8
       }
-      force = Math.min(2000, Math.floor(p * 2200));
-    }
-  } else {
-    // Stage 5: Thermal Curing (15 seconds)
-    activeState = 5;
-    const p = (elapsed - 45000) / 15000;
-    temp = (27.5 + p * 22.5).toFixed(1); // heats up to 50C
-    rh = Math.max(15.0, (62.0 - p * 47.0)).toFixed(1); // humidity drops to 15%
+    };
   }
 
-  // Simulate slowly draining/charging battery
-  const batteryV = (13.1 + 0.3 * Math.sin(uptimeMs / 120000)).toFixed(1);
-  const solarA = (activeState === 5 ? 0.8 : (1.5 + Math.random() * 0.5)).toFixed(1); // higher charging when lamps are off
+  const next = { ...prev };
+  next.uptime_ms = uptimeMs;
+  next.dns_intercepts = Math.floor(uptimeMs / 3000);
 
+  // Fluctuating power levels
+  next.power.battery_voltage_v = parseFloat((12.9 + 0.3 * Math.sin(uptimeMs / 60000)).toFixed(1));
+  next.power.solar_amperage_a = parseFloat((1.5 + 0.5 * Math.random()).toFixed(1));
+
+  // Heap usage fluctuations
   const heap_used = Math.floor(80000 + 30000 * Math.sin(uptimeMs / 30000));
-  return {
-    ...MOCK_BASE,
-    uptime_ms:      uptimeMs,
-    free_heap:      MOCK_BASE.total_heap - heap_used,
-    clients:        Math.floor(2 + Math.random() * 1), // 2-3 active devices
-    dns_intercepts: Math.floor(uptimeMs / 3000),       // ~1 query every 3s
-    cpu_freq_mhz:   240,
-    active_state:   activeState,
-    safety_switch:  safetySwitch,
-    sensors: {
-      volumetric_flow_l:  parseFloat(flow),
-      compaction_force_n: parseFloat(force),
-      curing_temp_c:      parseFloat(temp),
-      relative_humidity:  parseFloat(rh),
-      grinder_current_a:  parseFloat(grinderA)
-    },
-    power: {
-      battery_voltage_v:  parseFloat(batteryV),
-      solar_amperage_a:   parseFloat(solarA)
-    }
-  };
-}
+  next.free_heap = MOCK_BASE.total_heap - heap_used;
 
+  // If safety switch is tripped, freeze telemetry
+  if (next.safety_switch === 0) {
+    next.sensors.grinder_current_a = 0.0;
+    return next;
+  }
+
+  // State-specific sensor simulation
+  switch (next.active_state) {
+    case 1:
+      // Boot / Idle
+      next.sensors.volumetric_flow_l = 0.0;
+      next.sensors.compaction_force_n = 0.0;
+      next.sensors.grinder_current_a = 0.0;
+      next.sensors.curing_temp_c = 27.5;
+      next.sensors.relative_humidity = 62.0;
+      break;
+
+    case 2:
+      // Prep & Soaking (Grinder active, water flowing)
+      if (next.sensors.volumetric_flow_l < 3.0) {
+        next.sensors.volumetric_flow_l = parseFloat((next.sensors.volumetric_flow_l + 0.25).toFixed(2));
+        next.sensors.grinder_current_a = parseFloat((3.8 + Math.random() * 0.6).toFixed(1));
+      } else {
+        next.sensors.volumetric_flow_l = 3.00;
+        next.sensors.grinder_current_a = 0.0;
+      }
+      break;
+
+    case 3:
+      // Mixing
+      next.sensors.volumetric_flow_l = 3.00;
+      next.sensors.grinder_current_a = 0.0;
+      break;
+
+    case 4:
+      // Compression
+      if (next.sensors.compaction_force_n < 2000) {
+        next.sensors.compaction_force_n = Math.min(2000, next.sensors.compaction_force_n + 150);
+      }
+      break;
+
+    case 5:
+      // Curing
+      if (next.sensors.relative_humidity > 14.5) {
+        next.sensors.relative_humidity = parseFloat(Math.max(14.5, next.sensors.relative_humidity - 3.5).toFixed(1));
+        next.sensors.curing_temp_c = parseFloat((next.sensors.curing_temp_c + 1.8).toFixed(1));
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  return next;
+}
 
 export function useStats() {
   const [stats, setStats]                     = useState(null);
@@ -108,20 +120,23 @@ export function useStats() {
 
   useEffect(() => {
     if (import.meta.env.DEV) {
-      // ── Dev Mode: Simulate Real-time WebSocket Updates ──────────────────────
       setConnectionType('MOCK');
       setLoading(false);
+      
+      // Initialize with default state
+      setStats(updateMockTelemetry(null, bootTsRef.current));
+      setLastUpdated(new Date());
+
       mockTimerRef.current = setInterval(() => {
-        setStats(buildMockStats(bootTsRef.current));
+        setStats(prev => updateMockTelemetry(prev, bootTsRef.current));
         setLastUpdated(new Date());
-      }, 1000); // 1-second interval to simulate WebSocket telemetry speed
+      }, 1000);
 
       return () => {
         if (mockTimerRef.current) clearInterval(mockTimerRef.current);
       };
     }
 
-    // ── Production Mode: Establish WebSocket Telemetry ────────────────────────
     let reconnectDelay = 1000;
 
     function connectWS() {
@@ -139,7 +154,7 @@ export function useStats() {
         setConnectionType('WS');
         setLoading(false);
         setError(null);
-        reconnectDelay = 1000; // Reset reconnect delay on success
+        reconnectDelay = 1000;
       };
 
       ws.onmessage = (event) => {
@@ -157,7 +172,6 @@ export function useStats() {
         setConnectionType('OFFLINE');
         setError('Connection lost. Reconnecting...');
         
-        // Auto-reconnect with linear/exponential backoff (up to 5s max delay)
         reconnectTimerRef.current = setTimeout(() => {
           reconnectDelay = Math.min(5000, reconnectDelay + 1000);
           connectWS();
@@ -172,15 +186,59 @@ export function useStats() {
 
     connectWS();
 
-    // Cleanup on unmount
     return () => {
       if (wsRef.current) {
-        wsRef.current.onclose = null; // Prevent trigger of close callback on manual cleanup
+        wsRef.current.onclose = null;
         wsRef.current.close();
       }
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
     };
   }, []);
 
-  return { stats, loading, error, lastUpdated, connectionType };
+  const sendCommand = (action, payload) => {
+    if (import.meta.env.DEV || connectionType === 'MOCK') {
+      console.log(`[MOCK CMD] Action: ${action}`, payload);
+      setStats(prev => {
+        if (!prev) return prev;
+        const next = { ...prev };
+        if (action === 'SET_STATE') {
+          next.active_state = payload.state;
+          // Reset sensors relevant to state transition
+          if (payload.state === 1) {
+            next.sensors.volumetric_flow_l = 0.0;
+            next.sensors.compaction_force_n = 0.0;
+            next.sensors.grinder_current_a = 0.0;
+            next.sensors.curing_temp_c = 27.5;
+            next.sensors.relative_humidity = 62.0;
+          } else if (payload.state === 2) {
+            next.sensors.volumetric_flow_l = 0.0;
+            next.sensors.grinder_current_a = 4.2;
+          } else if (payload.state === 3) {
+            next.sensors.volumetric_flow_l = 3.0;
+            next.sensors.grinder_current_a = 0.0;
+          } else if (payload.state === 4) {
+            next.sensors.compaction_force_n = 0.0;
+          } else if (payload.state === 5) {
+            next.sensors.relative_humidity = 62.0;
+            next.sensors.curing_temp_c = 27.5;
+          }
+        } else if (action === 'RESET_FAULT') {
+          next.safety_switch = 1;
+        } else if (action === 'TRIP_SAFETY') {
+          next.safety_switch = 0;
+          next.sensors.compaction_force_n = 850.0;
+        }
+        return next;
+      });
+    } else {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ action, payload }));
+        console.log(`[WS CMD] Sent: ${action}`, payload);
+      } else {
+        console.error('[WS CMD] WebSocket not connected.');
+      }
+    }
+  };
+
+  return { stats, loading, error, lastUpdated, connectionType, sendCommand };
 }

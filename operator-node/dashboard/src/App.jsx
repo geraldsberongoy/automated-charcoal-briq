@@ -49,10 +49,55 @@ const MOCK_RUNS = [
 ];
 
 export default function App() {
-  const { stats, loading, error, lastUpdated, connectionType } = useStats();
+  const { stats, loading, error, lastUpdated, connectionType, sendCommand } = useStats();
   const [logEntries, setLogEntries] = useState(BOOT_LOG);
   const [activeTab, setActiveTab] = useState('workspace'); // workspace, power, logs
   const prevStatsRef = useRef(null);
+
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinInput, setPinInput] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [pendingAction, setPendingAction] = useState(null);
+
+  function handleToggleAdmin() {
+    if (isAdmin) {
+      setIsAdmin(false);
+      addLog('info', 'Admin session locked. Returned to standard Operator role.');
+    } else {
+      setShowPinModal(true);
+      setPinError('');
+      setPinInput('');
+      setPendingAction(null);
+    }
+  }
+
+  function handlePinSubmit() {
+    if (pinInput === '1234') {
+      setIsAdmin(true);
+      setShowPinModal(false);
+      setPinError('');
+      addLog('ok', 'Admin Mode authenticated successfully.');
+      if (pendingAction) {
+        pendingAction();
+        setPendingAction(null);
+      }
+    } else {
+      setPinError('INVALID PASSCODE. ACCESS DENIED.');
+      setPinInput('');
+    }
+  }
+
+  function runAdminAction(actionCallback) {
+    if (isAdmin) {
+      actionCallback();
+    } else {
+      setPendingAction(() => actionCallback);
+      setShowPinModal(true);
+      setPinError('');
+      setPinInput('');
+    }
+  }
 
   // Generate log entries when stats change (state transitions, client events, safety faults)
   useEffect(() => {
@@ -142,6 +187,8 @@ export default function App() {
         lastUpdated={lastUpdated}
         ip={stats?.ip}
         connectionType={connectionType}
+        isAdmin={isAdmin}
+        onToggleAdmin={handleToggleAdmin}
       />
 
       <main id="dashboard" role="main">
@@ -202,7 +249,12 @@ export default function App() {
                   <p className="prompt-desc">
                     Machine diagnostics completed successfully. Solar power bank is active. Please load raw paper waste and water slurry (1:1 weight ratio) into the hopper to begin.
                   </p>
-                  <button className="action-btn" disabled>Awaiting Material Load</button>
+                  <button
+                    className="action-btn"
+                    onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 2 }))}
+                  >
+                    🚀 Start Run (Load Slurry)
+                  </button>
                 </>
               )}
               {stats?.active_state === 2 && (
@@ -220,7 +272,11 @@ export default function App() {
                       <div className="gauge-fill" style={{ width: `${Math.min(100, ((stats?.sensors?.volumetric_flow_l || 0) / 3) * 100)}%` }} />
                     </div>
                   </div>
-                  <button className="action-btn" disabled={parseFloat(stats?.sensors?.volumetric_flow_l) < 3.0}>
+                  <button
+                    className="action-btn"
+                    disabled={parseFloat(stats?.sensors?.volumetric_flow_l) < 3.0}
+                    onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 3 }))}
+                  >
                     Confirm Water Fill Complete
                   </button>
                 </>
@@ -231,7 +287,12 @@ export default function App() {
                   <p className="prompt-desc">
                     PLANETARY MIXER MOTOR ACTIVE. The mechanical mixer is blending the charcoal dust binder with the lignocellulosic paper pulp slurry. Please ensure even consistency.
                   </p>
-                  <button className="action-btn">Confirm Mixing Completed</button>
+                  <button
+                    className="action-btn"
+                    onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 4 }))}
+                  >
+                    Confirm Mixing Completed
+                  </button>
                 </>
               )}
               {stats?.active_state === 4 && (
@@ -249,7 +310,11 @@ export default function App() {
                       <div className="gauge-fill" style={{ width: `${Math.min(100, ((stats?.sensors?.compaction_force_n || 0) / 2000) * 100)}%` }} />
                     </div>
                   </div>
-                  <button className="action-btn" disabled={stats?.sensors?.compaction_force_n < 2000}>
+                  <button
+                    className="action-btn"
+                    disabled={stats?.sensors?.compaction_force_n < 2000}
+                    onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 5 }))}
+                  >
                     {stats?.sensors?.compaction_force_n >= 2000 ? 'Target Reached! Confirm Molding' : 'Awaiting 2000N Pressure'}
                   </button>
                 </>
@@ -273,7 +338,11 @@ export default function App() {
                       />
                     </div>
                   </div>
-                  <button className="action-btn" disabled={parseFloat(stats?.sensors?.relative_humidity) > 15}>
+                  <button
+                    className="action-btn"
+                    disabled={parseFloat(stats?.sensors?.relative_humidity) > 15}
+                    onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 1 }))}
+                  >
                     Unload Briquette & Terminate Run
                   </button>
                 </>
@@ -415,16 +484,94 @@ export default function App() {
 
                       <div className="nextion-lcd-footer">
                         <span style={{ fontSize: '0.6rem', color: 'var(--clr-text-2)' }}>Nextion 4.3" HMI</span>
-                        {stats?.active_state === 1 && <span style={{ color: 'var(--clr-accent)' }}>SYS OK</span>}
-                        {stats?.active_state === 2 && <button className="nextion-btn accent" disabled={stats.sensors.volumetric_flow_l < 3.0}>SOAK DONE</button>}
-                        {stats?.active_state === 3 && <button className="nextion-btn accent">MIX DONE</button>}
-                        {stats?.active_state === 4 && <button className="nextion-btn accent" disabled={stats.sensors.compaction_force_n < 2000}>CONFIRM MOLD</button>}
-                        {stats?.active_state === 5 && <button className="nextion-btn accent" disabled={stats.sensors.relative_humidity > 15.0}>UNLOAD CHUNK</button>}
+                        {stats?.active_state === 1 && (
+                          <button
+                            className="nextion-btn accent"
+                            onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 2 }))}
+                          >
+                            START RUN
+                          </button>
+                        )}
+                        {stats?.active_state === 2 && (
+                          <button
+                            className="nextion-btn accent"
+                            disabled={stats.sensors.volumetric_flow_l < 3.0}
+                            onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 3 }))}
+                          >
+                            SOAK DONE
+                          </button>
+                        )}
+                        {stats?.active_state === 3 && (
+                          <button
+                            className="nextion-btn accent"
+                            onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 4 }))}
+                          >
+                            MIX DONE
+                          </button>
+                        )}
+                        {stats?.active_state === 4 && (
+                          <button
+                            className="nextion-btn accent"
+                            disabled={stats.sensors.compaction_force_n < 2000}
+                            onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 5 }))}
+                          >
+                            CONFIRM MOLD
+                          </button>
+                        )}
+                        {stats?.active_state === 5 && (
+                          <button
+                            className="nextion-btn accent"
+                            disabled={stats.sensors.relative_humidity > 15.0}
+                            onClick={() => runAdminAction(() => sendCommand('SET_STATE', { state: 1 }))}
+                          >
+                            UNLOAD CHUNK
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}
                 </div>
                 <div className="nextion-brand">NEXTION</div>
+              </div>
+            </div>
+
+            {/* Hardware Override Simulation Panel */}
+            <p className="section-label">Hardware Override Controls (Testing & Simulation)</p>
+            <div style={{
+              background: 'var(--clr-surface)',
+              border: '1px solid var(--clr-border)',
+              borderRadius: 'var(--radius-md)',
+              padding: '1.25rem 1.5rem',
+              boxShadow: 'var(--shadow-card)',
+              marginBottom: '2rem',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '12px',
+              alignItems: 'center'
+            }}>
+              <div style={{ flex: '1 1 200px' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>Casing Safety Switch Status</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--clr-text-2)', marginTop: '2px' }}>
+                  Simulates opening the machine cover casing.
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {stats?.safety_switch === 1 ? (
+                  <button
+                    className="nextion-btn"
+                    style={{ background: 'var(--clr-danger)', color: '#fff', borderColor: 'var(--clr-danger)' }}
+                    onClick={() => runAdminAction(() => sendCommand('TRIP_SAFETY'))}
+                  >
+                    🚨 Trip Casing (Open)
+                  </button>
+                ) : (
+                  <button
+                    className="nextion-btn accent"
+                    onClick={() => runAdminAction(() => sendCommand('RESET_FAULT'))}
+                  >
+                    🔒 Close Casing (Reset)
+                  </button>
+                )}
               </div>
             </div>
 
@@ -585,6 +732,77 @@ export default function App() {
       <footer role="contentinfo">
         ESP32 Operator Node v3.0.0 &mdash; LFS PWA Mode &mdash; local edge node &mdash; real-time ws telemetry
       </footer>
+
+      {/* ── Admin PIN Modal ─────────────────────────────────────────────── */}
+      {showPinModal && (
+        <div className="safety-overlay" style={{ zIndex: 110 }}>
+          <div className="safety-box" style={{ borderColor: 'var(--clr-border)', background: 'var(--clr-bg-1)', maxWidth: '360px' }}>
+            <div className="safety-icon" style={{ textShadow: 'none' }}>🔑</div>
+            <div className="safety-title" style={{ fontSize: '1.15rem' }}>Admin Authentication</div>
+            <div className="safety-desc" style={{ fontSize: '0.78rem', marginBottom: '1rem' }}>
+              Entering Admin Mode is required to perform system gates, manual overrides, or calibration. 
+              <br />
+              <span style={{ color: 'var(--clr-accent)', fontSize: '0.75rem', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>Default Passcode: 1234</span>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '8px', marginBottom: '1rem' }}>
+              <input
+                type="password"
+                maxLength={4}
+                placeholder="••••"
+                value={pinInput}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, ''); // numbers only
+                  setPinInput(val);
+                  setPinError('');
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handlePinSubmit();
+                }}
+                style={{
+                  background: 'var(--clr-bg-0)',
+                  border: '1px solid var(--clr-border)',
+                  color: '#fff',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '10px',
+                  textAlign: 'center',
+                  fontSize: '1.5rem',
+                  letterSpacing: '0.4em',
+                  fontFamily: 'var(--font-mono)',
+                  outline: 'none',
+                  width: '100%',
+                }}
+                autoFocus
+              />
+              {pinError && (
+                <div style={{ color: 'var(--clr-danger)', fontSize: '0.7rem', fontFamily: 'var(--font-mono)', textAlign: 'center' }}>
+                  {pinError}
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', width: '100%', gap: '8px' }}>
+              <button
+                className="nextion-btn"
+                onClick={() => {
+                  setShowPinModal(false);
+                  setPendingAction(null);
+                }}
+                style={{ flex: 1, padding: '8px' }}
+              >
+                Cancel
+              </button>
+              <button
+                className="nextion-btn accent"
+                onClick={handlePinSubmit}
+                style={{ flex: 1, padding: '8px' }}
+              >
+                Submit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
