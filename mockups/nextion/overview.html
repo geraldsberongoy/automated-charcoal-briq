@@ -1,0 +1,20 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Nextion Flow Overview</title><style>
+body{margin:0;background:#05070a;font-family:'Segoe UI',Arial,sans-serif;color:#e8edf5;padding:24px;width:1272px;box-sizing:border-box}
+h1{margin:0 0 4px;font-size:22px;color:#00d4aa;letter-spacing:1px} p{margin:0 0 18px;color:#9bacc8;font-size:14px}
+.g{display:grid;grid-template-columns:repeat(3,400px);gap:24px 12px}
+figure{margin:0} img{width:400px;height:240px;border-radius:8px;border:6px solid #1a1d24;display:block}
+figcaption{font-size:13px;color:#9bacc8;margin-top:6px} figcaption b{color:#e8edf5}
+</style></head><body>
+<h1>NEXTION 7" HMI · BATCH FLOW (800×480)</h1>
+<p>Setup (operator) → automatic process → unload. STOP is available on every running stage.</p>
+<div class="g">
+<figure><img src="01_setup_paper_water.png"><figcaption><b>1. Setup:</b> load paper, choose water level (preset 100%)</figcaption></figure>
+<figure><img src="02_setup_charcoal.png"><figcaption><b>2. Setup:</b> paper card slides left, load charcoal, START</figcaption></figure>
+<figure><img src="03_water.png"><figcaption><b>3. Water:</b> solenoid dispenses to selected level</figcaption></figure>
+<figure><img src="04_mix.png"><figcaption><b>4. Mix:</b> 20V 5A motor via relay, timed</figcaption></figure>
+<figure><img src="05_discharge.png"><figcaption><b>5. Discharge:</b> gate actuator retracts, motor pulses, mixer ERM</figcaption></figure>
+<figure><img src="06_level.png"><figcaption><b>6. Level:</b> box ERM levels mixture, timed</figcaption></figure>
+<figure><img src="07_press.png"><figcaption><b>7. Press:</b> 40cm actuator extends, S-type load cell force</figcaption></figure>
+<figure><img src="08_unload.png"><figcaption><b>8. Unload:</b> dispense briquette into drying container</figcaption></figure>
+<figure><img src="09_stopped.png"><figcaption><b>Stop / fault:</b> all relays off, reset and retract</figcaption></figure>
+</div></body></html>

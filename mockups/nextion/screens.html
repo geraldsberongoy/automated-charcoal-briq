@@ -1,0 +1,310 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Nextion HMI Screens</title>
+<style>
+  :root {
+    --bg0:#0a0c10; --bg1:#12161e; --bg2:#1a2030; --surface:#1e2533; --border:#2a3448;
+    --accent:#00d4aa; --accent-dim:#00a882; --warn:#f59e0b; --danger:#ef4444; --info:#60a5fa;
+    --t0:#e8edf5; --t1:#9bacc8; --t2:#5d7299;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { width:800px; height:480px; overflow:hidden; background:var(--bg0); color:var(--t0);
+    font-family:'Segoe UI', Arial, sans-serif; }
+  .screen { width:800px; height:480px; position:relative; display:flex; flex-direction:column; }
+
+  /* Header */
+  .hdr { height:48px; background:var(--bg1); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; justify-content:space-between; padding:0 16px; flex:none; }
+  .hdr .title { color:var(--accent); font-weight:700; font-size:15px; letter-spacing:1.5px; }
+  .hdr .status { color:var(--t1); font-size:13px; display:flex; gap:16px; font-variant-numeric:tabular-nums; }
+  .hdr.danger { background:var(--danger); border-color:var(--danger); }
+  .hdr.danger .title, .hdr.danger .status { color:#fff; }
+
+  /* Stepper */
+  .steps { display:flex; gap:6px; padding:10px 16px 0; flex:none; }
+  .step { flex:1; height:44px; border-radius:6px; background:var(--surface); color:var(--t2);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:12px; font-weight:700; letter-spacing:.5px; }
+  .step small { font-size:10px; font-weight:500; opacity:.8; }
+  .step.done { background:var(--accent-dim); color:var(--bg0); }
+  .step.active { background:var(--accent); color:var(--bg0); box-shadow:0 0 0 2px rgba(0,212,170,.35); }
+
+  .body { flex:1; display:flex; gap:12px; padding:12px 16px; min-height:0; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; position:relative; }
+  .kicker { color:var(--accent); font-size:12px; font-weight:700; letter-spacing:1.5px; }
+  .h1 { font-size:26px; font-weight:700; margin-top:4px; line-height:1.15; }
+  .p { color:var(--t1); font-size:14px; margin-top:8px; line-height:1.4; }
+  .big { font-size:44px; font-weight:700; color:var(--accent); font-variant-numeric:tabular-nums; line-height:1; }
+  .big small { font-size:20px; color:var(--t1); font-weight:600; }
+  .bar { height:22px; background:var(--border); border-radius:6px; overflow:hidden; margin-top:14px; }
+  .bar > i { display:block; height:100%; background:var(--accent); border-radius:6px; }
+  .bar.warn > i { background:var(--warn); }
+  .barlbl { display:flex; justify-content:space-between; color:var(--t2); font-size:12px; margin-top:6px; }
+
+  /* Actuator list */
+  .acts { width:262px; flex:none; display:flex; flex-direction:column; gap:4px; padding:10px 12px; }
+  .acts .kicker { margin-bottom:4px; }
+  .act { display:flex; justify-content:space-between; align-items:center; background:var(--bg2);
+    border-radius:8px; padding:5px 10px; font-size:12.5px; }
+  .act span:first-child { color:var(--t1); }
+  .act b { font-size:11px; padding:3px 8px; border-radius:5px; background:var(--border); color:var(--t2); letter-spacing:.5px; }
+  .act b.on { background:var(--accent); color:var(--bg0); }
+  .act b.move { background:var(--warn); color:var(--bg0); }
+  .act b.pulse { background:var(--info); color:var(--bg0); }
+
+  /* Bottom bar */
+  .foot { height:64px; display:flex; gap:12px; padding:0 16px 12px; flex:none; align-items:stretch; }
+  .btn { border-radius:10px; display:flex; align-items:center; justify-content:center; gap:10px;
+    font-weight:700; font-size:17px; letter-spacing:1px; border:none; }
+  .btn.primary { background:var(--accent); color:var(--bg0); }
+  .btn.ghost { background:var(--surface); color:var(--t2); border:1px solid var(--border); }
+  .btn.stop { background:transparent; color:var(--danger); border:2px solid var(--danger); }
+  .btn.dangerfill { background:var(--danger); color:#fff; }
+  .hint { flex:1; display:flex; align-items:center; color:var(--t2); font-size:13px; }
+
+  /* Vial selector */
+  .lvl { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .lvl div { height:38px; border-radius:8px; background:var(--bg2); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:16px; color:var(--t1); }
+  .lvl div.sel { background:var(--info); border-color:var(--info); color:var(--bg0); }
+  .pill { display:inline-flex; align-items:center; gap:6px; background:var(--bg2); border:1px solid var(--border);
+    border-radius:20px; padding:4px 12px; font-size:12px; color:var(--t1); }
+  .pill.ok { color:var(--accent); border-color:var(--accent-dim); }
+  .slide-tag { position:absolute; top:10px; right:12px; font-size:11px; color:var(--t2); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const S = new URLSearchParams(location.search).get('s') || '1';
+
+const header = (cls='') => `
+  <div class="hdr ${cls}">
+    <div class="title">BRIQUETTE OPERATOR NODE</div>
+    <div class="status"><span>BAT 13.1V</span><span>PV 1.8A</span><span>WIFI 2</span><span>00:12:34</span></div>
+  </div>`;
+
+const STEPS = [['WATER','Solenoid'],['MIX','20V motor'],['DISCHARGE','Gate + ERM'],['LEVEL','Box ERM'],['PRESS','40cm + load'],['UNLOAD','Dispense']];
+const stepper = (active) => `<div class="steps">${STEPS.map((s,i)=>{
+  const n=i+1, c = n<active?'done':n===active?'active':'';
+  return `<div class="step ${c}">${n}. ${s[0]}<small>${s[1]}</small></div>`;}).join('')}</div>`;
+
+// Actuator states: off | on | move | pulse
+const ACT_NAMES = ['Water solenoid','Mixer motor 20V 5A','Gate actuator 15cm','Mixer ERM','Box ERM','Press actuator 40cm'];
+const acts = (st) => `<div class="card acts"><div class="kicker">OUTPUTS</div>${ACT_NAMES.map((n,i)=>{
+  const [cls,label] = st[i] || ['', 'OFF'];
+  return `<div class="act"><span>${n}</span><b class="${cls}">${label}</b></div>`;}).join('')}
+  <div class="act" style="margin-top:4px;border-top:1px solid var(--border)"><span>Load cell (HX711)</span><b class="${st[6]?'on':''}">${st[6]||'IDLE'}</b></div></div>`;
+
+const vial = (pct) => {
+  // Tube from y=20 (100%) to y=300 (0%)
+  const top = 20, bot = 300, h = bot-top;
+  const fy = bot - h*pct/100;
+  const ticks = [100,90,80,70,60,50,40,30].map(v=>{
+    const y = bot - h*v/100;
+    return `<line x1="62" y1="${y}" x2="${v%50===0?80:74}" y2="${y}" stroke="#5d7299" stroke-width="2"/>
+            <text x="86" y="${y+4}" fill="${v===pct?'#60a5fa':'#5d7299'}" font-size="12" font-weight="700" font-family="Segoe UI">${v}%</text>`;}).join('');
+  return `<svg width="130" height="320" viewBox="0 0 130 320">
+    <defs><clipPath id="tube"><rect x="16" y="${top}" width="46" height="${h}" rx="10"/></clipPath>
+      <linearGradient id="w" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#60a5fa"/><stop offset="1" stop-color="#2563eb"/></linearGradient></defs>
+    <rect x="10" y="8" width="58" height="10" rx="3" fill="#2a3448"/>
+    <g clip-path="url(#tube)"><rect x="16" y="${fy}" width="46" height="${bot-fy}" fill="url(#w)"/>
+      <rect x="16" y="${fy}" width="46" height="4" fill="#bfdbfe" opacity=".7"/></g>
+    <rect x="16" y="${top}" width="46" height="${h}" rx="10" fill="none" stroke="#9bacc8" stroke-width="2.5"/>
+    <line x1="16" y1="${bot - h*0.3}" x2="62" y2="${bot - h*0.3}" stroke="#ef4444" stroke-dasharray="4 3" stroke-width="1.5"/>
+    ${ticks}</svg>`;
+};
+
+const paperIcon = `<svg width="150" height="120" viewBox="0 0 150 120">
+  <path d="M20 40 h110 l-10 70 h-90 z" fill="#1a2030" stroke="#9bacc8" stroke-width="2.5"/>
+  <rect x="45" y="12" width="40" height="50" rx="3" fill="#e8edf5" transform="rotate(-12 65 37)"/>
+  <rect x="62" y="8" width="40" height="50" rx="3" fill="#cbd5e1" transform="rotate(8 82 33)"/>
+  <line x1="70" y1="20" x2="92" y2="24" stroke="#94a3b8" stroke-width="2"/><line x1="69" y1="28" x2="91" y2="32" stroke="#94a3b8" stroke-width="2"/>
+  <path d="M75 0 v-0" /><path d="M128 18 l-14 14 m0 -10 v10 h10" stroke="#00d4aa" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <text x="75" y="95" text-anchor="middle" fill="#5d7299" font-size="11" font-family="Segoe UI" font-weight="700">MIXING CONTAINER</text></svg>`;
+
+const hopperIcon = `<svg width="170" height="150" viewBox="0 0 170 150">
+  <defs><clipPath id="hop"><path d="M15 30 h140 l-50 70 v30 h-40 v-30 z"/></clipPath></defs>
+  <g clip-path="url(#hop)">
+    <path d="M0 62 q30 -10 60 -4 t60 -2 t60 4 v100 h-180 z" fill="#27272a"/>
+    <g fill="#3f3f46">${[[30,70],[52,66],[74,72],[98,64],[120,70],[142,66],[64,84],[88,80],[110,86],[80,98],[92,112]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="5"/>`).join('')}</g>
+  </g>
+  <path d="M15 30 h140 l-50 70 v30 h-40 v-30 z" fill="none" stroke="#9bacc8" stroke-width="2.5" stroke-linejoin="round"/>
+  <path d="M85 2 v20 m-8 -8 l8 8 l8 -8" stroke="#00d4aa" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <text x="85" y="146" text-anchor="middle" fill="#5d7299" font-size="11" font-family="Segoe UI" font-weight="700">CHARCOAL HOPPER</text></svg>`;
+
+const screens = {
+  // 1 — Load paper + choose water level
+  '1': () => `${header()}
+    <div class="body">
+      <div class="card" style="flex:1;display:flex;flex-direction:column">
+        <div class="kicker">SETUP 1 OF 2</div>
+        <div class="h1">Load the shredded paper</div>
+        <div class="p">Place the paper into the mixing container, then choose how much water to add. You can change the level until you press Next.</div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center">${paperIcon}</div>
+        <div style="display:flex;gap:8px"><span class="pill">Water preset: 100%</span><span class="pill">Min 30%</span></div>
+      </div>
+      <div class="card" style="width:330px;display:flex;gap:12px;padding:12px 16px">
+        <div>${vial(100)}</div>
+        <div style="flex:1;display:flex;flex-direction:column">
+          <div class="kicker">WATER LEVEL</div>
+          <div class="big" style="color:var(--info);margin:6px 0 2px">100<small>%</small></div>
+          <div style="color:var(--t2);font-size:12px;margin-bottom:10px">of mixing container limit</div>
+          <div class="lvl">${[100,90,80,70,60,50,40,30].map(v=>`<div class="${v===100?'sel':''}">${v}%</div>`).join('')}</div>
+        </div>
+      </div>
+    </div>
+    <div class="foot">
+      <div class="hint">Tap a level, then press Next once the paper is loaded.</div>
+      <div class="btn primary" style="width:300px">PAPER LOADED · NEXT &#8594;</div>
+    </div>`,
+
+  // 2 — Paper card slid left, charcoal prompt on the right
+  '2': () => `${header()}
+    <div class="body">
+      <div class="card" style="width:220px;display:flex;flex-direction:column;opacity:.85">
+        <div class="kicker" style="color:var(--t2)">SETUP 1 · DONE</div>
+        <div style="font-size:18px;font-weight:700;margin-top:6px">Paper loaded</div>
+        <div style="display:flex;justify-content:center;margin:12px 0">${vial(100).replace('width="130" height="320"','width="80" height="200"')}</div>
+        <span class="pill ok">&#10003; Water 100%</span>
+        <div style="color:var(--t2);font-size:12px;margin-top:auto">&#8592; Back to change level</div>
+      </div>
+      <div class="card" style="flex:1;display:flex;flex-direction:column">
+        <span class="slide-tag">slides in from right &#8592;</span>
+        <div class="kicker">SETUP 2 OF 2</div>
+        <div class="h1">Load crushed charcoal into the hopper</div>
+        <div class="p">Pour the crushed charcoal bits into the hopper. When everything is loaded, press Start. The process then runs automatically.</div>
+        <div style="flex:1;display:flex;align-items:center;justify-content:center">${hopperIcon}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="pill ok">&#10003; Paper</span><span class="pill ok">&#10003; Water 100%</span><span class="pill">Charcoal: waiting</span></div>
+      </div>
+    </div>
+    <div class="foot">
+      <div class="btn ghost" style="width:150px">&#8592; BACK</div>
+      <div class="hint" style="justify-content:center">Check the lid is closed before starting.</div>
+      <div class="btn primary" style="width:300px;font-size:19px">&#9654; START PROCESS</div>
+    </div>`,
+
+  // 3 — Water dispensing
+  '3': () => `${header()}${stepper(1)}
+    <div class="body">
+      <div class="card" style="flex:1">
+        <div class="kicker">STAGE 1 · WATER</div>
+        <div class="h1">Dispensing water</div>
+        <div class="p">Solenoid valve open. Filling to the selected level of the mixing container.</div>
+        <div style="margin-top:22px" class="big">2.40<small> L / 3.00 L</small></div>
+        <div class="bar"><i style="width:80%"></i></div>
+        <div class="barlbl"><span>Target: 100% level</span><span>80%</span></div>
+      </div>
+      ${acts([['on','OPEN']])}
+    </div>
+    <div class="foot"><div class="hint">Runs automatically. Valve closes at the target volume.</div>
+      <div class="btn stop" style="width:200px">&#9632; STOP</div></div>`,
+
+  // 4 — Mixing
+  '4': () => `${header()}${stepper(2)}
+    <div class="body">
+      <div class="card" style="flex:1">
+        <div class="kicker">STAGE 2 · MIX</div>
+        <div class="h1">Mixing paper, water and charcoal</div>
+        <div class="p">Mixer motor running through its relay (20V, 5A).</div>
+        <div style="display:flex;gap:28px;margin-top:22px;align-items:flex-end">
+          <div><div style="color:var(--t2);font-size:12px;margin-bottom:6px">TIME LEFT</div><div class="big">01:35</div></div>
+          <div><div style="color:var(--t2);font-size:12px;margin-bottom:6px">MOTOR CURRENT</div><div class="big" style="font-size:32px;color:var(--t0)">4.8<small> A</small></div></div>
+        </div>
+        <div class="bar"><i style="width:47%"></i></div>
+        <div class="barlbl"><span>01:25 elapsed</span><span>03:00 total</span></div>
+      </div>
+      ${acts([['','CLOSED'],['on','ON']])}
+    </div>
+    <div class="foot"><div class="hint">Runs automatically.</div>
+      <div class="btn stop" style="width:200px">&#9632; STOP</div></div>`,
+
+  // 5 — Discharge into compression box
+  '5': () => `${header()}${stepper(3)}
+    <div class="body">
+      <div class="card" style="flex:1">
+        <div class="kicker">STAGE 3 · DISCHARGE</div>
+        <div class="h1">Dropping mixture into the press box</div>
+        <div class="p">Gate actuator retracted (open). The mixer pulses and the container vibrates so all of the mixture falls into the compression box.</div>
+        <div style="display:flex;gap:10px;margin-top:18px">
+          <span class="pill ok">&#10003; Gate open</span><span class="pill" style="color:var(--info);border-color:var(--info)">Motor pulse 2s on / 3s off</span>
+        </div>
+        <div style="margin-top:16px" class="big" style="font-size:36px">00:18<small> left</small></div>
+        <div class="bar"><i style="width:40%"></i></div>
+        <div class="barlbl"><span>Discharge timer</span><span>00:30</span></div>
+      </div>
+      ${acts([['','CLOSED'],['pulse','PULSE'],['move','RETRACTED'],['on','ON']])}
+    </div>
+    <div class="foot"><div class="hint">Runs automatically. Gate closes when the timer ends.</div>
+      <div class="btn stop" style="width:200px">&#9632; STOP</div></div>`,
+
+  // 6 — Leveling
+  '6': () => `${header()}${stepper(4)}
+    <div class="body">
+      <div class="card" style="flex:1">
+        <div class="kicker">STAGE 4 · LEVEL</div>
+        <div class="h1">Leveling the mixture</div>
+        <div class="p">Vibration motor on the compression box spreads the mixture evenly before pressing.</div>
+        <div style="margin-top:22px" class="big">00:12<small> left</small></div>
+        <div class="bar"><i style="width:60%"></i></div>
+        <div class="barlbl"><span>Leveling timer</span><span>00:30</span></div>
+      </div>
+      ${acts([['','CLOSED'],['','OFF'],['','CLOSED'],['','OFF'],['on','ON']])}
+    </div>
+    <div class="foot"><div class="hint">Press starts when the timer ends.</div>
+      <div class="btn stop" style="width:200px">&#9632; STOP</div></div>`,
+
+  // 7 — Compression
+  '7': () => `${header()}${stepper(5)}
+    <div class="body">
+      <div class="card" style="flex:1">
+        <div class="kicker">STAGE 5 · PRESS</div>
+        <div class="h1">Compressing the briquette</div>
+        <div class="p">40 cm actuator extending. Pressure read from the S-type load cell under the compressor block.</div>
+        <div style="margin-top:18px" class="big">1450<small> N / 2000 N</small></div>
+        <div class="bar warn"><i style="width:72%"></i></div>
+        <div class="barlbl"><span>Load cell (S-type + HX711)</span><span>72%</span></div>
+        <div style="margin-top:12px;color:var(--warn);font-size:13px;font-weight:700">&#9888; KEEP HANDS CLEAR OF THE PRESS</div>
+      </div>
+      ${acts([['','CLOSED'],['','OFF'],['','CLOSED'],['','OFF'],['','OFF'],['move','EXTENDING'],'1450 N'])}
+    </div>
+    <div class="foot"><div class="hint">Holds at target pressure, then retracts.</div>
+      <div class="btn stop" style="width:200px">&#9632; STOP</div></div>`,
+
+  // 8 — Unload
+  '8': () => `${header()}${stepper(6)}
+    <div class="body">
+      <div class="card" style="flex:1;display:flex;flex-direction:column">
+        <div class="kicker">STAGE 6 · UNLOAD</div>
+        <div class="h1">Briquette ready</div>
+        <div class="p">Remove the press box and dispense the compressed briquette into your drying container.</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:auto">
+          ${[['WATER','3.00 L'],['MIX','03:00'],['PEAK FORCE','2010 N'],['TOTAL','06:42']].map(([k,v])=>`
+            <div style="background:var(--bg2);border-radius:8px;padding:10px;text-align:center">
+              <div style="color:var(--t2);font-size:11px;font-weight:700">${k}</div>
+              <div style="font-size:20px;font-weight:700;margin-top:4px">${v}</div></div>`).join('')}
+        </div>
+      </div>
+      ${acts([['','CLOSED'],['','OFF'],['','CLOSED'],['','OFF'],['','OFF'],['','RETRACTED'],'0 N'])}
+    </div>
+    <div class="foot"><div class="hint">Put the empty box back before starting the next batch.</div>
+      <div class="btn primary" style="width:300px">&#10003; DONE · NEW BATCH</div></div>`,
+
+  // 9 — Safety halt
+  '9': () => `${header('danger')}
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center">
+      <div style="font-size:64px;color:var(--danger);line-height:1">&#9888;</div>
+      <div style="font-size:36px;font-weight:800;color:var(--danger);letter-spacing:1px">PROCESS STOPPED</div>
+      <div style="font-size:16px">STOP pressed or safety cover opened. All relays switched off.</div>
+      <div style="font-size:14px;color:var(--t1)">Stopped during: Stage 5 · Press (1450 N)</div>
+    </div>
+    <div class="foot" style="justify-content:center">
+      <div class="btn ghost" style="width:220px">VIEW OUTPUTS</div>
+      <div class="btn dangerfill" style="width:300px">RESET &amp; RETRACT</div></div>`,
+};
+
+document.getElementById('root').innerHTML = `<div class="screen">${screens[S]()}</div>`;
+</script>
+</body>
+</html>
