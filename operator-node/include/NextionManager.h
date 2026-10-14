@@ -1,21 +1,20 @@
 #pragma once
 // ============================================================================
-// NextionManager.h — Nextion HMI UART Driver Interface
+// NextionManager.h — Nextion HMI UART Transport
 //
 // This module owns the UART link to the Nextion touchscreen:
-//   1. Serial2 bring-up (GPIO16 RX / GPIO17 TX, 9600 bps)
+//   1. Serial2 bring-up (GPIO16 RX / GPIO17 TX), auto-switch to 115200 bps
 //   2. Outbound commands terminated by 0xFF 0xFF 0xFF
-//   3. Inbound frame parsing (touch events, page changes, errors)
+//   3. Inbound frame parsing (touch coordinates, page changes, errors)
 //
-// Bring-up test page (see docs/Nextion_HMI_Design.md, "Bring-up Test Page"):
-//   page0.t0 → uptime     page0.t1 → connected clients
-//   page0.t2 → AP IP      page0.t3 → free heap
+// It knows nothing about layout — NextionDashboard draws on top of it.
 //
-// Usage (in main.cpp):
+// Usage:
 //   NextionManager hmi;
-//   hmi.begin();                  // call once in setup()
-//   hmi.handle();                 // call every loop iteration
-//   hmi.setText("t0", "hello");   // push text to a component
+//   hmi.begin();                     // call once in setup()
+//   hmi.handle();                    // call every loop iteration
+//   hmi.sendCommand("cls BLACK");
+//   if (hmi.takeTouch(x, y)) { ... }
 // ============================================================================
 
 #include <Arduino.h>
@@ -25,11 +24,23 @@ namespace NextionConfig {
   constexpr int8_t   RX_PIN    = 16;
   constexpr int8_t   TX_PIN    = 17;
 
-  // Nextion factory default baud rate
-  constexpr uint32_t BAUD_RATE = 9600;
+  // Nextion factory default, and the faster rate we switch to at boot.
+  // The switch is runtime-only: the display reverts to 9600 on power-off.
+  constexpr uint32_t BOOT_BAUD = 9600;
+  constexpr uint32_t RUN_BAUD  = 115200;
 
-  // TX ring buffer so a full status refresh never blocks loop() at 9600 bps
-  constexpr size_t   TX_BUFFER = 512;
+  // TX ring buffer so a full-screen redraw never blocks loop()
+  constexpr size_t   TX_BUFFER = 2048;
+
+  // Flow control: bkcmd=3 makes the display ack every command. At most
+  // MAX_INFLIGHT unacked commands are outstanding, so we never overrun its
+  // 1 KB input buffer while it is busy drawing.
+  constexpr uint8_t  MAX_INFLIGHT   = 4;
+  constexpr uint32_t ACK_TIMEOUT_MS = 250UL;
+
+  // Keepalive: ping every PING_INTERVAL_MS, resync after LINK_TIMEOUT_MS silence
+  constexpr uint32_t PING_INTERVAL_MS = 2000UL;
+  constexpr uint32_t LINK_TIMEOUT_MS  = 5000UL;
 
   // Longest inbound frame we buffer before discarding (excl. terminator)
   constexpr size_t   RX_MAX    = 64;
@@ -43,7 +54,7 @@ public:
   NextionManager();
 
   /**
-   * @brief  Open Serial2 and wake the display (page 0, full brightness).
+   * @brief  Open Serial2, move the display to RUN_BAUD, enable touch reports.
    */
   void begin();
 
@@ -53,29 +64,30 @@ public:
   void handle();
 
   /**
-   * @brief  Set a text component's .txt attribute, e.g. setText("t0", "42").
-   *         Double quotes in the value are replaced with single quotes.
-   */
-  void setText(const char *component, const char *value);
-
-  /**
-   * @brief  Set a numeric attribute, e.g. setValue("j0", 81) → j0.val=81.
-   */
-  void setValue(const char *component, int32_t value);
-
-  /**
    * @brief  Send a raw Nextion instruction (terminator appended).
+   *         Blocks briefly when MAX_INFLIGHT commands are still unacked.
    */
   void sendCommand(const char *cmd);
 
   /**
-   * @brief  Push the bring-up status page (page0 t0..t3).
+   * @brief  printf-style sendCommand().
    */
-  void showStatus(uint32_t uptimeMs, uint8_t clients,
-                  const char *ip, uint32_t freeHeap);
+  void sendf(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
 
   /**
-   * @brief  millis() of the last frame received from the display (0 = never).
+   * @brief  Pop the latest touch-press coordinate (from sendxy=1 reports).
+   * @return true if a press arrived since the last call.
+   */
+  bool takeTouch(uint16_t &x, uint16_t &y);
+
+  /**
+   * @brief  True once after the display rebooted or the link was resynced — the caller
+   *         must re-initialise and redraw everything.
+   */
+  bool takeRestart();
+
+  /**
+   * @brief  millis() of the last frame received from the display.
    */
   uint32_t lastRxMs() const { return _lastRxMs; }
 
@@ -83,10 +95,27 @@ private:
   uint8_t  _rxBuf[NextionConfig::RX_MAX];
   size_t   _rxLen;
   uint8_t  _ffCount;    // consecutive 0xFF bytes seen (3 = end of frame)
-  uint32_t _lastRxMs;
+
+  bool     _touchPending;
+  uint16_t _touchX;
+  uint16_t _touchY;
+  bool     _restartPending;
+  uint32_t _lastRxMs;   // millis() of the last frame from the display
+  uint32_t _lastPingMs;
+  uint8_t  _inflight;   // commands sent but not yet acked
 
   /**
-   * @brief  Decode one complete inbound frame and log it to Serial.
+   * @brief  Parse whatever bytes have arrived (no keepalive, no sending).
+   */
+  void _pumpRx();
+
+  /**
+   * @brief  (Re)negotiate RUN_BAUD and re-enable touch reports.
+   */
+  void _syncLink();
+
+  /**
+   * @brief  Decode one complete inbound frame.
    */
   void _handleFrame(const uint8_t *data, size_t len);
 };

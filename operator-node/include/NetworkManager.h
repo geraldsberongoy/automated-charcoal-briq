@@ -15,7 +15,7 @@
 //
 // Usage (in main.cpp):
 //   NetworkManager nm;
-//   nm.begin();          // call once in setup()
+//   nm.begin(machine);   // call once in setup()
 //   nm.handle();         // call every loop iteration
 //
 // Dependency injection: all state is encapsulated inside the class.
@@ -26,6 +26,7 @@
 #include <WiFi.h>
 #include <DNSServer.h>
 #include <ESPAsyncWebServer.h>
+#include "MachineState.h"
 
 #if defined(LITTLEFS_ENABLED) && LITTLEFS_ENABLED
   #include <LittleFS.h>
@@ -63,6 +64,9 @@ namespace OperatorConfig {
   constexpr uint32_t BAUD_RATE = 115200;
 }
 
+// Telemetry JSON buffer (network fields + machine state + sensors)
+constexpr size_t TELEMETRY_JSON_MAX = 768;
+
 
 // ── NetworkManager Class ─────────────────────────────────────────────────────
 
@@ -85,9 +89,11 @@ public:
    *   4. DNS server start (wildcard hijack)
    *   5. HTTP route registration + server start
    *
+   * @param  machine  Process FSM whose state is broadcast and commanded
+   *                  over the WebSocket. Must outlive this object.
    * @return true if the SoftAP was successfully started, false otherwise.
    */
-  bool begin();
+  bool begin(MachineState &machine);
 
   /**
    * @brief  Pump all network service queues.
@@ -106,6 +112,7 @@ public:
 private:
   // ── Private Members ──────────────────────────────────────────────────────
 
+  MachineState  *_machine;     // Not owned — injected via begin()
   DNSServer      _dnsServer;   // Owns the UDP:53 listening socket
   AsyncWebServer _httpServer;  // Owns the TCP:80 listening socket
   AsyncWebSocket _ws;          // Owns the WebSockets interface at /ws
@@ -180,6 +187,16 @@ private:
    */
   void _handleWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, 
                       AwsEventType type, void *arg, uint8_t *data, size_t len);
+
+  /**
+   * @brief  Apply a dashboard command (SET_STATE / TRIP_SAFETY / RESET_FAULT).
+   */
+  void _handleWsCommand(const char *msg);
+
+  /**
+   * @brief  Serialise network stats + machine state into buf.
+   */
+  void _buildTelemetryJson(char *buf, size_t size);
 
   /**
    * @brief  Broadcasts the JSON stats payload to all active WebSocket connections.

@@ -1,17 +1,24 @@
 // ============================================================================
-// NextionManager.cpp — Nextion HMI UART Driver Implementation
+// NextionManager.cpp — Nextion HMI UART Transport Implementation
 //
 // See include/NextionManager.h for public API documentation.
 // ============================================================================
 
 #include "NextionManager.h"
+#include <stdarg.h>
 
 // ── Constructor ──────────────────────────────────────────────────────────────
 
 NextionManager::NextionManager()
   : _rxLen(0),
     _ffCount(0),
-    _lastRxMs(0)
+    _touchPending(false),
+    _touchX(0),
+    _touchY(0),
+    _restartPending(false),
+    _lastRxMs(0),
+    _lastPingMs(0),
+    _inflight(0)
 {
   // No hardware access — deferred to begin().
 }
@@ -21,23 +28,39 @@ NextionManager::NextionManager()
 void NextionManager::begin() {
   // Buffer size must be set before begin() to take effect
   Serial2.setTxBufferSize(NextionConfig::TX_BUFFER);
-  Serial2.begin(NextionConfig::BAUD_RATE, SERIAL_8N1,
+  Serial2.begin(NextionConfig::BOOT_BAUD, SERIAL_8N1,
                 NextionConfig::RX_PIN, NextionConfig::TX_PIN);
+  _syncLink();
 
   Serial.printf("[HMI ] Nextion UART on Serial2 (RX=%d, TX=%d, %lu bps)\r\n",
                 NextionConfig::RX_PIN, NextionConfig::TX_PIN,
-                (unsigned long)NextionConfig::BAUD_RATE);
-
-  // Flush any partial command left in the display's parser from a prior boot
-  sendCommand("");
-  sendCommand("bkcmd=1");   // reply to every command with success/failure code
-  sendCommand("page 0");
-  sendCommand("dim=100");
+                (unsigned long)NextionConfig::RUN_BAUD);
 }
 
 // ── Public: handle() ─────────────────────────────────────────────────────────
 
 void NextionManager::handle() {
+  const uint32_t now = millis();
+
+  // Keepalive: the display answers `sendme` with its page number. Silence
+  // means it power-cycled (back at 9600) or was unplugged — resync.
+  if ((now - _lastPingMs) >= NextionConfig::PING_INTERVAL_MS) {
+    _lastPingMs = now;
+    if ((now - _lastRxMs) >= NextionConfig::LINK_TIMEOUT_MS) {
+      Serial.println(F("[HMI ] No reply from display — resyncing link"));
+      _syncLink();
+      _lastRxMs = now;           // give it a full timeout before retrying
+      _restartPending = true;    // caller redraws everything
+    }
+    sendCommand("sendme");
+  }
+
+  _pumpRx();
+}
+
+// ── Private: _pumpRx() ───────────────────────────────────────────────────────
+
+void NextionManager::_pumpRx() {
   while (Serial2.available()) {
     uint8_t b = static_cast<uint8_t>(Serial2.read());
 
@@ -66,53 +89,78 @@ void NextionManager::handle() {
   }
 }
 
-// ── Public: setText() / setValue() / sendCommand() ───────────────────────────
-
-void NextionManager::setText(const char *component, const char *value) {
-  char safe[64];
-  size_t i = 0;
-  for (; value[i] != '\0' && i < sizeof(safe) - 1; ++i) {
-    safe[i] = (value[i] == '"') ? '\'' : value[i];
-  }
-  safe[i] = '\0';
-
-  char cmd[96];
-  snprintf(cmd, sizeof(cmd), "%s.txt=\"%s\"", component, safe);
-  sendCommand(cmd);
-}
-
-void NextionManager::setValue(const char *component, int32_t value) {
-  char cmd[48];
-  snprintf(cmd, sizeof(cmd), "%s.val=%ld", component, (long)value);
-  sendCommand(cmd);
-}
+// ── Public: sendCommand() / sendf() ──────────────────────────────────────────
 
 void NextionManager::sendCommand(const char *cmd) {
   static const uint8_t TERMINATOR[3] = {0xFF, 0xFF, 0xFF};
+
+  // Flow control — skipped while the link is down so a missing display
+  // never stalls loop()
+  const bool linkUp = (millis() - _lastRxMs) < NextionConfig::LINK_TIMEOUT_MS;
+  if (linkUp && _inflight >= NextionConfig::MAX_INFLIGHT) {
+    const uint32_t start = millis();
+    while (_inflight >= NextionConfig::MAX_INFLIGHT) {
+      _pumpRx();
+      if ((millis() - start) >= NextionConfig::ACK_TIMEOUT_MS) {
+        Serial.println(F("[HMI ] Ack timeout — display busy or replies lost"));
+        _inflight = 0;   // lost acks — don't wait forever
+        break;
+      }
+      delay(1);
+    }
+  }
+
   Serial2.print(cmd);
   Serial2.write(TERMINATOR, sizeof(TERMINATOR));
+  if (linkUp) ++_inflight;
 }
 
-// ── Public: showStatus() ─────────────────────────────────────────────────────
+void NextionManager::sendf(const char *fmt, ...) {
+  char cmd[160];
+  va_list args;
+  va_start(args, fmt);
+  vsnprintf(cmd, sizeof(cmd), fmt, args);
+  va_end(args);
+  sendCommand(cmd);
+}
 
-void NextionManager::showStatus(uint32_t uptimeMs, uint8_t clients,
-                                const char *ip, uint32_t freeHeap) {
-  char buf[32];
-  const uint32_t s = uptimeMs / 1000UL;
+// ── Public: takeTouch() / takeRestart() ──────────────────────────────────────
 
-  snprintf(buf, sizeof(buf), "Up %02lu:%02lu:%02lu",
-           (unsigned long)(s / 3600UL), (unsigned long)((s / 60UL) % 60UL),
-           (unsigned long)(s % 60UL));
-  setText("t0", buf);
+bool NextionManager::takeTouch(uint16_t &x, uint16_t &y) {
+  if (!_touchPending) return false;
+  _touchPending = false;
+  x = _touchX;
+  y = _touchY;
+  return true;
+}
 
-  snprintf(buf, sizeof(buf), "Clients: %u", (unsigned)clients);
-  setText("t1", buf);
+bool NextionManager::takeRestart() {
+  const bool pending = _restartPending;
+  _restartPending = false;
+  return pending;
+}
 
-  snprintf(buf, sizeof(buf), "IP: %s", ip);
-  setText("t2", buf);
+// ── Private: _syncLink() ─────────────────────────────────────────────────────
 
-  snprintf(buf, sizeof(buf), "Heap: %lu KB", (unsigned long)(freeHeap / 1024UL));
-  setText("t3", buf);
+void NextionManager::_syncLink() {
+  // The display is at 9600 after power-on, but still at RUN_BAUD if only the
+  // ESP32 rebooted. Ask for the switch at 9600 (garbage if already switched,
+  // which the display ignores), then continue at RUN_BAUD either way.
+  Serial2.updateBaudRate(NextionConfig::BOOT_BAUD);
+  sendCommand("");
+  sendf("baud=%lu", (unsigned long)NextionConfig::RUN_BAUD);
+  Serial2.flush();
+  delay(100);
+  Serial2.updateBaudRate(NextionConfig::RUN_BAUD);
+  delay(50);
+  while (Serial2.available()) Serial2.read();  // drop replies from the switch
+  _rxLen    = 0;
+  _ffCount  = 0;
+  _inflight = 0;
+
+  sendCommand("");          // flush any partial command in the display's parser
+  sendCommand("bkcmd=3");   // ack every command — drives flow control
+  sendCommand("sendxy=1");  // report raw touch coordinates (0x67 frames)
 }
 
 // ── Private: _handleFrame() ──────────────────────────────────────────────────
@@ -121,32 +169,40 @@ void NextionManager::_handleFrame(const uint8_t *data, size_t len) {
   if (len == 0) return;
   _lastRxMs = millis();
 
+  // Every reply except unsolicited events (touch 0x65/0x67, boot 0x88) and
+  // the startup frame answers exactly one command
+  const bool event = data[0] == 0x65 || data[0] == 0x67 || data[0] == 0x88 ||
+                     (data[0] == 0x00 && len >= 3 && data[1] == 0x00 && data[2] == 0x00);
+  if (!event && _inflight > 0) --_inflight;
+
   switch (data[0]) {
-    case 0x01:  // Instruction successful (bkcmd=1) — too chatty to log
-      break;
-    case 0x65:  // Touch event: page, component, press(1)/release(0)
-      if (len >= 4) {
-        Serial.printf("[HMI ] Touch: page=%u id=%u %s\r\n",
-                      data[1], data[2], data[3] ? "press" : "release");
+    case 0x67:  // Touch coordinate: xH xL yH yL state
+      if (len >= 6 && data[5] == 1) {
+        _touchX = (data[1] << 8) | data[2];
+        _touchY = (data[3] << 8) | data[4];
+        _touchPending = true;
       }
       break;
+    case 0x65:  // Component touch event — unused, we hit-test coordinates
     case 0x66:  // Current page (reply to `sendme`)
-      if (len >= 2) Serial.printf("[HMI ] Page: %u\r\n", data[1]);
-      break;
-    case 0x70:  // String data (from `get` or `prints`), e.g. "state=2"
-      Serial.printf("[HMI ] String: %.*s\r\n", (int)(len - 1), data + 1);
-      break;
-    case 0x00:  // Startup frame, or invalid instruction (bkcmd=1)
-      Serial.println(F("[HMI ] Startup / invalid instruction"));
+    case 0x01:  // Instruction successful (bkcmd=3)
       break;
     case 0x88:  // Ready after power-on
-      Serial.println(F("[HMI ] Display ready"));
+      Serial.println(F("[HMI ] Display (re)booted"));
+      _restartPending = true;
       break;
-    case 0x02:
-      Serial.println(F("[HMI ] ERR invalid component ID"));
+    case 0x00:  // Startup frame (00 00 00) or invalid instruction
+      if (len >= 3 && data[1] == 0x00 && data[2] == 0x00) {
+        _restartPending = true;
+      } else {
+        Serial.println(F("[HMI ] ERR invalid instruction"));
+      }
       break;
     case 0x1A:
-      Serial.println(F("[HMI ] ERR invalid variable name/attribute (check page0 has t0..t3)"));
+      Serial.println(F("[HMI ] ERR invalid variable name/attribute"));
+      break;
+    case 0x24:
+      Serial.println(F("[HMI ] ERR display serial buffer overflow"));
       break;
     default:
       Serial.printf("[HMI ] Frame 0x%02X (%u bytes)\r\n", data[0], (unsigned)len);

@@ -10,7 +10,8 @@
 // ── Constructor ──────────────────────────────────────────────────────────────
 
 NetworkManager::NetworkManager()
-  : _httpServer(OperatorConfig::HTTP_PORT),
+  : _machine(nullptr),
+    _httpServer(OperatorConfig::HTTP_PORT),
     _ws("/ws"),
     _telemetryTaskHandle(nullptr),
     _dnsQueryCount(0),
@@ -22,7 +23,9 @@ NetworkManager::NetworkManager()
 
 // ── Public: begin() ──────────────────────────────────────────────────────────
 
-bool NetworkManager::begin() {
+bool NetworkManager::begin(MachineState &machine) {
+  _machine = &machine;
+
   // ── Step 0: Serial initialisation ────────────────────────────────────────
   // Guard against double-initialisation if the caller already started Serial.
   if (!Serial) {
@@ -330,36 +333,8 @@ void NetworkManager::_handleStaticFile(AsyncWebServerRequest *request) {
 // ── Private: _handleApiStats() ───────────────────────────────────────────────
 
 void NetworkManager::_handleApiStats(AsyncWebServerRequest *request) {
-  char buf[512];
-  snprintf(buf, sizeof(buf),
-    "{"
-      "\"uptime_ms\":%lu,"
-      "\"free_heap\":%u,"
-      "\"total_heap\":%u,"
-      "\"clients\":%d,"
-      "\"dns_intercepts\":%lu,"
-      "\"ssid\":\"%s\","
-      "\"ip\":\"%s\","
-      "\"channel\":%d,"
-      "\"mac\":\"%s\","
-      "\"subnet\":\"%s\","
-      "\"gateway\":\"%s\","
-      "\"cpu_freq_mhz\":%u,"
-      "\"security\":\"WPA2-PSK\""
-    "}",
-    (unsigned long)millis(),
-    (unsigned int)ESP.getFreeHeap(),
-    (unsigned int)ESP.getHeapSize(),
-    (int)WiFi.softAPgetStationNum(),
-    (unsigned long)_dnsQueryCount,
-    OperatorConfig::AP_SSID,
-    WiFi.softAPIP().toString().c_str(),
-    (int)OperatorConfig::AP_CHANNEL,
-    WiFi.softAPmacAddress().c_str(),
-    OperatorConfig::AP_SUBNET,
-    OperatorConfig::AP_GATEWAY,
-    (unsigned int)getCpuFrequencyMhz()
-  );
+  char buf[TELEMETRY_JSON_MAX];
+  _buildTelemetryJson(buf, sizeof(buf));
 
   AsyncWebServerResponse *response = request->beginResponse(200, "application/json", buf);
   response->addHeader("Access-Control-Allow-Origin", "*");
@@ -390,50 +365,59 @@ void NetworkManager::_handleWsEvent(AsyncWebSocket *server, AsyncWebSocketClient
                   client->id(), client->remoteIP().toString().c_str());
     
     // Provide an immediate telemetry update so the joining device gets instant status
-    char buf[512];
-    snprintf(buf, sizeof(buf),
-      "{"
-        "\"uptime_ms\":%lu,"
-        "\"free_heap\":%u,"
-        "\"total_heap\":%u,"
-        "\"clients\":%d,"
-        "\"dns_intercepts\":%lu,"
-        "\"ssid\":\"%s\","
-        "\"ip\":\"%s\","
-        "\"channel\":%d,"
-        "\"mac\":\"%s\","
-        "\"subnet\":\"%s\","
-        "\"gateway\":\"%s\","
-        "\"cpu_freq_mhz\":%u,"
-        "\"security\":\"WPA2-PSK\""
-      "}",
-      (unsigned long)millis(),
-      (unsigned int)ESP.getFreeHeap(),
-      (unsigned int)ESP.getHeapSize(),
-      (int)WiFi.softAPgetStationNum(),
-      (unsigned long)_dnsQueryCount,
-      OperatorConfig::AP_SSID,
-      WiFi.softAPIP().toString().c_str(),
-      (int)OperatorConfig::AP_CHANNEL,
-      WiFi.softAPmacAddress().c_str(),
-      OperatorConfig::AP_SUBNET,
-      OperatorConfig::AP_GATEWAY,
-      (unsigned int)getCpuFrequencyMhz()
-    );
+    char buf[TELEMETRY_JSON_MAX];
+    _buildTelemetryJson(buf, sizeof(buf));
     client->text(buf);
   } 
   else if (type == WS_EVT_DISCONNECT) {
     Serial.printf("[WS  ] Client disconnected: ID=%u\r\n", client->id());
   }
+  else if (type == WS_EVT_DATA) {
+    // Only single-frame text messages — dashboard commands are tiny JSON
+    AwsFrameInfo *info = static_cast<AwsFrameInfo*>(arg);
+    if (!info->final || info->index != 0 || info->len != len || info->opcode != WS_TEXT) return;
+
+    char msg[128];
+    const size_t n = min(len, sizeof(msg) - 1);
+    memcpy(msg, data, n);
+    msg[n] = '\0';
+    _handleWsCommand(msg);
+  }
 }
 
-// ── Private: _broadcastTelemetry() ───────────────────────────────────────────
+// ── Private: _handleWsCommand() ──────────────────────────────────────────────
+// Payload shape (dashboard/src/hooks/useStats.js sendCommand):
+//   {"action":"SET_STATE","payload":{"state":2}}
+//   {"action":"TRIP_SAFETY"}   {"action":"RESET_FAULT"}
 
-void NetworkManager::_broadcastTelemetry() {
-  if (_ws.count() == 0) return; // Only construct JSON if we have active clients
+void NetworkManager::_handleWsCommand(const char *msg) {
+  if (strstr(msg, "\"SET_STATE\"")) {
+    const char *key   = strstr(msg, "\"state\"");
+    const char *colon = key ? strchr(key, ':') : nullptr;
+    if (!colon) return;
+    const int state = atoi(colon + 1);
+    Serial.printf("[WS  ] CMD SET_STATE -> %d\r\n", state);
+    _machine->setState(static_cast<uint8_t>(state));
+  } else if (strstr(msg, "\"TRIP_SAFETY\"")) {
+    Serial.println(F("[WS  ] CMD TRIP_SAFETY"));
+    _machine->tripSafety();
+  } else if (strstr(msg, "\"RESET_FAULT\"")) {
+    Serial.println(F("[WS  ] CMD RESET_FAULT"));
+    _machine->resetFault();
+  } else {
+    Serial.printf("[WS  ] Unknown command: %s\r\n", msg);
+  }
 
-  char buf[512];
-  snprintf(buf, sizeof(buf),
+  // Push the new state immediately instead of waiting for the next tick
+  _broadcastTelemetry();
+}
+
+// ── Private: _buildTelemetryJson() ───────────────────────────────────────────
+
+void NetworkManager::_buildTelemetryJson(char *buf, size_t size) {
+  const MachineSnapshot m = _machine->snapshot();
+
+  snprintf(buf, size,
     "{"
       "\"uptime_ms\":%lu,"
       "\"free_heap\":%u,"
@@ -447,7 +431,20 @@ void NetworkManager::_broadcastTelemetry() {
       "\"subnet\":\"%s\","
       "\"gateway\":\"%s\","
       "\"cpu_freq_mhz\":%u,"
-      "\"security\":\"WPA2-PSK\""
+      "\"security\":\"WPA2-PSK\","
+      "\"active_state\":%u,"
+      "\"safety_switch\":%u,"
+      "\"sensors\":{"
+        "\"volumetric_flow_l\":%.2f,"
+        "\"compaction_force_n\":%.0f,"
+        "\"curing_temp_c\":%.1f,"
+        "\"relative_humidity\":%.1f,"
+        "\"grinder_current_a\":%.1f"
+      "},"
+      "\"power\":{"
+        "\"battery_voltage_v\":%.1f,"
+        "\"solar_amperage_a\":%.1f"
+      "}"
     "}",
     (unsigned long)millis(),
     (unsigned int)ESP.getFreeHeap(),
@@ -460,8 +457,21 @@ void NetworkManager::_broadcastTelemetry() {
     WiFi.softAPmacAddress().c_str(),
     OperatorConfig::AP_SUBNET,
     OperatorConfig::AP_GATEWAY,
-    (unsigned int)getCpuFrequencyMhz()
+    (unsigned int)getCpuFrequencyMhz(),
+    (unsigned)m.activeState,
+    m.safetyOk ? 1u : 0u,
+    m.flowL, m.forceN, m.tempC, m.rhPct, m.grinderA,
+    m.batteryV, m.solarA
   );
+}
+
+// ── Private: _broadcastTelemetry() ───────────────────────────────────────────
+
+void NetworkManager::_broadcastTelemetry() {
+  if (_ws.count() == 0) return; // Only construct JSON if we have active clients
+
+  char buf[TELEMETRY_JSON_MAX];
+  _buildTelemetryJson(buf, sizeof(buf));
 
   _ws.textAll(buf);
 }
