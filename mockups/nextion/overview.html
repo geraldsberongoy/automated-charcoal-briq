@@ -6,15 +6,19 @@ figure{margin:0} img{width:400px;height:240px;border-radius:8px;border:6px solid
 figcaption{font-size:13px;color:#9bacc8;margin-top:6px} figcaption b{color:#e8edf5}
 </style></head><body>
 <h1>NEXTION 7" HMI · BATCH FLOW (800×480)</h1>
-<p>Setup (operator) → automatic process → unload. STOP is available on every running stage.</p>
+<p>One machine action at a time: exactly one motor or actuator runs per step. STOP on every running step.</p>
 <div class="g">
-<figure><img src="01_setup_paper_water.png"><figcaption><b>1. Setup:</b> load paper, choose water level (preset 100%)</figcaption></figure>
-<figure><img src="02_setup_charcoal.png"><figcaption><b>2. Setup:</b> paper card slides left, load charcoal, START</figcaption></figure>
-<figure><img src="03_water.png"><figcaption><b>3. Water:</b> solenoid dispenses to selected level</figcaption></figure>
-<figure><img src="04_mix.png"><figcaption><b>4. Mix:</b> 20V 5A motor via relay, timed</figcaption></figure>
-<figure><img src="05_discharge.png"><figcaption><b>5. Discharge:</b> gate actuator retracts, motor pulses, mixer ERM</figcaption></figure>
-<figure><img src="06_level.png"><figcaption><b>6. Level:</b> box ERM levels mixture, timed</figcaption></figure>
-<figure><img src="07_press.png"><figcaption><b>7. Press:</b> 40cm actuator extends, S-type load cell force</figcaption></figure>
-<figure><img src="08_unload.png"><figcaption><b>8. Unload:</b> dispense briquette into drying container</figcaption></figure>
-<figure><img src="09_stopped.png"><figcaption><b>Stop / fault:</b> all relays off, reset and retract</figcaption></figure>
+<figure><img src="01_setup_paper_water.png"><figcaption><b>Setup 1:</b> load paper, choose water level (preset 100%)</figcaption></figure>
+<figure><img src="02_setup_charcoal.png"><figcaption><b>Setup 2:</b> paper card slides left, load charcoal, START</figcaption></figure>
+<figure><img src="03_water.png"><figcaption><b>1. Water:</b> solenoid only</figcaption></figure>
+<figure><img src="04_mix.png"><figcaption><b>2. Mix:</b> 20V 5A mixer motor only</figcaption></figure>
+<figure><img src="05_open_gate.png"><figcaption><b>3. Open gate:</b> 15cm actuator retracts only</figcaption></figure>
+<figure><img src="06_pour.png"><figcaption><b>4. Pour:</b> mixer motor pulses only</figcaption></figure>
+<figure><img src="07_shake.png"><figcaption><b>5. Shake:</b> mixer vibrator (ERM) only</figcaption></figure>
+<figure><img src="08_close_gate.png"><figcaption><b>6. Close gate:</b> 15cm actuator extends only</figcaption></figure>
+<figure><img src="09_level.png"><figcaption><b>7. Level:</b> box vibrator (ERM) only</figcaption></figure>
+<figure><img src="10_press.png"><figcaption><b>8. Press:</b> 40cm actuator extends, load cell reads force</figcaption></figure>
+<figure><img src="11_release.png"><figcaption><b>9. Release:</b> 40cm actuator retracts only</figcaption></figure>
+<figure><img src="12_unload.png"><figcaption><b>10. Unload:</b> all off, dispense into drying container</figcaption></figure>
+<figure><img src="13_stopped.png"><figcaption><b>Stop / fault:</b> all relays off, reset and retract</figcaption></figure>
 </div></body></html>

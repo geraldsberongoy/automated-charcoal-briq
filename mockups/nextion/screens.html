@@ -23,10 +23,10 @@
   .hdr.danger .title, .hdr.danger .status { color:#fff; }
 
   /* Stepper */
-  .steps { display:flex; gap:6px; padding:10px 16px 0; flex:none; }
+  .steps { display:flex; gap:4px; padding:10px 16px 0; flex:none; }
   .step { flex:1; height:44px; border-radius:6px; background:var(--surface); color:var(--t2);
-    display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:12px; font-weight:700; letter-spacing:.5px; }
-  .step small { font-size:10px; font-weight:500; opacity:.8; }
+    display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:11px; font-weight:700; letter-spacing:.3px; }
+  .step small { font-size:13px; font-weight:800; }
   .step.done { background:var(--accent-dim); color:var(--bg0); }
   .step.active { background:var(--accent); color:var(--bg0); box-shadow:0 0 0 2px rgba(0,212,170,.35); }
 
@@ -85,17 +85,60 @@ const header = (cls='') => `
     <div class="status"><span>BAT 13.1V</span><span>PV 1.8A</span><span>WIFI 2</span><span>00:12:34</span></div>
   </div>`;
 
-const STEPS = [['WATER','Solenoid'],['MIX','20V motor'],['DISCHARGE','Gate + ERM'],['LEVEL','Box ERM'],['PRESS','40cm + load'],['UNLOAD','Dispense']];
+const STEPS = [['WATER'],['MIX'],['OPEN'],['POUR'],['SHAKE'],['CLOSE'],['LEVEL'],['PRESS'],['RELEASE'],['UNLOAD']];
 const stepper = (active) => `<div class="steps">${STEPS.map((s,i)=>{
   const n=i+1, c = n<active?'done':n===active?'active':'';
-  return `<div class="step ${c}">${n}. ${s[0]}<small>${s[1]}</small></div>`;}).join('')}</div>`;
+  return `<div class="step ${c}"><small>${n}</small>${s[0]}</div>`;}).join('')}</div>`;
 
 // Actuator states: off | on | move | pulse
-const ACT_NAMES = ['Water solenoid','Mixer motor 20V 5A','Gate actuator 15cm','Mixer ERM','Box ERM','Press actuator 40cm'];
-const acts = (st) => `<div class="card acts"><div class="kicker">OUTPUTS</div>${ACT_NAMES.map((n,i)=>{
-  const [cls,label] = st[i] || ['', 'OFF'];
-  return `<div class="act"><span>${n}</span><b class="${cls}">${label}</b></div>`;}).join('')}
-  <div class="act" style="margin-top:4px;border-top:1px solid var(--border)"><span>Load cell (HX711)</span><b class="${st[6]?'on':''}">${st[6]||'IDLE'}</b></div></div>`;
+const ACT_NAMES = ['Water solenoid','Mixer motor 20V 5A','Gate actuator 15cm','Mixer vibrator (ERM)','Box vibrator (ERM)','Press actuator 40cm'];
+const IDLE = ['CLOSED','OFF','CLOSED','OFF','OFF','RETRACTED'];
+// active = [index, cls, label]; every other output shows its idle state
+const acts = (active, load) => `<div class="card acts"><div class="kicker">OUTPUTS · ONE AT A TIME</div>${ACT_NAMES.map((n,i)=>{
+  const on = active && active[0] === i;
+  return `<div class="act" style="${on?'outline:2px solid var(--accent);':''}"><span style="${on?'color:var(--t0);font-weight:700':''}">${n}</span><b class="${on?active[1]:''}">${on?active[2]:IDLE[i]}</b></div>`;}).join('')}
+  <div class="act" style="margin-top:4px;border-top:1px solid var(--border)"><span>Load cell (HX711)</span><b class="${load?'on':''}">${load||'IDLE'}</b></div></div>`;
+
+// Automatic steps: [kicker, title, desc, metric, bar %, bar left, bar right, active output, hint, load, barClass]
+const RUN = [
+  ['WATER','Dispensing water','Solenoid valve open. Filling to the selected level of the mixing container.',
+   '2.40<small> L / 3.00 L</small>',80,'Target: 100% level','80%',[0,'on','OPEN'],'Valve closes at the target volume.'],
+  ['MIX','Mixing','Mixer motor running through its relay (20V, 5A).',
+   '01:35<small> left</small>',47,'01:25 elapsed','03:00 total',[1,'on','ON 4.8A'],'Motor stops when the timer ends.'],
+  ['OPEN GATE','Opening the gate','15 cm actuator retracting (dual relay) to open the bottom of the mixing container.',
+   '3.1<small> s</small>',60,'Full stroke','~5 s',[2,'move','RETRACTING'],'Stops at the end of travel.'],
+  ['POUR','Pouring into the press box','Mixer motor spins in short bursts to push the mixture out through the gate.',
+   '4<small> / 6 pulses</small>',66,'2 s on / 3 s off','6 pulses',[1,'pulse','PULSE'],'Gate stays open. Motor off between pulses.'],
+  ['SHAKE','Shaking out the rest','Vibration motor on the mixing container knocks the remaining mixture loose.',
+   '00:06<small> left</small>',60,'Container vibrator','00:15',[3,'on','ON'],'Then the gate closes.'],
+  ['CLOSE GATE','Closing the gate','15 cm actuator extending to close the mixing container.',
+   '2.2<small> s</small>',44,'Full stroke','~5 s',[2,'move','EXTENDING'],'Stops at the end of travel.'],
+  ['LEVEL','Leveling the mixture','Vibration motor on the compression box spreads the mixture evenly.',
+   '00:12<small> left</small>',60,'Box vibrator','00:30',[4,'on','ON'],'Press starts when the timer ends.'],
+  ['PRESS','Compressing the briquette','40 cm actuator extending. Force read from the S-type load cell under the compressor block.',
+   '1450<small> N / 2000 N</small>',72,'Load cell (S-type + HX711)','72%',[5,'move','EXTENDING'],'Holds at target force.','1450 N','warn'],
+  ['RELEASE','Releasing the press','40 cm actuator retracting so the box can be removed.',
+   '6.5<small> s</small>',35,'Full stroke','~18 s',[5,'move','RETRACTING'],'Box unlocks at the end of travel.','0 N'],
+];
+
+const stage = (n, r) => {
+  const [kicker,title,desc,metric,pct,l,rr,active,hint,load,barCls] = r;
+  return `${header()}${stepper(n)}
+    <div class="body">
+      <div class="card" style="flex:1">
+        <div class="kicker">STEP ${n} · ${kicker}</div>
+        <div class="h1">${title}</div>
+        <div class="p">${desc}</div>
+        <div style="margin-top:20px" class="big">${metric}</div>
+        <div class="bar ${barCls||''}"><i style="width:${pct}%"></i></div>
+        <div class="barlbl"><span>${l}</span><span>${rr}</span></div>
+        ${n===8?'<div style="margin-top:10px;color:var(--warn);font-size:13px;font-weight:700">&#9888; KEEP HANDS CLEAR OF THE PRESS</div>':''}
+      </div>
+      ${acts(active, load)}
+    </div>
+    <div class="foot"><div class="hint">Runs automatically. ${hint}</div>
+      <div class="btn stop" style="width:200px">&#9632; STOP</div></div>`;
+};
 
 const vial = (pct) => {
   // Tube from y=20 (100%) to y=300 (0%)
@@ -185,119 +228,35 @@ const screens = {
       <div class="btn primary" style="width:300px;font-size:19px">&#9654; START PROCESS</div>
     </div>`,
 
-  // 3 — Water dispensing
-  '3': () => `${header()}${stepper(1)}
-    <div class="body">
-      <div class="card" style="flex:1">
-        <div class="kicker">STAGE 1 · WATER</div>
-        <div class="h1">Dispensing water</div>
-        <div class="p">Solenoid valve open. Filling to the selected level of the mixing container.</div>
-        <div style="margin-top:22px" class="big">2.40<small> L / 3.00 L</small></div>
-        <div class="bar"><i style="width:80%"></i></div>
-        <div class="barlbl"><span>Target: 100% level</span><span>80%</span></div>
-      </div>
-      ${acts([['on','OPEN']])}
-    </div>
-    <div class="foot"><div class="hint">Runs automatically. Valve closes at the target volume.</div>
-      <div class="btn stop" style="width:200px">&#9632; STOP</div></div>`,
+  // 3..11 — automatic steps, exactly one output active per step
+  ...Object.fromEntries(RUN.map((r, i) => [String(i + 3), () => stage(i + 1, r)])),
 
-  // 4 — Mixing
-  '4': () => `${header()}${stepper(2)}
-    <div class="body">
-      <div class="card" style="flex:1">
-        <div class="kicker">STAGE 2 · MIX</div>
-        <div class="h1">Mixing paper, water and charcoal</div>
-        <div class="p">Mixer motor running through its relay (20V, 5A).</div>
-        <div style="display:flex;gap:28px;margin-top:22px;align-items:flex-end">
-          <div><div style="color:var(--t2);font-size:12px;margin-bottom:6px">TIME LEFT</div><div class="big">01:35</div></div>
-          <div><div style="color:var(--t2);font-size:12px;margin-bottom:6px">MOTOR CURRENT</div><div class="big" style="font-size:32px;color:var(--t0)">4.8<small> A</small></div></div>
-        </div>
-        <div class="bar"><i style="width:47%"></i></div>
-        <div class="barlbl"><span>01:25 elapsed</span><span>03:00 total</span></div>
-      </div>
-      ${acts([['','CLOSED'],['on','ON']])}
-    </div>
-    <div class="foot"><div class="hint">Runs automatically.</div>
-      <div class="btn stop" style="width:200px">&#9632; STOP</div></div>`,
-
-  // 5 — Discharge into compression box
-  '5': () => `${header()}${stepper(3)}
-    <div class="body">
-      <div class="card" style="flex:1">
-        <div class="kicker">STAGE 3 · DISCHARGE</div>
-        <div class="h1">Dropping mixture into the press box</div>
-        <div class="p">Gate actuator retracted (open). The mixer pulses and the container vibrates so all of the mixture falls into the compression box.</div>
-        <div style="display:flex;gap:10px;margin-top:18px">
-          <span class="pill ok">&#10003; Gate open</span><span class="pill" style="color:var(--info);border-color:var(--info)">Motor pulse 2s on / 3s off</span>
-        </div>
-        <div style="margin-top:16px" class="big" style="font-size:36px">00:18<small> left</small></div>
-        <div class="bar"><i style="width:40%"></i></div>
-        <div class="barlbl"><span>Discharge timer</span><span>00:30</span></div>
-      </div>
-      ${acts([['','CLOSED'],['pulse','PULSE'],['move','RETRACTED'],['on','ON']])}
-    </div>
-    <div class="foot"><div class="hint">Runs automatically. Gate closes when the timer ends.</div>
-      <div class="btn stop" style="width:200px">&#9632; STOP</div></div>`,
-
-  // 6 — Leveling
-  '6': () => `${header()}${stepper(4)}
-    <div class="body">
-      <div class="card" style="flex:1">
-        <div class="kicker">STAGE 4 · LEVEL</div>
-        <div class="h1">Leveling the mixture</div>
-        <div class="p">Vibration motor on the compression box spreads the mixture evenly before pressing.</div>
-        <div style="margin-top:22px" class="big">00:12<small> left</small></div>
-        <div class="bar"><i style="width:60%"></i></div>
-        <div class="barlbl"><span>Leveling timer</span><span>00:30</span></div>
-      </div>
-      ${acts([['','CLOSED'],['','OFF'],['','CLOSED'],['','OFF'],['on','ON']])}
-    </div>
-    <div class="foot"><div class="hint">Press starts when the timer ends.</div>
-      <div class="btn stop" style="width:200px">&#9632; STOP</div></div>`,
-
-  // 7 — Compression
-  '7': () => `${header()}${stepper(5)}
-    <div class="body">
-      <div class="card" style="flex:1">
-        <div class="kicker">STAGE 5 · PRESS</div>
-        <div class="h1">Compressing the briquette</div>
-        <div class="p">40 cm actuator extending. Pressure read from the S-type load cell under the compressor block.</div>
-        <div style="margin-top:18px" class="big">1450<small> N / 2000 N</small></div>
-        <div class="bar warn"><i style="width:72%"></i></div>
-        <div class="barlbl"><span>Load cell (S-type + HX711)</span><span>72%</span></div>
-        <div style="margin-top:12px;color:var(--warn);font-size:13px;font-weight:700">&#9888; KEEP HANDS CLEAR OF THE PRESS</div>
-      </div>
-      ${acts([['','CLOSED'],['','OFF'],['','CLOSED'],['','OFF'],['','OFF'],['move','EXTENDING'],'1450 N'])}
-    </div>
-    <div class="foot"><div class="hint">Holds at target pressure, then retracts.</div>
-      <div class="btn stop" style="width:200px">&#9632; STOP</div></div>`,
-
-  // 8 — Unload
-  '8': () => `${header()}${stepper(6)}
+  // 12 — Unload
+  '12': () => `${header()}${stepper(10)}
     <div class="body">
       <div class="card" style="flex:1;display:flex;flex-direction:column">
-        <div class="kicker">STAGE 6 · UNLOAD</div>
+        <div class="kicker">STEP 10 · UNLOAD</div>
         <div class="h1">Briquette ready</div>
-        <div class="p">Remove the press box and dispense the compressed briquette into your drying container.</div>
+        <div class="p">All motors are off. Remove the press box and dispense the compressed briquette into your drying container.</div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:auto">
-          ${[['WATER','3.00 L'],['MIX','03:00'],['PEAK FORCE','2010 N'],['TOTAL','06:42']].map(([k,v])=>`
+          ${[['WATER','3.00 L'],['MIX','03:00'],['PEAK FORCE','2010 N'],['TOTAL','07:55']].map(([k,v])=>`
             <div style="background:var(--bg2);border-radius:8px;padding:10px;text-align:center">
               <div style="color:var(--t2);font-size:11px;font-weight:700">${k}</div>
               <div style="font-size:20px;font-weight:700;margin-top:4px">${v}</div></div>`).join('')}
         </div>
       </div>
-      ${acts([['','CLOSED'],['','OFF'],['','CLOSED'],['','OFF'],['','OFF'],['','RETRACTED'],'0 N'])}
+      ${acts(null, '0 N')}
     </div>
     <div class="foot"><div class="hint">Put the empty box back before starting the next batch.</div>
       <div class="btn primary" style="width:300px">&#10003; DONE · NEW BATCH</div></div>`,
 
-  // 9 — Safety halt
-  '9': () => `${header('danger')}
+  // 13 — Safety halt
+  '13': () => `${header('danger')}
     <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center">
       <div style="font-size:64px;color:var(--danger);line-height:1">&#9888;</div>
       <div style="font-size:36px;font-weight:800;color:var(--danger);letter-spacing:1px">PROCESS STOPPED</div>
       <div style="font-size:16px">STOP pressed or safety cover opened. All relays switched off.</div>
-      <div style="font-size:14px;color:var(--t1)">Stopped during: Stage 5 · Press (1450 N)</div>
+      <div style="font-size:14px;color:var(--t1)">Stopped during: Step 8 · Press (1450 N)</div>
     </div>
     <div class="foot" style="justify-content:center">
       <div class="btn ghost" style="width:220px">VIEW OUTPUTS</div>
