@@ -52,6 +52,7 @@ void NextionManager::handle() {
       _lastRxMs = now;           // give it a full timeout before retrying
       _restartPending = true;    // caller redraws everything
     }
+    sendCommand("sendxy=1");  // re-assert: it does not always survive boot/page load
     sendCommand("sendme");
   }
 

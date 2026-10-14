@@ -124,6 +124,7 @@ void NextionDashboard::begin() {
   _hmi.sendCommand("page 0");
   _hmi.sendCommand("tm0.en=0");   // factory demo: stop the 5 s page slideshow
   _hmi.sendCommand("tsw 255,0");  // ignore the page's own components; we hit-test
+  _hmi.sendCommand("sendxy=1");   // touch reports, re-sent after the page load
   _beganMs   = millis();
   _pageReady = false;
   _invalidate();
