@@ -5,7 +5,8 @@
 // firmware — it delegates ALL domain logic to the relevant module.
 //
 // Modules:
-//   MachineState     — 5-stage process FSM + (simulated) sensor telemetry
+//   Outputs          — relay/actuator driver (one output at a time)
+//   BatchProcess     — batch FSM: setup, 9 automatic steps, unload, stop
 //   NetworkManager   — SoftAP, DNS hijacking, HTTP captive portal, WebSocket
 //   NextionManager   — Nextion HMI UART transport
 //   NextionDashboard — operator dashboard drawn on the Nextion
@@ -15,7 +16,8 @@
 // ============================================================================
 
 #include <Arduino.h>
-#include "MachineState.h"
+#include "Outputs.h"
+#include "BatchProcess.h"
 #include "NetworkManager.h"
 #include "NextionManager.h"
 #include "NextionDashboard.h"
@@ -24,7 +26,8 @@
 // NetworkManager owns its own DNSServer and WebServer instances internally.
 // No global raw pointers or naked singletons — the object is stack-allocated
 // in the translation unit that owns the lifetime (.cpp → linker section).
-static MachineState     machine;
+static Outputs          outputs;
+static BatchProcess     process(outputs);
 static NetworkManager   networkManager;
 static NextionManager   nextion;
 static NextionDashboard dashboard(nextion);
@@ -32,22 +35,24 @@ static NextionDashboard dashboard(nextion);
 // ── Periodic diagnostic state ─────────────────────────────────────────────────
 static uint32_t _lastStatusPrintMs  = 0;
 static uint32_t _lastClientCountMs  = 0;
-static uint32_t _lastTickMs         = 0;
+static uint32_t _lastRenderMs       = 0;
 static uint8_t  _prevClientCount    = 0;
 
 constexpr uint32_t STATUS_INTERVAL_MS      = 30000UL;  // Print status every 30 s
 constexpr uint32_t CLIENT_CHECK_INTERVAL_MS = 5000UL;  // Check client count every 5 s
-constexpr uint32_t TICK_INTERVAL_MS         = 1000UL;  // Sensor step + HMI refresh
+constexpr uint32_t RENDER_INTERVAL_MS       = 500UL;   // HMI refresh
 
 // ── setup() ──────────────────────────────────────────────────────────────────
 
 void setup() {
-  // Serial is initialised inside NetworkManager::begin() if not already started.
-  // To override baud rate or start earlier, uncomment the line below:
-  // Serial.begin(115200);
+  // Start Serial before any module logs (NetworkManager skips it if running)
+  Serial.begin(OperatorConfig::BAUD_RATE);
 
   // Initialise the network stack — SoftAP + DNS + HTTP + WebSocket
-  bool networkOK = networkManager.begin(machine);
+  outputs.begin();     // everything off before anything else runs
+  process.begin();
+  process.startTask();
+  bool networkOK = networkManager.begin(process);
 
   if (!networkOK) {
     // Fatal: networking failed — blink the built-in LED rapidly and halt.
@@ -83,24 +88,18 @@ void loop() {
 
   uint16_t tx, ty;
   if (nextion.takeTouch(tx, ty)) {
-    const HmiAction action = dashboard.handleTouch(tx, ty);
-    if (action.type == HmiAction::SET_STATE) {
-      Serial.printf("[HMI ] Operator confirmed -> state %u\r\n", action.state);
-      machine.setState(action.state);
-    } else if (action.type == HmiAction::RESET_FAULT) {
-      Serial.println(F("[HMI ] Operator reset fault"));
-      machine.resetFault();
-    }
-    if (action.type != HmiAction::NONE) {
-      dashboard.render(machine.snapshot(), networkManager.getClientCount(), now);
+    const HmiCommand c = dashboard.handleTouch(tx, ty);
+    Serial.printf("[HMI ] Touch %u,%u -> %s\r\n", tx, ty, c.valid ? "button" : "no button");
+    if (c.valid) {
+      process.post(c.cmd, c.arg);
+      _lastRenderMs = 0;   // redraw right after the command is applied
     }
   }
 
-  // ── 3. Process tick: advance sensors, redraw the HMI ─────────────────────
-  if ((now - _lastTickMs) >= TICK_INTERVAL_MS) {
-    _lastTickMs = now;
-    machine.tick();
-    dashboard.render(machine.snapshot(), networkManager.getClientCount(), now);
+  // ── 3. HMI refresh (the batch FSM runs in its own task) ──────────────────
+  if ((now - _lastRenderMs) >= RENDER_INTERVAL_MS) {
+    _lastRenderMs = now;
+    dashboard.render(process.snapshot(), networkManager.getClientCount(), now);
   }
 
   // ── 4. Client count change detection ─────────────────────────────────────

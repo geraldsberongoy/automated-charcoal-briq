@@ -10,7 +10,7 @@
 // ── Constructor ──────────────────────────────────────────────────────────────
 
 NetworkManager::NetworkManager()
-  : _machine(nullptr),
+  : _process(nullptr),
     _httpServer(OperatorConfig::HTTP_PORT),
     _ws("/ws"),
     _telemetryTaskHandle(nullptr),
@@ -23,8 +23,8 @@ NetworkManager::NetworkManager()
 
 // ── Public: begin() ──────────────────────────────────────────────────────────
 
-bool NetworkManager::begin(MachineState &machine) {
-  _machine = &machine;
+bool NetworkManager::begin(BatchProcess &process) {
+  _process = &process;
 
   // ── Step 0: Serial initialisation ────────────────────────────────────────
   // Guard against double-initialisation if the caller already started Serial.
@@ -386,36 +386,46 @@ void NetworkManager::_handleWsEvent(AsyncWebSocket *server, AsyncWebSocketClient
 }
 
 // ── Private: _handleWsCommand() ──────────────────────────────────────────────
-// Payload shape (dashboard/src/hooks/useStats.js sendCommand):
-//   {"action":"SET_STATE","payload":{"state":2}}
-//   {"action":"TRIP_SAFETY"}   {"action":"RESET_FAULT"}
+// Payload shape: {"action":"<ACTION>","payload":{...}}
+//   SET_WATER {"pct":80} | NEXT | BACK | START | STOP | RESET | DONE
+//   TRIP_SAFETY is accepted as an alias for STOP.
+// Commands are queued; the batch FSM applies them on the next loop tick and
+// the regular 1 s broadcast carries the result.
 
 void NetworkManager::_handleWsCommand(const char *msg) {
-  if (strstr(msg, "\"SET_STATE\"")) {
-    const char *key   = strstr(msg, "\"state\"");
-    const char *colon = key ? strchr(key, ':') : nullptr;
-    if (!colon) return;
-    const int state = atoi(colon + 1);
-    Serial.printf("[WS  ] CMD SET_STATE -> %d\r\n", state);
-    _machine->setState(static_cast<uint8_t>(state));
-  } else if (strstr(msg, "\"TRIP_SAFETY\"")) {
-    Serial.println(F("[WS  ] CMD TRIP_SAFETY"));
-    _machine->tripSafety();
-  } else if (strstr(msg, "\"RESET_FAULT\"")) {
-    Serial.println(F("[WS  ] CMD RESET_FAULT"));
-    _machine->resetFault();
-  } else {
-    Serial.printf("[WS  ] Unknown command: %s\r\n", msg);
+  struct Entry { const char *name; Cmd cmd; };
+  static const Entry ACTIONS[] = {
+    {"\"SET_WATER\"", Cmd::SET_WATER}, {"\"NEXT\"", Cmd::NEXT},
+    {"\"BACK\"", Cmd::BACK},           {"\"START\"", Cmd::START},
+    {"\"STOP\"", Cmd::STOP},           {"\"TRIP_SAFETY\"", Cmd::STOP},
+    {"\"RESET\"", Cmd::RESET},         {"\"DONE\"", Cmd::DONE},
+  };
+
+  for (const Entry &e : ACTIONS) {
+    if (!strstr(msg, e.name)) continue;
+
+    uint8_t arg = 0;
+    if (e.cmd == Cmd::SET_WATER) {
+      const char *key   = strstr(msg, "\"pct\"");
+      const char *colon = key ? strchr(key, ':') : nullptr;
+      if (!colon) return;
+      arg = static_cast<uint8_t>(constrain(atoi(colon + 1), 0, 255));
+    }
+    Serial.printf("[WS  ] CMD %s %u\r\n", e.name, arg);
+    _process->post(e.cmd, arg);
+    return;
   }
 
-  // Push the new state immediately instead of waiting for the next tick
-  _broadcastTelemetry();
+  Serial.printf("[WS  ] Unknown command: %s\r\n", msg);
 }
 
 // ── Private: _buildTelemetryJson() ───────────────────────────────────────────
 
 void NetworkManager::_buildTelemetryJson(char *buf, size_t size) {
-  const MachineSnapshot m = _machine->snapshot();
+  const BatchSnapshot b = _process->snapshot();
+
+  static const char *const DRIVE[] = {"OFF", "ON", "EXTEND", "RETRACT"};
+  auto drive = [&b](Output o) { return DRIVE[static_cast<uint8_t>(b.outputs[static_cast<uint8_t>(o)])]; };
 
   snprintf(buf, size,
     "{"
@@ -432,14 +442,29 @@ void NetworkManager::_buildTelemetryJson(char *buf, size_t size) {
       "\"gateway\":\"%s\","
       "\"cpu_freq_mhz\":%u,"
       "\"security\":\"WPA2-PSK\","
-      "\"active_state\":%u,"
-      "\"safety_switch\":%u,"
-      "\"sensors\":{"
-        "\"volumetric_flow_l\":%.2f,"
-        "\"compaction_force_n\":%.0f,"
-        "\"curing_temp_c\":%.1f,"
-        "\"relative_humidity\":%.1f,"
-        "\"grinder_current_a\":%.1f"
+      "\"process\":{"
+        "\"step\":\"%s\","
+        "\"run_index\":%u,"
+        "\"stopped_during\":\"%s\","
+        "\"water_pct\":%u,"
+        "\"target_l\":%.2f,"
+        "\"flow_l\":%.2f,"
+        "\"force_n\":%.0f,"
+        "\"peak_force_n\":%.0f,"
+        "\"mixer_a\":%.1f,"
+        "\"step_elapsed_ms\":%lu,"
+        "\"step_duration_ms\":%lu,"
+        "\"pulse\":%u,"
+        "\"press_holding\":%s,"
+        "\"batch_ms\":%lu"
+      "},"
+      "\"outputs\":{"
+        "\"solenoid\":\"%s\","
+        "\"mixer_motor\":\"%s\","
+        "\"gate_actuator\":\"%s\","
+        "\"mixer_erm\":\"%s\","
+        "\"box_erm\":\"%s\","
+        "\"press_actuator\":\"%s\""
       "},"
       "\"power\":{"
         "\"battery_voltage_v\":%.1f,"
@@ -458,10 +483,19 @@ void NetworkManager::_buildTelemetryJson(char *buf, size_t size) {
     OperatorConfig::AP_SUBNET,
     OperatorConfig::AP_GATEWAY,
     (unsigned int)getCpuFrequencyMhz(),
-    (unsigned)m.activeState,
-    m.safetyOk ? 1u : 0u,
-    m.flowL, m.forceN, m.tempC, m.rhPct, m.grinderA,
-    m.batteryV, m.solarA
+    stepName(b.step),
+    (unsigned)b.runIndex,
+    stepName(b.stoppedDuring),
+    (unsigned)b.waterPct,
+    b.targetL, b.flowL, b.forceN, b.peakForceN, b.mixerA,
+    (unsigned long)b.stepElapsedMs,
+    (unsigned long)b.stepDurationMs,
+    (unsigned)b.pulse,
+    b.pressHolding ? "true" : "false",
+    (unsigned long)b.batchMs,
+    drive(Output::SOLENOID), drive(Output::MIXER_MOTOR), drive(Output::GATE_ACT),
+    drive(Output::MIXER_ERM), drive(Output::BOX_ERM), drive(Output::PRESS_ACT),
+    b.batteryV, b.solarA
   );
 }
 

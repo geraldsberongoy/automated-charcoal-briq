@@ -1,33 +1,38 @@
 #pragma once
 // ============================================================================
-// NextionDashboard.h — Operator Dashboard Drawn on the Nextion at Runtime
+// NextionDashboard.h — Batch-Flow Operator Screens Drawn on the Nextion
 //
-// Mirrors the web dashboard's Workspace tab on the 800×480 NX8048T070 using
-// Nextion drawing instructions (cls / fill / xstr). No custom .HMI needed —
-// it only relies on fonts 0 (small) and 1 (large) existing in the loaded
-// project, which the factory demo provides.
+// Renders mockups/nextion/*.png on the 800×480 NX8048T070 at runtime with
+// Nextion drawing instructions (cls / fill / draw / line / cirs / xstr).
+// No custom .HMI needed — it relies only on fonts 0 (small) and 1 (large)
+// in the loaded project, which the factory demo provides.
 //
-// Screen map (normal):                    Fault overlay:
-//   ┌ header: title │ BAT PV CLIENTS UP ┐   red banner, CRITICAL SAFETY HALT,
-//   ├ 5-step FSM stepper ───────────────┤   RESET FAULT button
-//   ├ stage panel: title, detail,       │
-//   │   value, progress bar             │
-//   └ 4 KPI tiles │ [ action button ]  ─┘
+// Screens follow BatchSnapshot::step:
+//   SETUP_PAPER    paper prompt + water vial + 8 level buttons + NEXT
+//   SETUP_CHARCOAL setup summary + hopper prompt + BACK / START
+//   WATER..RELEASE 10-step bar, step card, outputs panel, STOP
+//   UNLOAD         batch summary + DONE
+//   STOPPED        red halt screen + RESET & RETRACT
+//   RESETTING      homing progress
+//
+// Full redraw only when the step changes; otherwise only changed fields are
+// re-sent (text cache + bar/vial fill cache).
 //
 // Usage:
 //   NextionDashboard dash(hmi);
-//   dash.begin();                          // after hmi.begin()
-//   dash.render(machine.snapshot(), ...);  // once per second
-//   HmiAction a = dash.handleTouch(x, y);  // on each touch press
+//   dash.begin();                                   // after hmi.begin()
+//   dash.render(process.snapshot(), clients, ms);   // every second
+//   HmiCommand c = dash.handleTouch(x, y);          // on each touch press
 // ============================================================================
 
 #include <Arduino.h>
 #include "NextionManager.h"
-#include "MachineState.h"
+#include "BatchProcess.h"
 
-struct HmiAction {
-  enum Type : uint8_t { NONE, SET_STATE, RESET_FAULT } type;
-  uint8_t state;   // target for SET_STATE
+struct HmiCommand {
+  bool    valid;
+  Cmd     cmd;
+  uint8_t arg;
 };
 
 class NextionDashboard {
@@ -41,50 +46,66 @@ public:
   void begin();
 
   /**
-   * @brief  Draw the dashboard. Full redraw on stage/fault change, otherwise
-   *         only fields whose text changed are re-sent.
+   * @brief  Draw the current screen. Full redraw on step change, otherwise
+   *         only fields whose content changed are re-sent.
    */
-  void render(const MachineSnapshot &m, uint8_t clients, uint32_t uptimeMs);
+  void render(const BatchSnapshot &b, uint8_t clients, uint32_t uptimeMs);
 
   /**
-   * @brief  Hit-test a touch press against the action button.
+   * @brief  Hit-test a touch press against the buttons on screen.
    */
-  HmiAction handleTouch(uint16_t x, uint16_t y);
+  HmiCommand handleTouch(uint16_t x, uint16_t y);
 
 private:
-  // Dynamic text fields cached to avoid re-sending unchanged text
-  enum Field : uint8_t {
-    F_STATUS, F_DETAIL, F_VALUE, F_BUTTON,
-    F_KPI0, F_KPI1, F_KPI2, F_KPI3,
-    F_COUNT
-  };
+  static constexpr uint8_t FIELD_MAX = 24;
+  static constexpr uint8_t HIT_MAX   = 10;
 
   struct Rect { uint16_t x, y, w, h; };
+  struct Hit  { Rect r; Cmd cmd; uint8_t arg; };
 
   NextionManager &_hmi;
   uint32_t _beganMs;       // when `page 0` was sent
   bool     _pageReady;     // display answered since — safe to draw
-  int8_t   _screenKey;     // 0 = fault, 1..5 = stage; -1 = needs full redraw
-  char     _cache[F_COUNT][64];
-  int16_t  _barFill;       // last progress bar fill width in px (-1 = unknown)
+  int16_t  _screenKey;     // Step as int; -1 = needs full redraw
+  char     _cache[FIELD_MAX][64];
+  int16_t  _barFill;       // cached progress-bar fill px (-1 = unknown)
+  int16_t  _vialFill;      // cached water-vial fill px  (-1 = unknown)
 
-  Rect      _btn;
-  bool      _btnEnabled;
-  HmiAction _btnAction;
-  uint32_t  _lastTouchMs;
+  Hit      _hits[HIT_MAX];
+  uint8_t  _hitCount;
+  uint32_t _lastTouchMs;
+  uint32_t _screenChangedMs;   // last full redraw (touch lockout)
 
+  // ── primitives ─────────────────────────────────────────────────────────
   void _invalidate();
   void _fill(const Rect &r, uint16_t color);
+  void _frame(const Rect &r, uint16_t color);
+  void _line(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);
   void _text(const Rect &r, uint8_t font, uint16_t fg, uint16_t bg,
              uint8_t align, const char *text);
-  void _field(Field f, const Rect &r, uint8_t font, uint16_t fg, uint16_t bg,
+  void _field(uint8_t id, const Rect &r, uint8_t font, uint16_t fg, uint16_t bg,
               uint8_t align, const char *text);
+  void _button(const Rect &r, uint16_t fg, uint16_t bg, const char *label,
+               Cmd cmd, uint8_t arg = 0);
+  void _bar(const Rect &track, float fraction, uint16_t color, uint16_t bg);
+  void _vial(const Rect &r, uint8_t pct);
 
-  void _drawStatic(const MachineSnapshot &m);
-  void _drawFaultStatic();
-  void _updateStatus(const MachineSnapshot &m, uint8_t clients,
-                     uint32_t uptimeMs, uint16_t bg);
-  void _updateStage(const MachineSnapshot &m);
-  void _updateBar(float fraction);
-  void _updateButton(const char *label, bool enabled, HmiAction action);
+  // ── screens ────────────────────────────────────────────────────────────
+  void _drawHeader(bool danger);
+  void _updateStatus(const BatchSnapshot &b, uint8_t clients, uint32_t uptimeMs, bool danger);
+
+  void _drawSetupPaper(const BatchSnapshot &b);
+  void _updateSetupPaper(const BatchSnapshot &b);
+  void _drawSetupCharcoal(const BatchSnapshot &b);
+
+  void _drawStepper(uint8_t active);
+  void _drawRunning(const BatchSnapshot &b);
+  void _updateRunning(const BatchSnapshot &b);
+  void _drawOutputsPanel(const BatchSnapshot &b);
+  void _updateOutputs(const BatchSnapshot &b);
+
+  void _drawUnload(const BatchSnapshot &b);
+  void _drawStopped(const BatchSnapshot &b);
+  void _drawResetting();
+  void _updateResetting(const BatchSnapshot &b);
 };

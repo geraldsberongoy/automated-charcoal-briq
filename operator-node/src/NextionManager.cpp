@@ -169,6 +169,14 @@ void NextionManager::_handleFrame(const uint8_t *data, size_t len) {
   if (len == 0) return;
   _lastRxMs = millis();
 
+#ifdef NEXTION_DEBUG_RX
+  if (data[0] != 0x01) {
+    Serial.print(F("[HMI ] RX"));
+    for (size_t i = 0; i < len; ++i) Serial.printf(" %02X", data[i]);
+    Serial.println();
+  }
+#endif
+
   // Every reply except unsolicited events (touch 0x65/0x67, boot 0x88) and
   // the startup frame answers exactly one command
   const bool event = data[0] == 0x65 || data[0] == 0x67 || data[0] == 0x88 ||
