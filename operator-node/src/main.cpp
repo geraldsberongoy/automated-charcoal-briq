@@ -6,27 +6,33 @@
 //
 // Modules:
 //   NetworkManager — SoftAP, DNS hijacking, HTTP captive portal
+//   NextionManager — Nextion HMI touchscreen over UART2
 //
 // Adding features: create a new module under include/ + src/, then
 // instantiate and call it here. Do NOT add business logic to this file.
 // ============================================================================
 
 #include <Arduino.h>
+#include <WiFi.h>
 #include "NetworkManager.h"
+#include "NextionManager.h"
 
 // ── Module instantiation ─────────────────────────────────────────────────────
 // NetworkManager owns its own DNSServer and WebServer instances internally.
 // No global raw pointers or naked singletons — the object is stack-allocated
 // in the translation unit that owns the lifetime (.cpp → linker section).
 static NetworkManager networkManager;
+static NextionManager nextion;
 
 // ── Periodic diagnostic state ─────────────────────────────────────────────────
 static uint32_t _lastStatusPrintMs  = 0;
 static uint32_t _lastClientCountMs  = 0;
+static uint32_t _lastHmiRefreshMs   = 0;
 static uint8_t  _prevClientCount    = 0;
 
 constexpr uint32_t STATUS_INTERVAL_MS      = 30000UL;  // Print status every 30 s
 constexpr uint32_t CLIENT_CHECK_INTERVAL_MS = 5000UL;  // Check client count every 5 s
+constexpr uint32_t HMI_REFRESH_INTERVAL_MS  = 1000UL;  // Refresh Nextion every 1 s
 
 // ── setup() ──────────────────────────────────────────────────────────────────
 
@@ -48,6 +54,9 @@ void setup() {
     }
   }
 
+  // Initialise the Nextion touchscreen (non-fatal: runs fine with no display)
+  nextion.begin();
+
   Serial.println(F("[MAIN] setup() complete — entering loop()"));
 }
 
@@ -58,6 +67,14 @@ void loop() {
 
   // ── 1. Pump network services (must be called every iteration) ─────────────
   networkManager.handle();
+
+  // ── 1b. Pump Nextion UART and refresh the status page ──────────────────────
+  nextion.handle();
+  if ((now - _lastHmiRefreshMs) >= HMI_REFRESH_INTERVAL_MS) {
+    _lastHmiRefreshMs = now;
+    nextion.showStatus(now, networkManager.getClientCount(),
+                       WiFi.softAPIP().toString().c_str(), ESP.getFreeHeap());
+  }
 
   // ── 2. Client count change detection ─────────────────────────────────────
   if ((now - _lastClientCountMs) >= CLIENT_CHECK_INTERVAL_MS) {
