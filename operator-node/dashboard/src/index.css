@@ -958,3 +958,101 @@ footer {
 }
 
 
+
+/* ──────────────────────────────────────────────────────────────────────────── */
+/* Batch flow (one machine action at a time)                                   */
+/* ──────────────────────────────────────────────────────────────────────────── */
+
+/* 10-step progress: circles + short labels, no connectors */
+.wizard--10 { gap: 0.25rem; padding: 1rem; }
+.wizard--10 .wizard-step { flex-direction: column; gap: 0.35rem; text-align: center; }
+.wizard--10 .wizard-step__name { font-size: 0.72rem; }
+
+.btn-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+
+.action-btn.danger {
+  background: var(--clr-danger);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+.action-btn.danger:hover { background: #dc2626; box-shadow: 0 4px 20px rgba(239, 68, 68, 0.35); }
+
+.action-btn.ghost {
+  background: transparent;
+  color: var(--clr-text-1);
+  border: 1px solid var(--clr-border);
+  box-shadow: none;
+}
+.action-btn.ghost:hover { background: var(--clr-bg-2); color: var(--clr-text-0); }
+
+/* Water level picker (setup 1) */
+.water-picker { display: flex; gap: 1.5rem; align-items: stretch; margin-bottom: 1.25rem; }
+.vial {
+  width: 48px;
+  min-height: 190px;
+  border: 2px solid var(--clr-text-1);
+  border-radius: 10px;
+  background: var(--clr-bg-2);
+  position: relative;
+  overflow: hidden;
+  flex: none;
+}
+.vial__fill {
+  position: absolute;
+  inset: auto 0 0 0;
+  background: linear-gradient(180deg, #60a5fa, #2563eb);
+  transition: height 0.3s ease;
+}
+.water-picker__value {
+  font-size: 2.4rem;
+  font-weight: 700;
+  color: var(--clr-info);
+  font-family: var(--font-mono);
+  line-height: 1;
+}
+.water-picker__sub { font-size: 0.78rem; color: var(--clr-text-2); margin: 0.35rem 0 0.75rem; }
+.level-grid { display: grid; grid-template-columns: repeat(4, minmax(64px, 1fr)); gap: 0.5rem; }
+.level-btn {
+  background: var(--clr-bg-2);
+  border: 1px solid var(--clr-border);
+  color: var(--clr-text-1);
+  border-radius: var(--radius-sm);
+  padding: 0.6rem 0;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.level-btn:hover { border-color: var(--clr-info); color: var(--clr-text-0); }
+.level-btn.active { background: var(--clr-info); border-color: var(--clr-info); color: var(--clr-bg-0); }
+
+/* Unload summary */
+.unload-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+.unload-stats div {
+  background: var(--clr-bg-2);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.unload-stats span { font-size: 0.68rem; color: var(--clr-text-2); text-transform: uppercase; letter-spacing: 0.05em; }
+.unload-stats b { font-family: var(--font-mono); font-size: 1.05rem; }
+
+@media (max-width: 600px) {
+  .wizard.wizard--10 {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    align-items: start !important;
+  }
+  .wizard--10 .wizard-step { margin-bottom: 0; justify-content: center !important; }
+  .level-grid   { grid-template-columns: repeat(2, minmax(64px, 1fr)); }
+  .unload-stats { grid-template-columns: repeat(2, 1fr); }
+}

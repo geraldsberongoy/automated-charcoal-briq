@@ -456,6 +456,7 @@ void NetworkManager::_buildTelemetryJson(char *buf, size_t size) {
         "\"step_duration_ms\":%lu,"
         "\"pulse\":%u,"
         "\"press_holding\":%s,"
+        "\"reset_phase\":%u,"
         "\"batch_ms\":%lu"
       "},"
       "\"outputs\":{"
@@ -492,6 +493,7 @@ void NetworkManager::_buildTelemetryJson(char *buf, size_t size) {
     (unsigned long)b.stepDurationMs,
     (unsigned)b.pulse,
     b.pressHolding ? "true" : "false",
+    (unsigned)b.resetPhase,
     (unsigned long)b.batchMs,
     drive(Output::SOLENOID), drive(Output::MIXER_MOTOR), drive(Output::GATE_ACT),
     drive(Output::MIXER_ERM), drive(Output::BOX_ERM), drive(Output::PRESS_ACT),
