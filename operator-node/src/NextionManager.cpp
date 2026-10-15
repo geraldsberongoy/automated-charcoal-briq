@@ -105,7 +105,6 @@ void NextionManager::sendCommand(const char *cmd) {
       if ((millis() - start) >= NextionConfig::ACK_TIMEOUT_MS) {
         Serial.println(F("[HMI ] Ack timeout — display busy or replies lost"));
         _inflight = 0;   // lost acks — don't wait forever
-        _restartPending = true;  // commands may have been dropped — redraw all
         break;
       }
       delay(1);
