@@ -15,7 +15,7 @@
 //
 // Usage (in main.cpp):
 //   NetworkManager nm;
-//   nm.begin(machine);   // call once in setup()
+//   nm.begin(process);   // call once in setup()
 //   nm.handle();         // call every loop iteration
 //
 // Dependency injection: all state is encapsulated inside the class.
@@ -26,7 +26,7 @@
 #include <WiFi.h>
 #include <DNSServer.h>
 #include <ESPAsyncWebServer.h>
-#include "MachineState.h"
+#include "BatchProcess.h"
 
 #if defined(LITTLEFS_ENABLED) && LITTLEFS_ENABLED
   #include <LittleFS.h>
@@ -65,7 +65,7 @@ namespace OperatorConfig {
 }
 
 // Telemetry JSON buffer (network fields + machine state + sensors)
-constexpr size_t TELEMETRY_JSON_MAX = 768;
+constexpr size_t TELEMETRY_JSON_MAX = 1024;
 
 
 // ── NetworkManager Class ─────────────────────────────────────────────────────
@@ -89,11 +89,11 @@ public:
    *   4. DNS server start (wildcard hijack)
    *   5. HTTP route registration + server start
    *
-   * @param  machine  Process FSM whose state is broadcast and commanded
+   * @param  process  Batch FSM whose state is broadcast and commanded
    *                  over the WebSocket. Must outlive this object.
    * @return true if the SoftAP was successfully started, false otherwise.
    */
-  bool begin(MachineState &machine);
+  bool begin(BatchProcess &process);
 
   /**
    * @brief  Pump all network service queues.
@@ -112,7 +112,7 @@ public:
 private:
   // ── Private Members ──────────────────────────────────────────────────────
 
-  MachineState  *_machine;     // Not owned — injected via begin()
+  BatchProcess  *_process;     // Not owned — injected via begin()
   DNSServer      _dnsServer;   // Owns the UDP:53 listening socket
   AsyncWebServer _httpServer;  // Owns the TCP:80 listening socket
   AsyncWebSocket _ws;          // Owns the WebSockets interface at /ws
@@ -189,7 +189,7 @@ private:
                       AwsEventType type, void *arg, uint8_t *data, size_t len);
 
   /**
-   * @brief  Apply a dashboard command (SET_STATE / TRIP_SAFETY / RESET_FAULT).
+   * @brief  Queue a dashboard command (SET_WATER / NEXT / BACK / START / STOP / RESET / DONE).
    */
   void _handleWsCommand(const char *msg);
 

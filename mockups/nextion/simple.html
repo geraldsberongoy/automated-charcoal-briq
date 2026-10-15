@@ -1,0 +1,143 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Nextion Simple Mode</title>
+<style>
+  /* Simple mode: light, high contrast, one instruction per screen, huge targets */
+  :root {
+    --bg:#ffffff; --panel:#f1f4f8; --line:#d5dbe5;
+    --ink:#0b0f17; --ink2:#3d4757;
+    --go:#00875f; --go-ink:#ffffff;
+    --water:#1d6fe0; --stop:#d12a2a; --wait:#b36b00;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { width:800px; height:480px; overflow:hidden; background:var(--bg); color:var(--ink);
+    font-family:'Segoe UI', Arial, sans-serif; }
+  .screen { width:800px; height:480px; display:flex; flex-direction:column; padding:20px 24px 20px; gap:16px; }
+
+  .top { display:flex; align-items:center; justify-content:space-between; flex:none; }
+  .stepno { font-size:24px; font-weight:700; color:var(--ink2); }
+  .dots { display:flex; gap:10px; }
+  .dots i { width:22px; height:22px; border-radius:50%; background:var(--line); display:block; }
+  .dots i.done { background:var(--go); }
+  .dots i.now { background:var(--go); box-shadow:0 0 0 5px rgba(0,135,95,.25); }
+
+  .say { font-size:46px; font-weight:800; line-height:1.08; letter-spacing:-.5px; }
+  .sub { font-size:26px; color:var(--ink2); margin-top:8px; line-height:1.25; }
+
+  .mid { flex:1; display:flex; gap:20px; align-items:center; min-height:0; }
+  .btn { height:100px; border-radius:18px; display:flex; align-items:center; justify-content:center; gap:16px;
+    font-size:38px; font-weight:800; letter-spacing:1px; flex:none; }
+  .btn.go { background:var(--go); color:var(--go-ink); }
+  .btn.stop { background:var(--stop); color:#fff; }
+  .btn.back { background:var(--panel); color:var(--ink2); border:3px solid var(--line); font-size:30px; }
+  .row { display:flex; gap:16px; flex:none; }
+
+  .big { font-size:120px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+  .bar { height:56px; border-radius:14px; background:var(--panel); border:3px solid var(--line); overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--go); }
+
+  .pm { width:100px; height:92px; border-radius:18px; background:var(--panel); border:3px solid var(--line);
+    font-size:64px; font-weight:800; display:flex; align-items:center; justify-content:center; color:var(--ink); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const S = new URLSearchParams(location.search).get('s') || '1';
+
+const dots = (n, total=6) => `<div class="dots">${Array.from({length:total},(_,i)=>
+  `<i class="${i+1<n?'done':i+1===n?'now':''}"></i>`).join('')}</div>`;
+
+const vial = (pct, w=120, h=300) => {
+  const top=10, bot=h-10, H=bot-top, fy=bot-H*pct/100;
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
+    <defs><clipPath id="t"><rect x="10" y="${top}" width="${w-20}" height="${H}" rx="16"/></clipPath></defs>
+    <rect x="10" y="${top}" width="${w-20}" height="${H}" rx="16" fill="#eef3fb"/>
+    <g clip-path="url(#t)"><rect x="10" y="${fy}" width="${w-20}" height="${bot-fy}" fill="#1d6fe0"/></g>
+    <rect x="10" y="${top}" width="${w-20}" height="${H}" rx="16" fill="none" stroke="#0b0f17" stroke-width="4"/></svg>`;
+};
+
+const paper = `<svg width="230" height="190" viewBox="0 0 150 120">
+  <path d="M15 42 h120 l-12 72 h-96 z" fill="#f1f4f8" stroke="#0b0f17" stroke-width="3.5" stroke-linejoin="round"/>
+  <rect x="42" y="10" width="40" height="52" rx="3" fill="#fff" stroke="#0b0f17" stroke-width="2.5" transform="rotate(-12 62 36)"/>
+  <rect x="62" y="6" width="40" height="52" rx="3" fill="#fff" stroke="#0b0f17" stroke-width="2.5" transform="rotate(8 82 32)"/>
+  <path d="M132 6 l-16 16 m0 -11 v11 h11" stroke="#00875f" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const hopper = `<svg width="260" height="220" viewBox="0 0 170 150">
+  <defs><clipPath id="hop"><path d="M15 30 h140 l-50 70 v30 h-40 v-30 z"/></clipPath></defs>
+  <g clip-path="url(#hop)"><path d="M0 60 q30 -10 60 -4 t60 -2 t60 4 v100 h-180 z" fill="#27272a"/></g>
+  <path d="M15 30 h140 l-50 70 v30 h-40 v-30 z" fill="none" stroke="#0b0f17" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M85 0 v20 m-10 -10 l10 10 l10 -10" stroke="#00875f" stroke-width="5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const running = (n, say, sub, value, pct, color='') => `
+  <div class="top"><div class="stepno">Step ${n} of 6 · working</div>${dots(n)}</div>
+  <div><div class="say">${say}</div><div class="sub">${sub}</div></div>
+  <div class="mid" style="flex-direction:column;align-items:stretch;justify-content:center;gap:16px">
+    <div class="big" style="${color}">${value}</div>
+    <div class="bar"><i style="width:${pct}%"></i></div>
+  </div>
+  <div class="row"><div style="flex:1;display:flex;align-items:center;font-size:24px;color:var(--ink2)">Please wait. No need to touch anything.</div>
+    <div class="btn stop" style="width:260px">STOP</div></div>`;
+
+const screens = {
+  '1': () => `
+    <div class="top"><div class="stepno">Get ready · 1 of 2</div>${dots(0,0)}</div>
+    <div class="mid">
+      <div style="flex:1;display:flex;flex-direction:column;gap:8px">
+        <div class="say">Put the paper<br>in the container</div>
+        <div style="display:flex;justify-content:center;margin-top:6px">${paper}</div>
+      </div>
+      <div style="width:300px;display:flex;flex-direction:column;align-items:center;gap:8px;background:var(--panel);border-radius:20px;padding:12px">
+        <div style="font-size:30px;font-weight:800">Water <span style="color:var(--water)">100%</span></div>
+        <div style="display:flex;align-items:center;gap:22px">
+          ${vial(100,80,196)}
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div class="pm">+</div>
+            <div class="pm">&minus;</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row"><div class="btn go" style="flex:1">NEXT &#8594;</div></div>`,
+
+  '2': () => `
+    <div class="top"><div class="stepno">Get ready · 2 of 2</div>
+      <div style="font-size:22px;color:var(--go);font-weight:700">&#10003; Paper in · Water 100%</div></div>
+    <div class="mid">
+      <div style="flex:1"><div class="say">Put the charcoal<br>in the hopper</div>
+        <div class="sub">Then press START.</div></div>
+      <div>${hopper}</div>
+    </div>
+    <div class="row"><div class="btn back" style="width:200px">&#8592; BACK</div>
+      <div class="btn go" style="flex:1;font-size:44px">&#9654; START</div></div>`,
+
+  '3': () => running(1, 'Adding water', 'Filling to 100%.', '80%', 80, 'color:var(--water)'),
+  '4': () => running(2, 'Mixing', 'About 1½ minutes left.', '1:35', 47),
+  '5': () => running(3, 'Pouring into the box', 'The machine shakes it out.', '0:18', 40),
+  '6': () => running(4, 'Smoothing it flat', 'Getting ready to press.', '0:12', 60),
+  '7': () => running(5, 'Pressing', 'Keep your hands away.', '72%', 72, 'color:var(--wait)'),
+
+  '8': () => `
+    <div class="top"><div class="stepno">Step 6 of 6</div>${dots(7)}</div>
+    <div class="mid" style="flex-direction:column;align-items:flex-start;justify-content:center;gap:10px">
+      <div style="font-size:90px;line-height:1;color:var(--go)">&#10003;</div>
+      <div class="say">Done!</div>
+      <div class="sub" style="font-size:30px">Take the box out and put the briquette<br>in your drying container.</div>
+    </div>
+    <div class="row"><div class="btn go" style="flex:1">START AGAIN</div></div>`,
+
+  '9': () => `
+    <div class="mid" style="flex-direction:column;justify-content:center;gap:12px;text-align:center;background:#fdecec;border:5px solid var(--stop);border-radius:22px">
+      <div style="font-size:84px;line-height:1;color:var(--stop)">&#9888;</div>
+      <div class="say" style="color:var(--stop);font-size:60px">STOPPED</div>
+      <div class="sub" style="color:var(--ink)">Close the cover, then press OK.</div>
+    </div>
+    <div class="row"><div class="btn go" style="flex:1">OK</div></div>`,
+};
+
+document.getElementById('root').innerHTML = `<div class="screen">${screens[S]()}</div>`;
+</script>
+</body>
+</html>

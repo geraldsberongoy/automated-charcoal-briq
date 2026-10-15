@@ -52,6 +52,7 @@ void NextionManager::handle() {
       _lastRxMs = now;           // give it a full timeout before retrying
       _restartPending = true;    // caller redraws everything
     }
+    sendCommand("sendxy=1");  // re-assert: it does not always survive boot/page load
     sendCommand("sendme");
   }
 
@@ -168,6 +169,14 @@ void NextionManager::_syncLink() {
 void NextionManager::_handleFrame(const uint8_t *data, size_t len) {
   if (len == 0) return;
   _lastRxMs = millis();
+
+#ifdef NEXTION_DEBUG_RX
+  if (data[0] != 0x01) {
+    Serial.print(F("[HMI ] RX"));
+    for (size_t i = 0; i < len; ++i) Serial.printf(" %02X", data[i]);
+    Serial.println();
+  }
+#endif
 
   // Every reply except unsolicited events (touch 0x65/0x67, boot 0x88) and
   // the startup frame answers exactly one command
