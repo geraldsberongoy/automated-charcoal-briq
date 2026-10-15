@@ -105,6 +105,7 @@ void NextionManager::sendCommand(const char *cmd) {
       if ((millis() - start) >= NextionConfig::ACK_TIMEOUT_MS) {
         Serial.println(F("[HMI ] Ack timeout — display busy or replies lost"));
         _inflight = 0;   // lost acks — don't wait forever
+        _restartPending = true;  // commands may have been dropped — redraw all
         break;
       }
       delay(1);
@@ -212,6 +213,7 @@ void NextionManager::_handleFrame(const uint8_t *data, size_t len) {
       break;
     case 0x24:
       Serial.println(F("[HMI ] ERR display serial buffer overflow"));
+      _restartPending = true;  // dropped commands would stay blank — redraw all
       break;
     default:
       Serial.printf("[HMI ] Frame 0x%02X (%u bytes)\r\n", data[0], (unsigned)len);
