@@ -16,10 +16,14 @@
 //
 // Control: tap a button on the Nextion to run that move, tap it again or
 // STOP to stop. Serial Monitor (115200) works too: 1/2/3/4 = move, any
-// other key = stop. Every move auto-stops after RUN_TIMEOUT_MS.
+// other key = stop. Phone/laptop: join Wi-Fi "Actuator-Test" (password
+// "OperatorPassword"), open http://192.168.4.1. Every move auto-stops after
+// RUN_TIMEOUT_MS.
 // ============================================================================
 
 #include <Arduino.h>
+#include <WiFi.h>
+#include <WebServer.h>
 
 #define RXD2 16
 #define TXD2 17
@@ -139,6 +143,53 @@ void pumpRx() {
   }
 }
 
+// ── Web control ──────────────────────────────────────────────────────────────
+
+WebServer web(80);
+
+const char PAGE[] PROGMEM = R"HTML(<!doctype html><meta name=viewport content="width=device-width,initial-scale=1">
+<title>Actuator Test</title>
+<style>body{font:18px sans-serif;background:#111;color:#eee;margin:16px}
+button{width:100%;padding:24px;margin:6px 0;font-size:20px;border:0;border-radius:8px;background:#555;color:#fff}
+.on{background:#16a34a}#s{background:#dc2626}p{color:#facc15}</style>
+<p id=st>...</p>
+<button data-i=0>15cm CLOSE (R1)</button><button data-i=1>15cm OPEN (R2)</button>
+<button data-i=2>40cm PRESS (R3)</button><button data-i=3>40cm HOME (R4)</button>
+<button id=s>STOP ALL</button>
+<script>
+const b=[...document.querySelectorAll('[data-i]')];
+function show(t){let [a,m]=t.split('|');a=+a;st.textContent=m;
+b.forEach(x=>x.className=+x.dataset.i===a?'on':'')}
+const go=u=>fetch(u).then(r=>r.text()).then(show).catch(()=>st.textContent='NO LINK');
+b.forEach(x=>x.onclick=()=>go('/move?i='+x.dataset.i));
+s.onclick=()=>go('/stop');
+setInterval(()=>go('/state'),1000);go('/state');
+</script>)HTML";
+
+// "index|status": active move index (-1 = stopped), then a status line
+void sendState() {
+  String s = String(active) + "|";
+  if (active < 0) s += "STOPPED - all relays OFF";
+  else s += String("RUNNING ") + MOVES[active].label + "  " +
+            String((millis() - startMs) / 1000) + " s";
+  web.send(200, "text/plain", s);
+}
+
+void webBegin() {
+  WiFi.softAP("Actuator-Test", "OperatorPassword");
+  web.on("/", [] { web.send_P(200, "text/html", PAGE); });
+  web.on("/state", sendState);
+  web.on("/stop", [] { if (active >= 0) stop("stopped (web)"); sendState(); });
+  web.on("/move", [] {
+    int i = web.arg("i").toInt();
+    if (web.hasArg("i") && i >= 0 && i < 4) start(i);
+    sendState();
+  });
+  web.begin();
+  Serial.printf("Web: join Wi-Fi Actuator-Test, open http://%s\n",
+                WiFi.softAPIP().toString().c_str());
+}
+
 // ── Arduino ──────────────────────────────────────────────────────────────────
 
 void setup() {
@@ -150,10 +201,12 @@ void setup() {
   delay(500);
   Serial.println("\n===== Actuator test: 1/2/3/4 = move, any other key = stop =====");
   initScreen();
+  webBegin();
 }
 
 void loop() {
   pumpRx();
+  web.handleClient();
 
   if (Serial.available()) {
     char c = Serial.read();
