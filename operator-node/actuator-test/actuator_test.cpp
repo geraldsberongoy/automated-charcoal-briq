@@ -1,5 +1,5 @@
 // ============================================================================
-// actuator_test.cpp — bench test for both linear actuators (standalone)
+// actuator_test.cpp — bench test for both linear actuators + mixer (standalone)
 //
 // Build/flash with:  pio run -e actuator-test -t upload
 // Not part of the main firmware. Covers build-order steps 3 and 4 of the
@@ -11,11 +11,12 @@
 //   IN2 GPIO26  15 cm RETRACT (open trapdoor)
 //   IN3 GPIO27  40 cm EXTEND  (press)
 //   IN4 GPIO33  40 cm RETRACT (home)   <- moved off GPIO14, it pulses at boot
-//   IN5 GPIO23 / IN6 GPIO32 held OFF (solenoid, mixer)
+//   IN5 GPIO23  MIXER motor ON (relay in the PSU V+ line to the motor driver)
+//   IN6 GPIO32  held OFF (solenoid)
 //   Nextion TX -> GPIO16, Nextion RX -> GPIO17, 9600 baud.
 //
 // Control: tap a button on the Nextion to run that move, tap it again or
-// STOP to stop. Serial Monitor (115200) works too: 1/2/3/4 = move, any
+// STOP to stop. Serial Monitor (115200) works too: 1..5 = move, any
 // other key = stop. Phone/laptop: join Wi-Fi "Actuator-Test" (password
 // "OperatorPassword"), open http://192.168.4.1. Every move auto-stops after
 // RUN_TIMEOUT_MS.
@@ -32,18 +33,20 @@
 constexpr uint32_t RUN_TIMEOUT_MS = 70000UL;
 constexpr uint32_t DEAD_TIME_MS   = 100;
 
-// Relays 1..6 (IN1..IN6). Only 0..3 ever turn on here.
+// Relays 1..6 (IN1..IN6). Only 0..4 ever turn on here.
 constexpr int RELAY[] = {25, 26, 27, 33, 23, 32};
 
-struct Move { const char *label; int relay; uint16_t x, y; };
-constexpr uint16_t BW = 370, BH = 130;
+struct Move { const char *label; int relay; uint16_t x, y, w; };
+constexpr uint16_t BH = 95;
 const Move MOVES[] = {
-  {"15cm CLOSE (R1)", 0,  20,  70},
-  {"15cm OPEN (R2)",  1, 410,  70},
-  {"40cm PRESS (R3)", 2,  20, 215},
-  {"40cm HOME (R4)",  3, 410, 215},
+  {"15cm CLOSE (R1)", 0,  20,  70, 370},
+  {"15cm OPEN (R2)",  1, 410,  70, 370},
+  {"40cm PRESS (R3)", 2,  20, 175, 370},
+  {"40cm HOME (R4)",  3, 410, 175, 370},
+  {"MIXER ON (R5)",   4,  20, 280, 760},
 };
-constexpr uint16_t STOP_X = 20, STOP_Y = 360, STOP_W = 760, STOP_H = 100;
+constexpr int N_MOVES = sizeof(MOVES) / sizeof(MOVES[0]);
+constexpr uint16_t STOP_X = 20, STOP_Y = 385, STOP_W = 760, STOP_H = 85;
 
 int      active  = -1;   // index into MOVES, -1 = all stopped
 uint32_t startMs = 0;
@@ -70,9 +73,9 @@ void button(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
 void draw(const char *status) {
   cmd("fill 0,0,800,60,BLACK");
   cmd(String("xstr 20,10,760,40,0,YELLOW,BLACK,0,1,1,\"") + status + "\"");
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < N_MOVES; i++) {
     const Move &m = MOVES[i];
-    button(m.x, m.y, BW, BH, i == active ? "GREEN" : "GRAY", m.label);
+    button(m.x, m.y, m.w, BH, i == active ? "GREEN" : "GRAY", m.label);
   }
   button(STOP_X, STOP_Y, STOP_W, STOP_H, "RED", "STOP ALL");
 }
@@ -108,9 +111,9 @@ void start(int i) {
 }
 
 void onTouch(uint16_t x, uint16_t y) {
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < N_MOVES; i++) {
     const Move &m = MOVES[i];
-    if (x >= m.x && x < m.x + BW && y >= m.y && y < m.y + BH) { start(i); return; }
+    if (x >= m.x && x < m.x + m.w && y >= m.y && y < m.y + BH) { start(i); return; }
   }
   // Anywhere else, STOP bar included, stops everything
   if (active >= 0) stop("stopped");
@@ -155,6 +158,7 @@ button{width:100%;padding:24px;margin:6px 0;font-size:20px;border:0;border-radiu
 <p id=st>...</p>
 <button data-i=0>15cm CLOSE (R1)</button><button data-i=1>15cm OPEN (R2)</button>
 <button data-i=2>40cm PRESS (R3)</button><button data-i=3>40cm HOME (R4)</button>
+<button data-i=4>MIXER ON (R5)</button>
 <button id=s>STOP ALL</button>
 <script>
 const b=[...document.querySelectorAll('[data-i]')];
@@ -182,7 +186,7 @@ void webBegin() {
   web.on("/stop", [] { if (active >= 0) stop("stopped (web)"); sendState(); });
   web.on("/move", [] {
     int i = web.arg("i").toInt();
-    if (web.hasArg("i") && i >= 0 && i < 4) start(i);
+    if (web.hasArg("i") && i >= 0 && i < N_MOVES) start(i);
     sendState();
   });
   web.begin();
@@ -199,7 +203,7 @@ void setup() {
   Serial.begin(115200);
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
   delay(500);
-  Serial.println("\n===== Actuator test: 1/2/3/4 = move, any other key = stop =====");
+  Serial.println("\n===== Actuator test: 1..5 = move, any other key = stop =====");
   initScreen();
   webBegin();
 }
@@ -210,7 +214,7 @@ void loop() {
 
   if (Serial.available()) {
     char c = Serial.read();
-    if (c >= '1' && c <= '4') start(c - '1');
+    if (c >= '1' && c < '1' + N_MOVES) start(c - '1');
     else if (c != '\n' && c != '\r' && active >= 0) stop("stopped");
   }
 
