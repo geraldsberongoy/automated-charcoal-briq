@@ -58,11 +58,11 @@ constexpr uint16_t AUTO_X = 410, AUTO_Y = 280, AUTO_W = 370;
 struct AutoStep { int move; uint32_t ms; };
 const AutoStep AUTO[] = {
   {4,  5000},   // mix
-  {1, 25000},   // open trapdoor (15 cm = ~21 s)
+  {1, 20000},   // open trapdoor (15 cm = ~21 s)
   {4,  5000},   // mixer burst pushes the mix through
-  {0, 25000},   // close trapdoor
-  {2, 65000},   // press down (40 cm = ~57 s)
-  {3, 65000},   // press home
+  {0, 20000},   // close trapdoor
+  {2, 20000},   // press down (40 cm = ~57 s, so ~14 cm here)
+  {3, 20000},   // press home
 };
 constexpr int N_AUTO = sizeof(AUTO) / sizeof(AUTO[0]);
 constexpr uint16_t STOP_X = 20, STOP_Y = 385, STOP_W = 760, STOP_H = 85;
