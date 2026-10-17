@@ -18,9 +18,9 @@
 // Control: tap a button on the Nextion to run that move, tap it again or
 // STOP to stop. AUTO RUN plays AUTO[] below, one relay at a time; any tap
 // stops it. Serial Monitor (115200) works too: 1..5 = move, a = auto,
-// any other key = stop. Phone/laptop: join Wi-Fi "Actuator-Test" (password
-// "OperatorPassword"), open http://192.168.4.1. Every move auto-stops after
-// RUN_TIMEOUT_MS.
+// any other key = stop. Phone/laptop (only with WEB_ENABLED): join Wi-Fi
+// "Actuator-Test" (password "OperatorPassword"), open http://192.168.4.1.
+// Every move auto-stops after RUN_TIMEOUT_MS.
 // ============================================================================
 
 #include <Arduino.h>
@@ -36,7 +36,7 @@ constexpr uint32_t DEAD_TIME_MS   = 100;
 
 // Phone web page off: the Wi-Fi start-up current kills the ESP32 on the
 // current bench supply (serial goes dead ~2 s after boot). Set true once
-// ESP32 VIN and the Nextion both run from LM2596 #1 instead of USB.
+// ESP32 VIN and the Nextion both run from the 5 V power module, not USB.
 constexpr bool WEB_ENABLED = false;
 
 // Relays 1..6 (IN1..IN6). Only 0..4 ever turn on here.
@@ -135,7 +135,7 @@ void run(int i) {
   digitalWrite(RELAY[MOVES[i].relay], LOW);
   active  = i;
   startMs = millis();
-  Serial.printf("RUN %s (GPIO%d LOW)\n", runText().c_str(), RELAY[MOVES[i].relay]);
+  Serial.printf("%s (GPIO%d LOW)\n", runText().c_str(), RELAY[MOVES[i].relay]);
   draw(runText().c_str());
 }
 
