@@ -106,11 +106,12 @@ void draw(const char *status) {
 void initScreen() {
   cmd("");             // flush any partial command in the display's parser
   cmd("page 0");
+  delay(300);          // page load drops commands sent during it
   cmd("tm0.en=0");     // factory demo: stop its page slideshow
   cmd("tsw 255,0");    // ignore the page's own components, we hit-test
   cmd("sendxy=1");     // 0x67 touch-coordinate frames
   cmd("cls BLACK");
-  draw("READY - all relays OFF");
+  draw(active >= 0 ? runText().c_str() : "READY - all relays OFF");
 }
 
 // ── Control ──────────────────────────────────────────────────────────────────
@@ -165,9 +166,14 @@ void onTouch(uint16_t x, uint16_t y) {
 
 uint8_t buf[16];
 int len = 0, ffCount = 0;
+uint32_t lastRxMs = 0, lastPingMs = 0;
 
 void handleFrame() {
-  if (len == 6 && buf[0] == 0x67 && buf[5] == 1) {   // touch press
+  lastRxMs = millis();
+  if (len >= 2 && buf[0] == 0x66 && buf[1] != 0) {   // sendme: off page 0
+    Serial.println("Nextion left page 0, redrawing");
+    initScreen();
+  } else if (len == 6 && buf[0] == 0x67 && buf[5] == 1) {   // touch press
     onTouch((buf[1] << 8) | buf[2], (buf[3] << 8) | buf[4]);
   } else if (len >= 1 && buf[0] == 0x88) {           // display rebooted
     Serial.println("Nextion restarted, redrawing");
@@ -255,6 +261,18 @@ void setup() {
 void loop() {
   pumpRx();
   web.handleClient();
+
+  // Keepalive: the demo slideshow or a display reboot wipes our screen.
+  // sendme replies with the page number; silence means redraw.
+  if (millis() - lastPingMs >= 2000) {
+    lastPingMs = millis();
+    if (millis() - lastRxMs >= 6000) {
+      Serial.println("No reply from Nextion, redrawing");
+      initScreen();
+      lastRxMs = millis();
+    }
+    cmd("sendme");
+  }
 
   if (Serial.available()) {
     char c = Serial.read();
