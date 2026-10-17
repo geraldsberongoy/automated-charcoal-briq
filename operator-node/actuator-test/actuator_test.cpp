@@ -53,7 +53,7 @@ constexpr float WATER_TARGET_L = 1.0f;   // AUTO RUN water dose
 
 // Flow sensor off for now: GPIO34 kept counting with no flow. While off,
 // nothing reads the pin and AUTO RUN's water step runs on time instead.
-constexpr bool     FLOW_ENABLED       = true;
+constexpr bool     FLOW_ENABLED       = false;
 constexpr uint32_t WATER_NO_SENSOR_MS = 10000;
 
 // HX711 + S-type load cell. Scale from the README (22,480 counts/kg), which
@@ -173,7 +173,7 @@ float loadKg() { return (hxRaw - hxTare) / LSB_PER_KG; }
 
 // Load cell force, top right, always on screen
 void forceLine() {
-  String t = hxSeen ? "LOAD " + String(loadKg() * 9.80665f, 0) + " N" : String("LOAD --");
+  String t = hxSeen ? "LOAD " + String(loadKg(), 2) + " kg" : String("LOAD --");
   cmd("xstr 590,10,190,40,0,CYAN,BLACK,2,1,1,\"" + t + "\"");
 }
 
@@ -428,13 +428,19 @@ void loop() {
 
   // Load cell: read when the HX711 has a sample (~10/s), report once a second
   static uint32_t lastLoadReportMs = 0, lastHxMs = 0;
-  static bool tared = false;
+  // Zero at boot (keep it unloaded): first readings after power-up jump, so
+  // skip 20 (~2 s) and average the next 10
+  static int  bootReads = 0;
+  static long tareSum   = 0;
   if (hxReady()) {
     hxRaw = hxRead();
     lastHxMs = millis();
-    if (!hxSeen) Serial.println("LOAD: HX711 found");
+    if (!hxSeen) Serial.println("LOAD: HX711 found, zeroing in ~3 s, keep it unloaded");
     hxSeen = true;
-    if (!tared) { hxTare = hxRaw; tared = true; }   // zero at boot: keep it unloaded
+    if (bootReads < 30) {
+      if (++bootReads > 20) tareSum += hxRaw;
+      if (bootReads == 30) { hxTare = tareSum / 10; Serial.printf("LOAD tared at raw %ld\n", hxTare); }
+    }
   }
   if (millis() - lastLoadReportMs >= 1000) {
     lastLoadReportMs = millis();
