@@ -34,10 +34,9 @@
 constexpr uint32_t RUN_TIMEOUT_MS = 70000UL;
 constexpr uint32_t DEAD_TIME_MS   = 100;
 
-// Phone web page off: the Wi-Fi start-up current kills the ESP32 on the
-// current bench supply (serial goes dead ~2 s after boot). Set true once
-// ESP32 VIN and the Nextion both run from the 5 V power module, not USB.
-constexpr bool WEB_ENABLED = false;
+// Phone web page. Needs ESP32 VIN and the Nextion on the 5 V power module:
+// on laptop USB alone the Wi-Fi start-up current kills the ESP32 ~2 s in.
+constexpr bool WEB_ENABLED = true;
 
 // Relays 1..6 (IN1..IN6). Only 0..4 ever turn on here.
 constexpr int RELAY[] = {25, 26, 27, 33, 23, 32};
