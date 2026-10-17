@@ -51,6 +51,11 @@ constexpr int   FLOW_PIN       = 34;     // input-only, interrupt, no boot role
 constexpr float PULSES_PER_L   = 450.0f;
 constexpr float WATER_TARGET_L = 1.0f;   // AUTO RUN water dose
 
+// Flow sensor off for now: GPIO34 kept counting with no flow. While off,
+// nothing reads the pin and AUTO RUN's water step runs on time instead.
+constexpr bool     FLOW_ENABLED       = false;
+constexpr uint32_t WATER_NO_SENSOR_MS = 10000;
+
 // HX711 + S-type load cell. Scale from the README (22,480 counts/kg), which
 // was taken at 5 V excitation; here the HX711 runs on 3V3, so re-check it
 // with a known weight: new = (raw - tare) / kg on the scale.
@@ -99,7 +104,8 @@ constexpr uint16_t AUTO_X = 20, AUTO_Y = 314, AUTO_W = 760;
 // the step early. Strokes are 7 mm/s no-load; end limits stop them anyway.
 struct AutoStep { int move; uint32_t ms; float litres; };
 const AutoStep AUTO[] = {
-  {5, 60000, WATER_TARGET_L},  // water in, capped at 60 s if flow is low
+  // water in: to the dose with the sensor (60 s cap), else a fixed time
+  {5, FLOW_ENABLED ? 60000 : WATER_NO_SENSOR_MS, FLOW_ENABLED ? WATER_TARGET_L : 0},
   {4,  5000, 0},   // mix
   {1, 20000, 0},   // open trapdoor (15 cm = ~21 s)
   {4,  5000, 0},   // mixer burst pushes the mix through
@@ -129,7 +135,7 @@ String runText() {
   String s = autoStep >= 0 ? "AUTO " + String(autoStep + 1) + "/" + String(N_AUTO) + " "
                            : String("RUNNING ");
   s += MOVES[active].label;
-  if (watering()) s += "  " + String(litres(), 2) + " L";
+  if (FLOW_ENABLED && watering()) s += "  " + String(litres(), 2) + " L";
   return s;
 }
 
@@ -159,8 +165,8 @@ void statusLine(const char *status) {
 
 // Total flow since power-up, always on screen
 void flowLine() {
-  cmd("xstr 400,10,185,40,0,WHITE,BLACK,2,1,1,\"FLOW " +
-      String(flowPulses / PULSES_PER_L, 2) + " L\"");
+  String t = FLOW_ENABLED ? "FLOW " + String(flowPulses / PULSES_PER_L, 2) + " L" : String("FLOW off");
+  cmd("xstr 400,10,185,40,0,WHITE,BLACK,2,1,1,\"" + t + "\"");
 }
 
 float loadKg() { return (hxRaw - hxTare) / LSB_PER_KG; }
@@ -197,7 +203,7 @@ void initScreen() {
 // ── Control ──────────────────────────────────────────────────────────────────
 
 void stop(const char *why) {
-  if (watering()) Serial.printf("Water: %.2f L\n", litres());
+  if (FLOW_ENABLED && watering()) Serial.printf("Water: %.2f L\n", litres());
   allOff();
   active   = -1;
   autoStep = -1;
@@ -233,7 +239,7 @@ void autoTick() {
   const AutoStep &st = AUTO[autoStep];
   const bool dosed = st.litres > 0 && litres() >= st.litres;
   if (!dosed && millis() - startMs < st.ms) return;
-  if (watering()) Serial.printf("Water: %.2f L%s\n", litres(), dosed ? "" : " (time cap hit)");
+  if (FLOW_ENABLED && watering()) Serial.printf("Water: %.2f L%s\n", litres(), dosed ? "" : " (time cap hit)");
   if (++autoStep == N_AUTO) stop("AUTO done - all relays OFF");
   else run(AUTO[autoStep].move);
 }
@@ -328,7 +334,8 @@ void sendState() {
   String s = String(active) + "|";
   if (active < 0) s += "STOPPED - all relays OFF";
   else s += runText() + "  " + String((millis() - startMs) / 1000) + " s";
-  s += "   |   FLOW " + String(flowPulses / PULSES_PER_L, 2) + " L (" + String(flowPulses) + " pulses)";
+  s += FLOW_ENABLED ? "   |   FLOW " + String(flowPulses / PULSES_PER_L, 2) + " L (" + String(flowPulses) + " pulses)"
+                    : String("   |   FLOW off");
   s += hxSeen ? "   |   LOAD " + String(loadKg(), 2) + " kg (" + String(loadKg() * 9.80665f, 0) + " N)"
               : String("   |   LOAD no HX711");
   web.send(200, "text/plain", s);
@@ -357,8 +364,10 @@ void setup() {
   for (int pin : RELAY) { digitalWrite(pin, HIGH); pinMode(pin, OUTPUT); }
 
   Serial.begin(115200);
-  pinMode(FLOW_PIN, INPUT);   // no pull-up on GPIO34; the sensor has its own
-  attachInterrupt(digitalPinToInterrupt(FLOW_PIN), onFlowPulse, FALLING);
+  if (FLOW_ENABLED) {
+    pinMode(FLOW_PIN, INPUT);   // no pull-up on GPIO34; the sensor has its own
+    attachInterrupt(digitalPinToInterrupt(FLOW_PIN), onFlowPulse, FALLING);
+  }
 
   pinMode(HX_DT, INPUT_PULLUP);   // unplugged HX711 reads "not ready", not junk
   pinMode(HX_SCK, OUTPUT);
@@ -449,9 +458,11 @@ void loop() {
     }
   } else if (rawWasOn) {
     rawWasOn = false;
-    pinMode(FLOW_PIN, INPUT);
-    attachInterrupt(digitalPinToInterrupt(FLOW_PIN), onFlowPulse, FALLING);
-    Serial.println("RAW done, pulse counting back on");
+    if (FLOW_ENABLED) {
+      pinMode(FLOW_PIN, INPUT);
+      attachInterrupt(digitalPinToInterrupt(FLOW_PIN), onFlowPulse, FALLING);
+    }
+    Serial.println("RAW done");
   }
 
   // Flow test: new pulses update the FLOW box and serial once a second
