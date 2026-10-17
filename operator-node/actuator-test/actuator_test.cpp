@@ -13,7 +13,7 @@
 //   IN4 GPIO33  40 cm RETRACT (home)   <- moved off GPIO14, it pulses at boot
 //   IN5 GPIO23  MIXER motor ON (relay in the PSU V+ line to the motor driver)
 //   IN6 GPIO32  WATER solenoid valve open
-//   YF-S201 flow sensor signal -> GPIO34 (through a 10k/20k divider)
+//   YF-S201 flow sensor signal -> GPIO34 (through a 10k series resistor)
 //   Nextion TX -> GPIO16, Nextion RX -> GPIO17, 9600 baud.
 //
 // Control: tap a button on the Nextion to run that move, tap it again or
