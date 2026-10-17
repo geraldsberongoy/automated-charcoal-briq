@@ -62,7 +62,7 @@ constexpr uint32_t WATER_NO_SENSOR_MS = 10000;
 constexpr int   HX_DT       = 19;
 constexpr int   HX_SCK      = 18;
 constexpr float LSB_PER_KG  = 22480.0f;
-constexpr float MIXER_STOP_KG = 10.0f;   // mixer switches off at this load
+constexpr float PRESS_STOP_KG = 10.0f;   // press stops pushing at this load
 
 long hxRaw  = 0;      // last reading
 long hxTare = 0;      // raw value at zero load
@@ -251,13 +251,14 @@ void nextAutoStep() {
   else run(AUTO[autoStep].move);
 }
 
-// Mixer off once the load cell reaches MIXER_STOP_KG. In AUTO RUN the
-// mixer step ends early and the run goes on; a manual run just stops.
+// Press (40 cm EXTEND, relay index 2) stops once the load cell reaches
+// PRESS_STOP_KG. In AUTO RUN the press step ends early and the run goes on
+// to HOME; a manual press just stops. HOME is never blocked: it unloads.
 void loadCutoff() {
-  if (active < 0 || MOVES[active].relay != 4 || loadKg() < MIXER_STOP_KG) return;
-  Serial.printf("LOAD %.2f kg >= %.1f kg: mixer off\n", loadKg(), MIXER_STOP_KG);
+  if (active < 0 || MOVES[active].relay != 2 || loadKg() < PRESS_STOP_KG) return;
+  Serial.printf("LOAD %.2f kg >= %.1f kg: press stopped\n", loadKg(), PRESS_STOP_KG);
   if (autoStep >= 0) nextAutoStep();
-  else stop("LOAD limit - mixer OFF");
+  else stop("LOAD limit - press stopped");
 }
 
 void onTouch(uint16_t x, uint16_t y) {
