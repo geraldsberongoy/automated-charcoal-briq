@@ -13,7 +13,7 @@
 //   IN4 GPIO33  40 cm RETRACT (home)   <- moved off GPIO14, it pulses at boot
 //   IN5 GPIO23  MIXER motor ON (relay in the PSU V+ line to the motor driver)
 //   IN6 GPIO32  WATER solenoid valve open
-//   YF-S201 flow sensor signal -> GPIO34 (through a 10k series resistor)
+//   YF-S201 flow sensor signal -> GPIO34 (10k series resistor, 10k GPIO34-3V3 pull-up)
 //   Nextion TX -> GPIO16, Nextion RX -> GPIO17, 115200 baud (boots at 9600).
 //
 // Control: tap a button on the Nextion to run that move, tap it again or
@@ -84,7 +84,17 @@ uint32_t startMs  = 0;
 volatile uint32_t flowPulses = 0;
 uint32_t pulseStart = 0;   // flowPulses when the current move began
 
-void IRAM_ATTR onFlowPulse() { flowPulses++; }
+// Max real rate is ~30 L/min = ~225 pulses/s (4.4 ms apart). Edges closer
+// than 2 ms are noise (a loose or floating signal wire counted 1000s/s).
+constexpr uint32_t FLOW_MIN_GAP_US = 2000;
+
+void IRAM_ATTR onFlowPulse() {
+  static uint32_t lastUs = 0;
+  const uint32_t now = micros();
+  if (now - lastUs < FLOW_MIN_GAP_US) return;
+  lastUs = now;
+  flowPulses++;
+}
 
 float litres() { return (flowPulses - pulseStart) / PULSES_PER_L; }
 bool  watering() { return active >= 0 && MOVES[active].relay == WATER_RELAY; }
@@ -310,7 +320,7 @@ void setup() {
   for (int pin : RELAY) { digitalWrite(pin, HIGH); pinMode(pin, OUTPUT); }
 
   Serial.begin(115200);
-  pinMode(FLOW_PIN, INPUT);   // GPIO34 has no pull-up; the sensor drives it
+  pinMode(FLOW_PIN, INPUT);   // GPIO34 has no pull-up: the external 10k to 3V3 is required
   attachInterrupt(digitalPinToInterrupt(FLOW_PIN), onFlowPulse, FALLING);
 
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
