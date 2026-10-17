@@ -16,8 +16,9 @@
 //   Nextion TX -> GPIO16, Nextion RX -> GPIO17, 9600 baud.
 //
 // Control: tap a button on the Nextion to run that move, tap it again or
-// STOP to stop. Serial Monitor (115200) works too: 1..5 = move, any
-// other key = stop. Phone/laptop: join Wi-Fi "Actuator-Test" (password
+// STOP to stop. AUTO RUN plays AUTO[] below, one relay at a time; any tap
+// stops it. Serial Monitor (115200) works too: 1..5 = move, a = auto,
+// any other key = stop. Phone/laptop: join Wi-Fi "Actuator-Test" (password
 // "OperatorPassword"), open http://192.168.4.1. Every move auto-stops after
 // RUN_TIMEOUT_MS.
 // ============================================================================
@@ -43,13 +44,34 @@ const Move MOVES[] = {
   {"15cm OPEN (R2)",  1, 410,  70, 370},
   {"40cm PRESS (R3)", 2,  20, 175, 370},
   {"40cm HOME (R4)",  3, 410, 175, 370},
-  {"MIXER ON (R5)",   4,  20, 280, 760},
+  {"MIXER ON (R5)",   4,  20, 280, 370},
 };
 constexpr int N_MOVES = sizeof(MOVES) / sizeof(MOVES[0]);
+constexpr uint16_t AUTO_X = 410, AUTO_Y = 280, AUTO_W = 370;
+
+// Automated run: MOVES index + how long it stays on. Tune times on the rig.
+// Strokes are 7 mm/s no-load plus margin; end limits stop the actuator early.
+struct AutoStep { int move; uint32_t ms; };
+const AutoStep AUTO[] = {
+  {4,  5000},   // mix
+  {1, 25000},   // open trapdoor (15 cm = ~21 s)
+  {4,  2000},   // mixer burst pushes the mix through
+  {0, 25000},   // close trapdoor
+  {2, 65000},   // press down (40 cm = ~57 s)
+  {3, 65000},   // press home
+};
+constexpr int N_AUTO = sizeof(AUTO) / sizeof(AUTO[0]);
 constexpr uint16_t STOP_X = 20, STOP_Y = 385, STOP_W = 760, STOP_H = 85;
 
-int      active  = -1;   // index into MOVES, -1 = all stopped
-uint32_t startMs = 0;
+int      active   = -1;  // index into MOVES, -1 = all stopped
+int      autoStep = -1;  // index into AUTO, -1 = not in an auto run
+uint32_t startMs  = 0;
+
+String runText() {
+  String s = autoStep >= 0 ? "AUTO " + String(autoStep + 1) + "/" + String(N_AUTO) + " "
+                           : String("RUNNING ");
+  return s + MOVES[active].label;
+}
 
 // ── Relays ───────────────────────────────────────────────────────────────────
 
@@ -77,6 +99,7 @@ void draw(const char *status) {
     const Move &m = MOVES[i];
     button(m.x, m.y, m.w, BH, i == active ? "GREEN" : "GRAY", m.label);
   }
+  button(AUTO_X, AUTO_Y, AUTO_W, BH, autoStep >= 0 ? "GREEN" : "BLUE", "AUTO RUN");
   button(STOP_X, STOP_Y, STOP_W, STOP_H, "RED", "STOP ALL");
 }
 
@@ -94,20 +117,38 @@ void initScreen() {
 
 void stop(const char *why) {
   allOff();
-  active = -1;
+  active   = -1;
+  autoStep = -1;
   Serial.printf("STOP (%s)\n", why);
   draw(why);
 }
 
-void start(int i) {
-  if (i == active) { stop("stopped"); return; }  // same button again = stop
+void run(int i) {
   allOff();
   delay(DEAD_TIME_MS);  // let the previous contact open before reversing
   digitalWrite(RELAY[MOVES[i].relay], LOW);
   active  = i;
   startMs = millis();
-  Serial.printf("RUN %s (GPIO%d LOW)\n", MOVES[i].label, RELAY[MOVES[i].relay]);
-  draw((String("RUNNING ") + MOVES[i].label).c_str());
+  Serial.printf("RUN %s (GPIO%d LOW)\n", runText().c_str(), RELAY[MOVES[i].relay]);
+  draw(runText().c_str());
+}
+
+void start(int i) {
+  // Same button again, or any move during an auto run = stop
+  if (i == active || autoStep >= 0) { stop("stopped"); return; }
+  run(i);
+}
+
+void startAuto() {
+  if (autoStep >= 0) { stop("stopped"); return; }
+  autoStep = 0;
+  run(AUTO[0].move);
+}
+
+void autoTick() {
+  if (autoStep < 0 || millis() - startMs < AUTO[autoStep].ms) return;
+  if (++autoStep == N_AUTO) stop("AUTO done - all relays OFF");
+  else run(AUTO[autoStep].move);
 }
 
 void onTouch(uint16_t x, uint16_t y) {
@@ -115,6 +156,7 @@ void onTouch(uint16_t x, uint16_t y) {
     const Move &m = MOVES[i];
     if (x >= m.x && x < m.x + m.w && y >= m.y && y < m.y + BH) { start(i); return; }
   }
+  if (x >= AUTO_X && x < AUTO_X + AUTO_W && y >= AUTO_Y && y < AUTO_Y + BH) { startAuto(); return; }
   // Anywhere else, STOP bar included, stops everything
   if (active >= 0) stop("stopped");
 }
@@ -158,15 +200,17 @@ button{width:100%;padding:24px;margin:6px 0;font-size:20px;border:0;border-radiu
 <p id=st>...</p>
 <button data-i=0>15cm CLOSE (R1)</button><button data-i=1>15cm OPEN (R2)</button>
 <button data-i=2>40cm PRESS (R3)</button><button data-i=3>40cm HOME (R4)</button>
-<button data-i=4>MIXER ON (R5)</button>
+<button data-i=4>MIXER ON (R5)</button><button id=a>AUTO RUN</button>
 <button id=s>STOP ALL</button>
 <script>
 const b=[...document.querySelectorAll('[data-i]')];
 function show(t){let [a,m]=t.split('|');a=+a;st.textContent=m;
-b.forEach(x=>x.className=+x.dataset.i===a?'on':'')}
+b.forEach(x=>x.className=+x.dataset.i===a?'on':'');
+document.getElementById('a').className=m.startsWith('AUTO')?'on':''}
 const go=u=>fetch(u).then(r=>r.text()).then(show).catch(()=>st.textContent='NO LINK');
 b.forEach(x=>x.onclick=()=>go('/move?i='+x.dataset.i));
 s.onclick=()=>go('/stop');
+document.getElementById('a').onclick=()=>go('/auto');
 setInterval(()=>go('/state'),1000);go('/state');
 </script>)HTML";
 
@@ -174,8 +218,7 @@ setInterval(()=>go('/state'),1000);go('/state');
 void sendState() {
   String s = String(active) + "|";
   if (active < 0) s += "STOPPED - all relays OFF";
-  else s += String("RUNNING ") + MOVES[active].label + "  " +
-            String((millis() - startMs) / 1000) + " s";
+  else s += runText() + "  " + String((millis() - startMs) / 1000) + " s";
   web.send(200, "text/plain", s);
 }
 
@@ -184,6 +227,7 @@ void webBegin() {
   web.on("/", [] { web.send_P(200, "text/html", PAGE); });
   web.on("/state", sendState);
   web.on("/stop", [] { if (active >= 0) stop("stopped (web)"); sendState(); });
+  web.on("/auto", [] { startAuto(); sendState(); });
   web.on("/move", [] {
     int i = web.arg("i").toInt();
     if (web.hasArg("i") && i >= 0 && i < N_MOVES) start(i);
@@ -203,7 +247,7 @@ void setup() {
   Serial.begin(115200);
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
   delay(500);
-  Serial.println("\n===== Actuator test: 1..5 = move, any other key = stop =====");
+  Serial.println("\n===== Actuator test: 1..5 = move, a = auto, any other key = stop =====");
   initScreen();
   webBegin();
 }
@@ -215,8 +259,10 @@ void loop() {
   if (Serial.available()) {
     char c = Serial.read();
     if (c >= '1' && c < '1' + N_MOVES) start(c - '1');
+    else if (c == 'a') startAuto();
     else if (c != '\n' && c != '\r' && active >= 0) stop("stopped");
   }
 
+  autoTick();
   if (active >= 0 && millis() - startMs >= RUN_TIMEOUT_MS) stop("TIMEOUT - auto stop");
 }
