@@ -296,9 +296,20 @@ void setup() {
   if (WEB_ENABLED) webBegin();
 }
 
+// Logs any part of loop() that stalls: a stall delays STOP taps and timers
+void slow(const char *what, uint32_t t0) {
+  const uint32_t d = millis() - t0;
+  if (d >= 100) Serial.printf("SLOW %s %lu ms\n", what, (unsigned long)d);
+}
+
 void loop() {
+  const uint32_t loopStart = millis();
+  uint32_t t = millis();
   pumpRx();
+  slow("nextion rx/touch", t);
+  t = millis();
   if (WEB_ENABLED) web.handleClient();
+  slow("web", t);
 
   // Keepalive: the demo slideshow or a display reboot wipes our screen.
   // sendme replies with the page number; silence means redraw.
@@ -341,4 +352,5 @@ void loop() {
 
   autoTick();
   if (active >= 0 && millis() - startMs >= RUN_TIMEOUT_MS) stop("TIMEOUT - auto stop");
+  slow("loop total", loopStart);
 }
