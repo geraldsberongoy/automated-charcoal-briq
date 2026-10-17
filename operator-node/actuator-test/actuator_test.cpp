@@ -13,8 +13,8 @@
 //   IN4 GPIO33  40 cm RETRACT (home)   <- moved off GPIO14, it pulses at boot
 //   IN5 GPIO23  MIXER motor ON (relay in the PSU V+ line to the motor driver)
 //   IN6 GPIO32  WATER solenoid valve open
-//   YF-S201 flow sensor signal -> GPIO34 (1k series, 10k GPIO34-3V3 pull-up;
-//   a 10k in series halves the pulse with the pull-up and nothing counts)
+//   YF-S201 flow sensor signal -> GPIO34 through a 10k series resistor, no
+//   pull-up (with one, the two halve the pulse and nothing counts)
 //   Nextion TX -> GPIO16, Nextion RX -> GPIO17, 115200 baud (boots at 9600).
 //
 // Control: tap a button on the Nextion to run that move, tap it again or
@@ -321,7 +321,7 @@ void setup() {
   for (int pin : RELAY) { digitalWrite(pin, HIGH); pinMode(pin, OUTPUT); }
 
   Serial.begin(115200);
-  pinMode(FLOW_PIN, INPUT);   // GPIO34 has no pull-up: the external 10k to 3V3 is required
+  pinMode(FLOW_PIN, INPUT);   // no pull-up on GPIO34: a loose wire floats, the 2 ms filter helps
   attachInterrupt(digitalPinToInterrupt(FLOW_PIN), onFlowPulse, FALLING);
 
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
