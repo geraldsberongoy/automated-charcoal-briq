@@ -14,7 +14,7 @@
 //   IN5 GPIO23  MIXER motor ON (relay in the PSU V+ line to the motor driver)
 //   IN6 GPIO32  WATER solenoid valve open
 //   YF-S201 flow sensor signal -> GPIO34 (through a 10k series resistor)
-//   Nextion TX -> GPIO16, Nextion RX -> GPIO17, 9600 baud.
+//   Nextion TX -> GPIO16, Nextion RX -> GPIO17, 115200 baud (boots at 9600).
 //
 // Control: tap a button on the Nextion to run that move, tap it again or
 // STOP to stop. AUTO RUN plays AUTO[] below, one relay at a time; any tap
@@ -215,6 +215,22 @@ void handleFrame() {
   }
 }
 
+// 9600 baud made a full redraw block loop() ~600 ms. Same handshake as
+// NextionManager::_syncLink(): the display boots at 9600, so ask for 115200
+// there, then follow it. Harmless if it is already at 115200.
+void syncLink() {
+  Serial2.updateBaudRate(9600);
+  cmd("");
+  cmd("baud=115200");
+  Serial2.flush();
+  delay(100);
+  Serial2.updateBaudRate(115200);
+  delay(50);
+  while (Serial2.available()) Serial2.read();  // drop replies from the switch
+  len = 0;
+  ffCount = 0;
+}
+
 void pumpRx() {
   while (Serial2.available()) {
     uint8_t b = Serial2.read();
@@ -292,14 +308,16 @@ void setup() {
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
   delay(500);
   Serial.println("\n===== Actuator test: 1..6 = move, a = auto, any other key = stop =====");
+  syncLink();
   initScreen();
   if (WEB_ENABLED) webBegin();
 }
 
-// Logs any part of loop() that stalls: a stall delays STOP taps and timers
+// Logs any part of loop() that stalls 250 ms+ (a move start takes ~145 ms,
+// 100 of it the deliberate dead time): a stall delays STOP taps and timers
 void slow(const char *what, uint32_t t0) {
   const uint32_t d = millis() - t0;
-  if (d >= 100) Serial.printf("SLOW %s %lu ms\n", what, (unsigned long)d);
+  if (d >= 250) Serial.printf("SLOW %s %lu ms\n", what, (unsigned long)d);
 }
 
 void loop() {
@@ -316,7 +334,8 @@ void loop() {
   if (millis() - lastPingMs >= 2000) {
     lastPingMs = millis();
     if (millis() - lastRxMs >= 6000) {
-      Serial.println("No reply from Nextion, redrawing");
+      Serial.println("No reply from Nextion, resyncing and redrawing");
+      syncLink();   // a display reboot drops it back to 9600
       initScreen();
       lastRxMs = millis();
     }
