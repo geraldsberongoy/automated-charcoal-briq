@@ -326,6 +326,19 @@ void loop() {
     statusLine(runText().c_str());
   }
 
+  // Flow test: any pulses since boot show up once a second, nothing tapped
+  static uint32_t lastFlowReportMs = 0, lastPulses = 0;
+  if (millis() - lastFlowReportMs >= 1000) {
+    lastFlowReportMs = millis();
+    const uint32_t p = flowPulses;
+    if (p != lastPulses) {
+      lastPulses = p;
+      const String s = "FLOW TEST  " + String(p / PULSES_PER_L, 2) + " L  (" + String(p) + " pulses)";
+      Serial.println(s);
+      if (active < 0) statusLine(s.c_str());
+    }
+  }
+
   autoTick();
   if (active >= 0 && millis() - startMs >= RUN_TIMEOUT_MS) stop("TIMEOUT - auto stop");
 }
