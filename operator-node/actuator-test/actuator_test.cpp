@@ -63,6 +63,9 @@ constexpr int   HX_DT       = 19;
 constexpr int   HX_SCK      = 18;
 constexpr float LSB_PER_KG  = 22480.0f;
 constexpr float PRESS_STOP_KG = 10.0f;   // press stops pushing at this load
+// Pressing read negative on the rig (signal pair reversed for how the cell
+// is mounted). -1 flips it; set back to 1 if white/green get swapped.
+constexpr float LOAD_SIGN     = -1.0f;
 
 long hxRaw  = 0;      // last reading
 long hxTare = 0;      // raw value at zero load
@@ -170,7 +173,7 @@ void flowLine() {
   cmd("xstr 400,10,185,40,0,WHITE,BLACK,2,1,1,\"" + t + "\"");
 }
 
-float loadKg() { return (hxRaw - hxTare) / LSB_PER_KG; }
+float loadKg() { return LOAD_SIGN * (hxRaw - hxTare) / LSB_PER_KG; }
 
 // Load cell force, top right, always on screen
 void forceLine() {
