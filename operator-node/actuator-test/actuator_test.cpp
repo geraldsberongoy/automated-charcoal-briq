@@ -84,6 +84,7 @@ uint32_t startMs  = 0;
 
 volatile uint32_t flowPulses = 0;
 uint32_t pulseStart = 0;   // flowPulses when the current move began
+uint32_t rawUntilMs = 0;   // serial key r: raw GPIO34 voltage readout until then
 
 // Max real rate is ~30 L/min = ~225 pulses/s (4.4 ms apart). Edges closer
 // than 2 ms are noise (a loose or floating signal wire counted 1000s/s).
@@ -365,6 +366,7 @@ void loop() {
     char c = Serial.read();
     if (c >= '1' && c < '1' + N_MOVES) start(c - '1');
     else if (c == 'a') startAuto();
+    else if (c == 'r') { rawUntilMs = millis() + 20000; Serial.println("RAW flow readout for 20 s"); }
     else if (c != '\n' && c != '\r' && active >= 0) stop("stopped");
   }
 
@@ -373,6 +375,24 @@ void loop() {
   if (watering() && millis() - lastFlowDrawMs >= 500) {
     lastFlowDrawMs = millis();
     statusLine(runText().c_str());
+  }
+
+  // Serial key r: GPIO34 voltage 10x a second for 20 s, to see what the
+  // sensor line does. analogRead takes the pin off the digital input, so
+  // the interrupt is re-armed when the window ends.
+  static uint32_t lastRawMs = 0;
+  static bool rawWasOn = false;
+  if (millis() < rawUntilMs) {
+    rawWasOn = true;
+    if (millis() - lastRawMs >= 100) {
+      lastRawMs = millis();
+      Serial.printf("RAW GPIO34 %4d mV\n", analogReadMilliVolts(FLOW_PIN));
+    }
+  } else if (rawWasOn) {
+    rawWasOn = false;
+    pinMode(FLOW_PIN, INPUT);
+    attachInterrupt(digitalPinToInterrupt(FLOW_PIN), onFlowPulse, FALLING);
+    Serial.println("RAW done, pulse counting back on");
   }
 
   // Flow test: new pulses update the FLOW box and serial once a second
