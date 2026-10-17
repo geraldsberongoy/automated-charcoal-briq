@@ -86,17 +86,9 @@ volatile uint32_t flowPulses = 0;
 uint32_t pulseStart = 0;   // flowPulses when the current move began
 uint32_t rawUntilMs = 0;   // serial key r: raw GPIO34 voltage readout until then
 
-// Max real rate is ~30 L/min = ~225 pulses/s (4.4 ms apart). Edges closer
-// than 2 ms are noise (a loose or floating signal wire counted 1000s/s).
-constexpr uint32_t FLOW_MIN_GAP_US = 2000;
-
-void IRAM_ATTR onFlowPulse() {
-  static uint32_t lastUs = 0;
-  const uint32_t now = micros();
-  if (now - lastUs < FLOW_MIN_GAP_US) return;
-  lastUs = now;
-  flowPulses++;
-}
+// Plain counter: a 2 ms gap filter here zeroed real pulses on the rig.
+// ponytail: no noise filter, so a loose signal wire counts junk. Seat it.
+void IRAM_ATTR onFlowPulse() { flowPulses++; }
 
 float litres() { return (flowPulses - pulseStart) / PULSES_PER_L; }
 bool  watering() { return active >= 0 && MOVES[active].relay == WATER_RELAY; }
@@ -322,7 +314,7 @@ void setup() {
   for (int pin : RELAY) { digitalWrite(pin, HIGH); pinMode(pin, OUTPUT); }
 
   Serial.begin(115200);
-  pinMode(FLOW_PIN, INPUT);   // no pull-up on GPIO34: a loose wire floats, the 2 ms filter helps
+  pinMode(FLOW_PIN, INPUT);   // no pull-up on GPIO34; the sensor has its own
   attachInterrupt(digitalPinToInterrupt(FLOW_PIN), onFlowPulse, FALLING);
 
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
