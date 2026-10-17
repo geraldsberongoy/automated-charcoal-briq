@@ -62,6 +62,7 @@ constexpr uint32_t WATER_NO_SENSOR_MS = 10000;
 constexpr int   HX_DT       = 19;
 constexpr int   HX_SCK      = 18;
 constexpr float LSB_PER_KG  = 22480.0f;
+constexpr float MIXER_STOP_KG = 10.0f;   // mixer switches off at this load
 
 long hxRaw  = 0;      // last reading
 long hxTare = 0;      // raw value at zero load
@@ -234,14 +235,29 @@ void startAuto() {
   run(AUTO[0].move);
 }
 
+void nextAutoStep();
+
 void autoTick() {
   if (autoStep < 0) return;
   const AutoStep &st = AUTO[autoStep];
   const bool dosed = st.litres > 0 && litres() >= st.litres;
   if (!dosed && millis() - startMs < st.ms) return;
   if (FLOW_ENABLED && watering()) Serial.printf("Water: %.2f L%s\n", litres(), dosed ? "" : " (time cap hit)");
+  nextAutoStep();
+}
+
+void nextAutoStep() {
   if (++autoStep == N_AUTO) stop("AUTO done - all relays OFF");
   else run(AUTO[autoStep].move);
+}
+
+// Mixer off once the load cell reaches MIXER_STOP_KG. In AUTO RUN the
+// mixer step ends early and the run goes on; a manual run just stops.
+void loadCutoff() {
+  if (active < 0 || MOVES[active].relay != 4 || loadKg() < MIXER_STOP_KG) return;
+  Serial.printf("LOAD %.2f kg >= %.1f kg: mixer off\n", loadKg(), MIXER_STOP_KG);
+  if (autoStep >= 0) nextAutoStep();
+  else stop("LOAD limit - mixer OFF");
 }
 
 void onTouch(uint16_t x, uint16_t y) {
@@ -440,6 +456,8 @@ void loop() {
     if (bootReads < 30) {
       if (++bootReads > 20) tareSum += hxRaw;
       if (bootReads == 30) { hxTare = tareSum / 10; Serial.printf("LOAD tared at raw %ld\n", hxTare); }
+    } else {
+      loadCutoff();   // only once zeroed, so boot jumps can't trip it
     }
   }
   if (millis() - lastLoadReportMs >= 1000) {
