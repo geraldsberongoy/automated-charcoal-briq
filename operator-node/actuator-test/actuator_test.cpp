@@ -53,7 +53,7 @@ constexpr float WATER_TARGET_L = 1.0f;   // AUTO RUN water dose
 
 // Flow sensor off for now: GPIO34 kept counting with no flow. While off,
 // nothing reads the pin and AUTO RUN's water step runs on time instead.
-constexpr bool     FLOW_ENABLED       = false;
+constexpr bool     FLOW_ENABLED       = true;
 constexpr uint32_t WATER_NO_SENSOR_MS = 10000;
 
 // HX711 + S-type load cell. Scale from the README (22,480 counts/kg), which
