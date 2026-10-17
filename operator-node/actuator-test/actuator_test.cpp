@@ -53,9 +53,9 @@ constexpr uint16_t AUTO_X = 410, AUTO_Y = 280, AUTO_W = 370;
 // Strokes are 7 mm/s no-load plus margin; end limits stop the actuator early.
 struct AutoStep { int move; uint32_t ms; };
 const AutoStep AUTO[] = {
-  {4,  1000},   // mix
+  {4,  5000},   // mix
   {1, 25000},   // open trapdoor (15 cm = ~21 s)
-  {4,  1000},   // mixer burst pushes the mix through
+  {4,  5000},   // mixer burst pushes the mix through
   {0, 25000},   // close trapdoor
   {2, 65000},   // press down (40 cm = ~57 s)
   {3, 65000},   // press home
