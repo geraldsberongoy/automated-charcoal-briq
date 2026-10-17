@@ -12,12 +12,13 @@
 //   IN3 GPIO27  40 cm EXTEND  (press)
 //   IN4 GPIO33  40 cm RETRACT (home)   <- moved off GPIO14, it pulses at boot
 //   IN5 GPIO23  MIXER motor ON (relay in the PSU V+ line to the motor driver)
-//   IN6 GPIO32  held OFF (solenoid)
+//   IN6 GPIO32  WATER solenoid valve open
+//   YF-S201 flow sensor signal -> GPIO34 (through a 10k/20k divider)
 //   Nextion TX -> GPIO16, Nextion RX -> GPIO17, 9600 baud.
 //
 // Control: tap a button on the Nextion to run that move, tap it again or
 // STOP to stop. AUTO RUN plays AUTO[] below, one relay at a time; any tap
-// stops it. Serial Monitor (115200) works too: 1..5 = move, a = auto,
+// stops it. Serial Monitor (115200) works too: 1..6 = move, a = auto,
 // any other key = stop. Phone/laptop (only with WEB_ENABLED): join Wi-Fi
 // "Actuator-Test" (password "OperatorPassword"), open http://192.168.4.1.
 // Every move auto-stops after RUN_TIMEOUT_MS.
@@ -38,43 +39,62 @@ constexpr uint32_t DEAD_TIME_MS   = 100;
 // on laptop USB alone the Wi-Fi start-up current kills the ESP32 ~2 s in.
 constexpr bool WEB_ENABLED = true;
 
-// Relays 1..6 (IN1..IN6). Only 0..4 ever turn on here.
+// Relays 1..6 (IN1..IN6)
 constexpr int RELAY[] = {25, 26, 27, 33, 23, 32};
+constexpr int WATER_RELAY = 5;
+
+// YF-S201: calibration from the README (gravimetric test). Re-check it by
+// filling a measuring jug: new = 450 * litres shown / litres in the jug.
+constexpr int   FLOW_PIN       = 34;     // input-only, interrupt, no boot role
+constexpr float PULSES_PER_L   = 450.0f;
+constexpr float WATER_TARGET_L = 1.0f;   // AUTO RUN water dose
 
 struct Move { const char *label; int relay; uint16_t x, y, w; };
-constexpr uint16_t BH = 95;
+constexpr uint16_t BH = 75;
 const Move MOVES[] = {
-  {"15cm CLOSE (R1)", 0,  20,  70, 370},
-  {"15cm OPEN (R2)",  1, 410,  70, 370},
-  {"40cm PRESS (R3)", 2,  20, 175, 370},
-  {"40cm HOME (R4)",  3, 410, 175, 370},
-  {"MIXER ON (R5)",   4,  20, 280, 370},
+  {"15cm CLOSE (R1)", 0,  20,  65, 370},
+  {"15cm OPEN (R2)",  1, 410,  65, 370},
+  {"40cm PRESS (R3)", 2,  20, 148, 370},
+  {"40cm HOME (R4)",  3, 410, 148, 370},
+  {"MIXER ON (R5)",   4,  20, 231, 370},
+  {"WATER ON (R6)",   5, 410, 231, 370},
 };
 constexpr int N_MOVES = sizeof(MOVES) / sizeof(MOVES[0]);
-constexpr uint16_t AUTO_X = 410, AUTO_Y = 280, AUTO_W = 370;
+constexpr uint16_t AUTO_X = 20, AUTO_Y = 314, AUTO_W = 760;
 
-// Automated run: MOVES index + how long it stays on. Tune times on the rig.
-// Strokes are 7 mm/s no-load plus margin; end limits stop the actuator early.
-struct AutoStep { int move; uint32_t ms; };
+// Automated run: MOVES index, max time on, and for water the litres that end
+// the step early. Strokes are 7 mm/s no-load; end limits stop them anyway.
+struct AutoStep { int move; uint32_t ms; float litres; };
 const AutoStep AUTO[] = {
-  {4,  5000},   // mix
-  {1, 20000},   // open trapdoor (15 cm = ~21 s)
-  {4,  5000},   // mixer burst pushes the mix through
-  {0, 20000},   // close trapdoor
-  {2, 20000},   // press down (40 cm = ~57 s, so ~14 cm here)
-  {3, 20000},   // press home
+  {5, 60000, WATER_TARGET_L},  // water in, capped at 60 s if flow is low
+  {4,  5000, 0},   // mix
+  {1, 20000, 0},   // open trapdoor (15 cm = ~21 s)
+  {4,  5000, 0},   // mixer burst pushes the mix through
+  {0, 20000, 0},   // close trapdoor
+  {2, 20000, 0},   // press down (40 cm = ~57 s, so ~14 cm here)
+  {3, 20000, 0},   // press home
 };
 constexpr int N_AUTO = sizeof(AUTO) / sizeof(AUTO[0]);
-constexpr uint16_t STOP_X = 20, STOP_Y = 385, STOP_W = 760, STOP_H = 85;
+constexpr uint16_t STOP_X = 20, STOP_Y = 397, STOP_W = 760, STOP_H = 75;
 
 int      active   = -1;  // index into MOVES, -1 = all stopped
 int      autoStep = -1;  // index into AUTO, -1 = not in an auto run
 uint32_t startMs  = 0;
 
+volatile uint32_t flowPulses = 0;
+uint32_t pulseStart = 0;   // flowPulses when the current move began
+
+void IRAM_ATTR onFlowPulse() { flowPulses++; }
+
+float litres() { return (flowPulses - pulseStart) / PULSES_PER_L; }
+bool  watering() { return active >= 0 && MOVES[active].relay == WATER_RELAY; }
+
 String runText() {
   String s = autoStep >= 0 ? "AUTO " + String(autoStep + 1) + "/" + String(N_AUTO) + " "
                            : String("RUNNING ");
-  return s + MOVES[active].label;
+  s += MOVES[active].label;
+  if (watering()) s += "  " + String(litres(), 2) + " L";
+  return s;
 }
 
 // ── Relays ───────────────────────────────────────────────────────────────────
@@ -96,9 +116,13 @@ void button(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
       ",0,WHITE," + color + ",1,1,1,\"" + text + "\"");
 }
 
-void draw(const char *status) {
+void statusLine(const char *status) {
   cmd("fill 0,0,800,60,BLACK");
   cmd(String("xstr 20,10,760,40,0,YELLOW,BLACK,0,1,1,\"") + status + "\"");
+}
+
+void draw(const char *status) {
+  statusLine(status);
   for (int i = 0; i < N_MOVES; i++) {
     const Move &m = MOVES[i];
     button(m.x, m.y, m.w, BH, i == active ? "GREEN" : "GRAY", m.label);
@@ -121,6 +145,7 @@ void initScreen() {
 // ── Control ──────────────────────────────────────────────────────────────────
 
 void stop(const char *why) {
+  if (watering()) Serial.printf("Water: %.2f L\n", litres());
   allOff();
   active   = -1;
   autoStep = -1;
@@ -132,8 +157,9 @@ void run(int i) {
   allOff();
   delay(DEAD_TIME_MS);  // let the previous contact open before reversing
   digitalWrite(RELAY[MOVES[i].relay], LOW);
-  active  = i;
-  startMs = millis();
+  active     = i;
+  startMs    = millis();
+  pulseStart = flowPulses;
   Serial.printf("%s (GPIO%d LOW)\n", runText().c_str(), RELAY[MOVES[i].relay]);
   draw(runText().c_str());
 }
@@ -151,7 +177,11 @@ void startAuto() {
 }
 
 void autoTick() {
-  if (autoStep < 0 || millis() - startMs < AUTO[autoStep].ms) return;
+  if (autoStep < 0) return;
+  const AutoStep &st = AUTO[autoStep];
+  const bool dosed = st.litres > 0 && litres() >= st.litres;
+  if (!dosed && millis() - startMs < st.ms) return;
+  if (watering()) Serial.printf("Water: %.2f L%s\n", litres(), dosed ? "" : " (time cap hit)");
   if (++autoStep == N_AUTO) stop("AUTO done - all relays OFF");
   else run(AUTO[autoStep].move);
 }
@@ -210,7 +240,8 @@ button{width:100%;padding:24px;margin:6px 0;font-size:20px;border:0;border-radiu
 <p id=st>...</p>
 <button data-i=0>15cm CLOSE (R1)</button><button data-i=1>15cm OPEN (R2)</button>
 <button data-i=2>40cm PRESS (R3)</button><button data-i=3>40cm HOME (R4)</button>
-<button data-i=4>MIXER ON (R5)</button><button id=a>AUTO RUN</button>
+<button data-i=4>MIXER ON (R5)</button><button data-i=5>WATER ON (R6)</button>
+<button id=a>AUTO RUN</button>
 <button id=s>STOP ALL</button>
 <script>
 const b=[...document.querySelectorAll('[data-i]')];
@@ -255,9 +286,12 @@ void setup() {
   for (int pin : RELAY) { digitalWrite(pin, HIGH); pinMode(pin, OUTPUT); }
 
   Serial.begin(115200);
+  pinMode(FLOW_PIN, INPUT);   // GPIO34 has no pull-up; the sensor drives it
+  attachInterrupt(digitalPinToInterrupt(FLOW_PIN), onFlowPulse, FALLING);
+
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
   delay(500);
-  Serial.println("\n===== Actuator test: 1..5 = move, a = auto, any other key = stop =====");
+  Serial.println("\n===== Actuator test: 1..6 = move, a = auto, any other key = stop =====");
   initScreen();
   if (WEB_ENABLED) webBegin();
 }
@@ -283,6 +317,13 @@ void loop() {
     if (c >= '1' && c < '1' + N_MOVES) start(c - '1');
     else if (c == 'a') startAuto();
     else if (c != '\n' && c != '\r' && active >= 0) stop("stopped");
+  }
+
+  // Live litres on the Nextion while the valve is open (status line only)
+  static uint32_t lastFlowDrawMs = 0;
+  if (watering() && millis() - lastFlowDrawMs >= 500) {
+    lastFlowDrawMs = millis();
+    statusLine(runText().c_str());
   }
 
   autoTick();
