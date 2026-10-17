@@ -15,11 +15,12 @@
 //   IN6 GPIO32  WATER solenoid valve open
 //   YF-S201 flow sensor signal -> GPIO34 through a 10k series resistor, no
 //   pull-up (with one, the two halve the pulse and nothing counts)
+//   HX711 DT -> GPIO19, SCK -> GPIO18, VCC -> 3V3 (S-type load cell on E+/E-/A+/A-)
 //   Nextion TX -> GPIO16, Nextion RX -> GPIO17, 115200 baud (boots at 9600).
 //
 // Control: tap a button on the Nextion to run that move, tap it again or
 // STOP to stop. AUTO RUN plays AUTO[] below, one relay at a time; any tap
-// stops it. Serial Monitor (115200) works too: 1..6 = move, a = auto,
+// stops it. Serial Monitor (115200) works too: 1..6 = move, a = auto, t = tare,
 // any other key = stop. Phone/laptop (only with WEB_ENABLED): join Wi-Fi
 // "Actuator-Test" (password "OperatorPassword"), open http://192.168.4.1.
 // Every move auto-stops after RUN_TIMEOUT_MS.
@@ -49,6 +50,37 @@ constexpr int WATER_RELAY = 5;
 constexpr int   FLOW_PIN       = 34;     // input-only, interrupt, no boot role
 constexpr float PULSES_PER_L   = 450.0f;
 constexpr float WATER_TARGET_L = 1.0f;   // AUTO RUN water dose
+
+// HX711 + S-type load cell. Scale from the README (22,480 counts/kg), which
+// was taken at 5 V excitation; here the HX711 runs on 3V3, so re-check it
+// with a known weight: new = (raw - tare) / kg on the scale.
+constexpr int   HX_DT       = 19;
+constexpr int   HX_SCK      = 18;
+constexpr float LSB_PER_KG  = 22480.0f;
+
+long hxRaw  = 0;      // last reading
+long hxTare = 0;      // raw value at zero load
+bool hxSeen = false;  // has the HX711 ever answered
+
+// DT goes LOW when a sample is ready. Then 24 clocks shift it out MSB
+// first; a 25th selects channel A, gain 128 for the next one.
+bool hxReady() { return digitalRead(HX_DT) == LOW; }
+
+long hxRead() {
+  static portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+  long v = 0;
+  portENTER_CRITICAL(&mux);   // ~60 us; a long SCK-high stall resets the HX711
+  for (int i = 0; i < 25; i++) {
+    digitalWrite(HX_SCK, HIGH);
+    delayMicroseconds(1);
+    if (i < 24) v = (v << 1) | digitalRead(HX_DT);
+    digitalWrite(HX_SCK, LOW);
+    delayMicroseconds(1);
+  }
+  portEXIT_CRITICAL(&mux);
+  if (v & 0x800000) v |= ~0xFFFFFFL;   // 24-bit two's complement
+  return v;
+}
 
 struct Move { const char *label; int relay; uint16_t x, y, w; };
 constexpr uint16_t BH = 75;
@@ -121,19 +153,28 @@ void button(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
 }
 
 void statusLine(const char *status) {
-  cmd("fill 0,0,590,60,BLACK");
-  cmd(String("xstr 20,10,570,40,0,YELLOW,BLACK,0,1,1,\"") + status + "\"");
+  cmd("fill 0,0,400,60,BLACK");
+  cmd(String("xstr 20,10,380,40,0,YELLOW,BLACK,0,1,1,\"") + status + "\"");
 }
 
-// Total flow since power-up, top right, always on screen
+// Total flow since power-up, always on screen
 void flowLine() {
-  cmd("xstr 590,10,190,40,0,WHITE,BLACK,2,1,1,\"FLOW " +
+  cmd("xstr 400,10,185,40,0,WHITE,BLACK,2,1,1,\"FLOW " +
       String(flowPulses / PULSES_PER_L, 2) + " L\"");
+}
+
+float loadKg() { return (hxRaw - hxTare) / LSB_PER_KG; }
+
+// Load cell force, top right, always on screen
+void forceLine() {
+  String t = hxSeen ? "LOAD " + String(loadKg() * 9.80665f, 0) + " N" : String("LOAD --");
+  cmd("xstr 590,10,190,40,0,CYAN,BLACK,2,1,1,\"" + t + "\"");
 }
 
 void draw(const char *status) {
   statusLine(status);
   flowLine();
+  forceLine();
   for (int i = 0; i < N_MOVES; i++) {
     const Move &m = MOVES[i];
     button(m.x, m.y, m.w, BH, i == active ? "GREEN" : "GRAY", m.label);
@@ -288,6 +329,8 @@ void sendState() {
   if (active < 0) s += "STOPPED - all relays OFF";
   else s += runText() + "  " + String((millis() - startMs) / 1000) + " s";
   s += "   |   FLOW " + String(flowPulses / PULSES_PER_L, 2) + " L (" + String(flowPulses) + " pulses)";
+  s += hxSeen ? "   |   LOAD " + String(loadKg(), 2) + " kg (" + String(loadKg() * 9.80665f, 0) + " N)"
+              : String("   |   LOAD no HX711");
   web.send(200, "text/plain", s);
 }
 
@@ -316,6 +359,10 @@ void setup() {
   Serial.begin(115200);
   pinMode(FLOW_PIN, INPUT);   // no pull-up on GPIO34; the sensor has its own
   attachInterrupt(digitalPinToInterrupt(FLOW_PIN), onFlowPulse, FALLING);
+
+  pinMode(HX_DT, INPUT_PULLUP);   // unplugged HX711 reads "not ready", not junk
+  pinMode(HX_SCK, OUTPUT);
+  digitalWrite(HX_SCK, LOW);   // SCK high > 60 us powers the HX711 down
 
   Serial2.begin(9600, SERIAL_8N1, RXD2, TXD2);
   delay(500);
@@ -359,6 +406,7 @@ void loop() {
     if (c >= '1' && c < '1' + N_MOVES) start(c - '1');
     else if (c == 'a') startAuto();
     else if (c == 'r') { rawUntilMs = millis() + 20000; Serial.println("RAW flow readout for 20 s"); }
+    else if (c == 't') { hxTare = hxRaw; Serial.printf("LOAD tared at raw %ld\n", hxTare); forceLine(); }
     else if (c != '\n' && c != '\r' && active >= 0) stop("stopped");
   }
 
@@ -367,6 +415,25 @@ void loop() {
   if (watering() && millis() - lastFlowDrawMs >= 500) {
     lastFlowDrawMs = millis();
     statusLine(runText().c_str());
+  }
+
+  // Load cell: read when the HX711 has a sample (~10/s), report once a second
+  static uint32_t lastLoadReportMs = 0, lastHxMs = 0;
+  static bool tared = false;
+  if (hxReady()) {
+    hxRaw = hxRead();
+    lastHxMs = millis();
+    if (!hxSeen) Serial.println("LOAD: HX711 found");
+    hxSeen = true;
+    if (!tared) { hxTare = hxRaw; tared = true; }   // zero at boot: keep it unloaded
+  }
+  if (millis() - lastLoadReportMs >= 1000) {
+    lastLoadReportMs = millis();
+    if (hxSeen && millis() - lastHxMs > 2000) { hxSeen = false; Serial.println("LOAD: HX711 stopped answering"); }
+    if (hxSeen) Serial.printf("LOAD  raw %8ld  %7.2f kg  %6.0f N\n", hxRaw, loadKg(), loadKg() * 9.80665f);
+    else if ((millis() / 1000) % 5 == 0)
+      Serial.println("LOAD  no HX711 (check DT GPIO19, SCK GPIO18, VCC 3V3, GND)");
+    forceLine();
   }
 
   // Serial key r: GPIO34 voltage 10x a second for 20 s, to see what the
