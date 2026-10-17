@@ -117,12 +117,19 @@ void button(uint16_t x, uint16_t y, uint16_t w, uint16_t h,
 }
 
 void statusLine(const char *status) {
-  cmd("fill 0,0,800,60,BLACK");
-  cmd(String("xstr 20,10,760,40,0,YELLOW,BLACK,0,1,1,\"") + status + "\"");
+  cmd("fill 0,0,590,60,BLACK");
+  cmd(String("xstr 20,10,570,40,0,YELLOW,BLACK,0,1,1,\"") + status + "\"");
+}
+
+// Total flow since power-up, top right, always on screen
+void flowLine() {
+  cmd("xstr 590,10,190,40,0,WHITE,BLACK,2,1,1,\"FLOW " +
+      String(flowPulses / PULSES_PER_L, 2) + " L\"");
 }
 
 void draw(const char *status) {
   statusLine(status);
+  flowLine();
   for (int i = 0; i < N_MOVES; i++) {
     const Move &m = MOVES[i];
     button(m.x, m.y, m.w, BH, i == active ? "GREEN" : "GRAY", m.label);
@@ -276,6 +283,7 @@ void sendState() {
   String s = String(active) + "|";
   if (active < 0) s += "STOPPED - all relays OFF";
   else s += runText() + "  " + String((millis() - startMs) / 1000) + " s";
+  s += "   |   FLOW " + String(flowPulses / PULSES_PER_L, 2) + " L (" + String(flowPulses) + " pulses)";
   web.send(200, "text/plain", s);
 }
 
@@ -356,16 +364,15 @@ void loop() {
     statusLine(runText().c_str());
   }
 
-  // Flow test: any pulses since boot show up once a second, nothing tapped
+  // Flow test: new pulses update the FLOW box and serial once a second
   static uint32_t lastFlowReportMs = 0, lastPulses = 0;
   if (millis() - lastFlowReportMs >= 1000) {
     lastFlowReportMs = millis();
     const uint32_t p = flowPulses;
     if (p != lastPulses) {
       lastPulses = p;
-      const String s = "FLOW TEST  " + String(p / PULSES_PER_L, 2) + " L  (" + String(p) + " pulses)";
-      Serial.println(s);
-      if (active < 0) statusLine(s.c_str());
+      Serial.printf("FLOW TEST  %.2f L  (%lu pulses)\n", p / PULSES_PER_L, (unsigned long)p);
+      flowLine();
     }
   }
 
