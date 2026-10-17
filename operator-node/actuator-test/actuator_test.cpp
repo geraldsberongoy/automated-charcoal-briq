@@ -34,6 +34,11 @@
 constexpr uint32_t RUN_TIMEOUT_MS = 70000UL;
 constexpr uint32_t DEAD_TIME_MS   = 100;
 
+// Phone web page off: the Wi-Fi start-up current kills the ESP32 on the
+// current bench supply (serial goes dead ~2 s after boot). Set true once
+// ESP32 VIN and the Nextion both run from LM2596 #1 instead of USB.
+constexpr bool WEB_ENABLED = false;
+
 // Relays 1..6 (IN1..IN6). Only 0..4 ever turn on here.
 constexpr int RELAY[] = {25, 26, 27, 33, 23, 32};
 
@@ -255,12 +260,12 @@ void setup() {
   delay(500);
   Serial.println("\n===== Actuator test: 1..5 = move, a = auto, any other key = stop =====");
   initScreen();
-  webBegin();
+  if (WEB_ENABLED) webBegin();
 }
 
 void loop() {
   pumpRx();
-  web.handleClient();
+  if (WEB_ENABLED) web.handleClient();
 
   // Keepalive: the demo slideshow or a display reboot wipes our screen.
   // sendme replies with the page number; silence means redraw.
