@@ -1,7 +1,8 @@
 /* ──────────────────────────────────────────────────────────────────────────── */
 /* Design Tokens — matches the original PROGMEM dashboard aesthetic            */
 /* ──────────────────────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+/* No font CDN: the PWA is served offline from the ESP32 and must be self-contained.
+   Inter / JetBrains Mono are used where installed; otherwise the system stacks below. */
 
 :root {
   --clr-bg-0:       #0a0c10;
@@ -19,8 +20,8 @@
   --clr-text-1:     #9bacc8;
   --clr-text-2:     #5d7299;
 
-  --font-mono:  'JetBrains Mono', 'Courier New', monospace;
-  --font-sans:  'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:  'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace;
+  --font-sans:  'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 
   --radius-sm:  6px;
   --radius-md:  12px;

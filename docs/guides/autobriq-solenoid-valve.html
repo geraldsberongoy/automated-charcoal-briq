@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Solenoid Valve Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #f6f7f5; --panel: #ffffff; --ink: #1b2120; --muted: #5b6663; --line: #d5dbd8;
+  --accent: #0f766e; --w12: #dc2626; --gnd: #3f4644; --sig: #2563eb; --mot: #1b2120;
+  --warn-bg: #fff4e5; --warn-ink: #8a3b00;
+  --f-display: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121615; --panel: #1a201f; --ink: #e6ebe9; --muted: #9aa6a2; --line: #2c3533;
+  --accent: #2dd4bf; --w12: #f87171; --gnd: #b9c3c0; --sig: #60a5fa; --mot: #e6ebe9;
+  --warn-bg: #2a1f12; --warn-ink: #fdba74; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #121615; --panel: #1a201f; --ink: #e6ebe9; --muted: #9aa6a2; --line: #2c3533;
+  --accent: #2dd4bf; --w12: #f87171; --gnd: #b9c3c0; --sig: #60a5fa; --mot: #e6ebe9;
+  --warn-bg: #2a1f12; --warn-ink: #fdba74; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 var(--f-body); }
+.wrap { max-width: 900px; margin: 0 auto; padding: 32px 16px 64px; }
+h1, h2, h3 { font-family: var(--f-display); line-height: 1.15; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(28px, 5vw, 40px); font-weight: 800; }
+h2 { font-size: 23px; }
+h3 { font-size: 18px; }
+p { margin: 0; max-width: 68ch; }
+code { font-family: var(--f-mono); font-size: 0.88em; }
+.eyebrow { font: 600 12px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); }
+header { display: grid; gap: 12px; margin-bottom: 24px; }
+section { display: grid; gap: 14px; margin-top: 40px; }
+.warn { background: var(--warn-bg); color: var(--warn-ink); border-left: 4px solid var(--w12); padding: 14px 16px; border-radius: 4px; display: grid; gap: 6px; }
+.warn strong { font-family: var(--f-display); }
+.fig { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; }
+.fig svg { display: block; width: 100%; min-width: 680px; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 22px; height: 4px; border-radius: 2px; display: inline-block; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px/1.2 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+ol.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; counter-reset: s; }
+ol.steps > li { counter-increment: s; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px 14px 60px; position: relative; display: grid; gap: 6px; }
+ol.steps > li::before { content: counter(s); position: absolute; left: 16px; top: 14px; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--bg); font: 700 15px/30px var(--f-display); text-align: center; }
+ol.steps ul { margin: 0; padding-left: 20px; }
+.pass { font-weight: 600; color: var(--accent); }
+svg text { font-family: var(--f-mono); fill: var(--ink); }
+svg .box { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5; }
+svg .board { fill: var(--bg); stroke: var(--ink); stroke-width: 1.5; }
+svg .title { font: 700 15px var(--f-display); fill: var(--ink); }
+svg .sub { font-size: 11px; fill: var(--muted); }
+svg .pin { font-size: 12px; }
+svg .pinlbl { font-size: 11px; fill: var(--muted); }
+svg .w { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+svg .w12 { stroke: var(--w12); } svg .gnd { stroke: var(--gnd); } svg .sig { stroke: var(--sig); } svg .mot { stroke: var(--mot); }
+svg .pd { fill: var(--ink); }
+svg .wlbl { font-size: 11px; fill: var(--muted); }
+svg .note { font: 600 11px var(--f-mono); fill: var(--w12); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="eyebrow">AUTOBRIQ · bench test</span>
+  <h1>Wiring and testing the water solenoid valve</h1>
+  <p class="muted">Relay 6 (GPIO32) switches 12&nbsp;V to the valve. The firmware already has it: <strong>WATER ON (R6)</strong> on the Nextion and phone, key <code>6</code> on serial, and step 1 of AUTO RUN. No reflash needed.</p>
+</header>
+
+<div class="warn"><strong>Relay map note</strong><p>The relay channels in this guide are the <strong>bench rig as wired</strong> (CH5 mixer, CH6 water valve). The thesis assigns <strong>CH5 to the water valve</strong> and <strong>CH6 to the 30 A automotive relay for the mixer</strong>. See <code>docs/PROJECT_CONTEXT.md</code> in the repository. Swap two signal wires and two GPIO entries before the final build if the thesis map is kept.</p></div>
+<div class="warn">
+  <strong>Read the valve's label before wiring</strong>
+  <p>This guide assumes <strong>12&nbsp;V DC, normally closed (NC)</strong>. A 24&nbsp;V or AC valve needs its own supply on the relay contacts, like the mixer. Also note its <strong>minimum pressure</strong>: "0 MPa" opens from a bucket, while "0.02 MPa" or more needs tap pressure. Wire everything with the EcoFlow off.</p>
+</div>
+
+<section>
+  <span class="eyebrow">Wiring</span>
+  <h2>12 V through the E-stop and relay 6, diode across the coil</h2>
+  <div class="fig">
+    <svg viewBox="0 0 880 420" role="img" aria-label="EcoFlow 12 volt plus through the E-stop to relay 6 NO; relay COM to valve plus; valve minus to EcoFlow minus; 1N4007 diode across the valve; ESP32 GPIO32 to relay IN6">
+      <!-- EcoFlow -->
+      <rect class="box" x="30" y="40" width="150" height="90" rx="8"/>
+      <text class="title" x="44" y="66">EcoFlow</text>
+      <text class="sub" x="44" y="84">12 V DC port</text>
+      <g class="pin" text-anchor="end"><text x="172" y="74">+</text><text x="172" y="114">−</text></g>
+      <g class="pd"><circle cx="180" cy="70" r="4"/><circle cx="180" cy="110" r="4"/></g>
+
+      <!-- E-stop -->
+      <path class="w w12" d="M180 70 H230"/>
+      <rect class="box" x="230" y="48" width="120" height="44" rx="22" style="stroke:var(--w12)"/>
+      <text class="title" x="290" y="70" text-anchor="middle">E-STOP</text>
+      <text class="sub" x="290" y="84" text-anchor="middle">NC contacts</text>
+      <path class="w w12" d="M350 70 H430"/>
+      <text class="wlbl" x="356" y="60">switched +12 V</text>
+
+      <!-- Relay CH6 -->
+      <rect class="board" x="430" y="40" width="170" height="100" rx="4"/>
+      <text class="pin" x="442" y="60" style="font-weight:600">CH6</text><text class="pinlbl" x="484" y="60">relay 6</text>
+      <g class="pinlbl"><text x="440" y="86">NO</text><text x="590" y="86" text-anchor="end">COM</text><text x="590" y="126" text-anchor="end">NC · empty</text></g>
+      <g class="pd"><circle cx="430" cy="82" r="3.5"/><circle cx="600" cy="82" r="3.5"/></g>
+      <path class="w w12" d="M430 70 V82"/>
+
+      <!-- ESP32 control -->
+      <rect class="box" x="430" y="320" width="170" height="70" rx="8"/>
+      <text class="title" x="515" y="352" text-anchor="middle">ESP32</text>
+      <text class="sub" x="515" y="370" text-anchor="middle">already wired</text>
+      <circle class="pd" cx="515" cy="320" r="4"/>
+      <path class="w sig" d="M515 320 V140"/>
+      <text class="wlbl" x="524" y="300">GPIO32 → IN6</text>
+      <circle class="pd" cx="515" cy="140" r="4"/>
+
+      <!-- COM to valve + -->
+      <path class="w w12" d="M600 82 H700"/>
+      <text class="wlbl" x="606" y="74">valve +</text>
+
+      <!-- Valve -->
+      <rect class="box" x="700" y="50" width="160" height="130" rx="8"/>
+      <text class="title" x="780" y="104" text-anchor="middle">Solenoid valve</text>
+      <text class="sub" x="780" y="122" text-anchor="middle">12 V DC, NC</text>
+      <text class="sub" x="780" y="138" text-anchor="middle">arrow = water direction</text>
+      <g class="pin"><text x="710" y="86">+</text><text x="710" y="166">−</text></g>
+      <g class="pd"><circle cx="700" cy="82" r="4"/><circle cx="700" cy="162" r="4"/></g>
+
+      <!-- Diode across coil -->
+      <circle class="pd" cx="655" cy="82" r="5"/>
+      <path class="w mot" d="M655 82 V104" style="stroke-width:2"/>
+      <line x1="643" y1="106" x2="667" y2="106" class="w mot" style="stroke-width:3"/>
+      <polygon points="643,128 667,128 655,108" class="pd"/>
+      <path class="w mot" d="M655 128 V162" style="stroke-width:2"/>
+      <circle class="pd" cx="655" cy="162" r="5"/>
+
+      <!-- Ground return -->
+      <path class="w gnd" d="M180 110 H200 V240 H655 V162 H700"/>
+      <text class="wlbl" x="300" y="232">GND (EcoFlow −, same block as the rest)</text>
+
+      <text class="note" x="672" y="208">1N4007 across the valve:</text>
+      <text class="wlbl" x="672" y="224">stripe (bar) to valve +</text>
+      <text class="wlbl" x="672" y="240">plain end to valve −</text>
+    </svg>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--w12)"></i>+12 V (switched after the E-stop)</span>
+    <span><i style="background:var(--gnd)"></i>ground</span>
+    <span><i style="background:var(--sig)"></i>relay signal</span>
+    <span><i style="background:var(--mot)"></i>diode</span>
+    <span>A dot is a joint. Lines that cross without a dot are not connected.</span>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>From</th><th>To</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Switched +12 V (after E-stop)</td><td>Relay CH6 <strong>NO</strong></td><td>The E-stop also shuts the water.</td></tr>
+        <tr><td>Relay CH6 <strong>COM</strong></td><td>Valve <strong>+</strong></td><td>Relay closes, valve gets 12 V and opens.</td></tr>
+        <tr><td>Valve <strong>−</strong></td><td>GND block</td><td>Return path.</td></tr>
+        <tr><td>1N4007 <strong>stripe</strong> end</td><td>Valve <strong>+</strong></td><td>Absorbs the coil's voltage spike at switch-off, which would arc the relay contact and can reset the ESP32. Backwards, it shorts 12 V when the valve turns on.</td></tr>
+        <tr><td>1N4007 plain end</td><td>Valve <strong>−</strong></td><td></td></tr>
+        <tr><td>Relay CH6 <strong>NC</strong></td><td>nothing</td><td>On NC, the valve would be open whenever the relay is off.</td></tr>
+        <tr><td>ESP32 GPIO32</td><td>Relay IN6</td><td>Already in the pin map. Check the jumper is there.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">Most valve coils have no polarity. The diode gives them one: whichever lead you call + gets the stripe and the wire from COM. Use 18 AWG or thicker; a typical 12&nbsp;V valve draws 0.3 to 0.6&nbsp;A.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Plumbing</span>
+  <h2>Water path</h2>
+  <p>Water supply (tap or raised bucket) → <strong>valve IN</strong> (follow the arrow on the valve body) → <strong>YF-S201</strong> (its arrow the same way) → outlet into the mixing container. The flow sensor after the valve only counts while the valve is open, so the litres match what the valve let through.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Test</span>
+  <h2>Dry first, then with water</h2>
+  <ol class="steps">
+    <li><h3>Meter the coil before power</h3>
+      <ul><li>EcoFlow off. Meter on ohms across valve + and −.</li></ul>
+      <span class="pass">Pass: about 20 to 40 Ω for a 12 V valve. Near 0 Ω means the diode is backwards or there's a short: fix it before powering.</span></li>
+    <li><h3>Dry click test</h3>
+      <ul><li>EcoFlow on, E-stop released, no water connected.</li>
+      <li>Tap <strong>WATER ON (R6)</strong>, or press <code>6</code> on serial. Tap again to stop.</li></ul>
+      <span class="pass">Pass: relay 6 clicks and its LED lights, the valve gives a solid clunk on open and again on close. Meter across valve + and − reads about 12 V when on, 0 V when off.</span></li>
+    <li><h3>E-stop check</h3>
+      <ul><li>Tap WATER ON, then press the E-stop.</li></ul>
+      <span class="pass">Pass: the valve clunks shut even though relay 6 is still on. Release the E-stop and tap STOP ALL.</span></li>
+    <li><h3>Wet test</h3>
+      <ul><li>Connect the water path. Tap WATER ON with the outlet over a container.</li>
+      <li>Watch the <strong>FLOW</strong> box on the Nextion climb. Tap again to stop.</li></ul>
+      <span class="pass">Pass: water flows only while WATER ON is green, FLOW climbs while it flows, and no drip when closed.</span></li>
+    <li><h3>Dose in AUTO RUN</h3>
+      <ul><li>Tap AUTO RUN. Step 1 is water.</li></ul>
+      <span class="pass">Pass: the valve closes by itself at 1.0 L on the FLOW count (or after 60 s if the flow is weak), then the mixer starts. Change the dose with <code>WATER_TARGET_L</code> in the sketch.</span></li>
+  </ol>
+  <p class="muted">Every water run stops by itself after 70 s. STOP ALL, the E-stop or any tap closes the valve right away.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Troubleshooting</span>
+  <h2>When something's off</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Symptom</th><th>Likely cause</th></tr></thead>
+      <tbody>
+        <tr><td>Relay clicks, valve silent</td><td>No 12 V at NO: E-stop pressed, or the wire is on NC. Meter COM to GND with WATER ON: should read 12 V.</td></tr>
+        <tr><td>Valve clunks but no water comes</td><td>Pressure below the valve's minimum (a pilot valve on a bucket), or the valve is in backwards. Check the arrow and the label's MPa.</td></tr>
+        <tr><td>Water flows the moment power is on</td><td>Valve on relay NC, or it is a normally open (NO) valve.</td></tr>
+        <tr><td>Drips when closed</td><td>Installed backwards, or grit on the seal. Flush it.</td></tr>
+        <tr><td>ESP32 or Nextion resets when the valve closes</td><td>Diode missing. Fit the 1N4007 right at the valve terminals.</td></tr>
+        <tr><td>EcoFlow or E-stop line trips as soon as the valve opens</td><td>Diode backwards: it shorts 12 V. Turn it around, stripe to valve +.</td></tr>
+        <tr><td>Valve gets hot</td><td>Normal for long runs. Above 70 °C to the touch, check the voltage matches the label.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+</div>
+</body>
+</html>

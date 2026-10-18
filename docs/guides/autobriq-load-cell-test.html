@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Load Cell Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #f6f7f5; --panel: #ffffff; --ink: #1b2120; --muted: #5b6663; --line: #d5dbd8;
+  --accent: #0f766e; --red: #dc2626; --blk: #3f4644; --grn: #16a34a; --wht: #8a9490;
+  --w33: #2563eb; --dt: #ca8a04; --sck: #9333ea;
+  --warn-bg: #fff4e5; --warn-ink: #8a3b00;
+  --f-display: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121615; --panel: #1a201f; --ink: #e6ebe9; --muted: #9aa6a2; --line: #2c3533;
+  --accent: #2dd4bf; --red: #f87171; --blk: #b9c3c0; --grn: #4ade80; --wht: #e6ebe9;
+  --w33: #60a5fa; --dt: #facc15; --sck: #c084fc;
+  --warn-bg: #2a1f12; --warn-ink: #fdba74; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #121615; --panel: #1a201f; --ink: #e6ebe9; --muted: #9aa6a2; --line: #2c3533;
+  --accent: #2dd4bf; --red: #f87171; --blk: #b9c3c0; --grn: #4ade80; --wht: #e6ebe9;
+  --w33: #60a5fa; --dt: #facc15; --sck: #c084fc;
+  --warn-bg: #2a1f12; --warn-ink: #fdba74; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 var(--f-body); }
+.wrap { max-width: 900px; margin: 0 auto; padding: 32px 16px 64px; }
+h1, h2, h3 { font-family: var(--f-display); line-height: 1.15; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(28px, 5vw, 40px); font-weight: 800; }
+h2 { font-size: 23px; }
+h3 { font-size: 18px; }
+p { margin: 0; max-width: 68ch; }
+code { font-family: var(--f-mono); font-size: 0.88em; }
+.eyebrow { font: 600 12px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); }
+header { display: grid; gap: 12px; margin-bottom: 24px; }
+section { display: grid; gap: 14px; margin-top: 40px; }
+.warn { background: var(--warn-bg); color: var(--warn-ink); border-left: 4px solid var(--red); padding: 14px 16px; border-radius: 4px; display: grid; gap: 6px; }
+.warn strong { font-family: var(--f-display); }
+.fig { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; }
+.fig svg { display: block; width: 100%; min-width: 680px; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 22px; height: 4px; border-radius: 2px; display: inline-block; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px/1.2 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; border: 1px solid var(--line); }
+ol.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; counter-reset: s; }
+ol.steps > li { counter-increment: s; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px 14px 60px; position: relative; display: grid; gap: 6px; }
+ol.steps > li::before { content: counter(s); position: absolute; left: 16px; top: 14px; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--bg); font: 700 15px/30px var(--f-display); text-align: center; }
+ol.steps ul { margin: 0; padding-left: 20px; }
+.pass { font-weight: 600; color: var(--accent); }
+pre { margin: 0; font: 14px/1.5 var(--f-mono); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; overflow-x: auto; }
+svg text { font-family: var(--f-mono); fill: var(--ink); }
+svg .box { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5; }
+svg .title { font: 700 15px var(--f-display); fill: var(--ink); }
+svg .sub { font-size: 11px; fill: var(--muted); }
+svg .pin { font-size: 12px; }
+svg .w { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+svg .red { stroke: var(--red); } svg .blk { stroke: var(--blk); } svg .grn { stroke: var(--grn); } svg .wht { stroke: var(--wht); }
+svg .w33 { stroke: var(--w33); } svg .dt { stroke: var(--dt); } svg .sck { stroke: var(--sck); }
+svg .pd { fill: var(--ink); }
+svg .wlbl { font-size: 11px; fill: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="eyebrow">AUTOBRIQ · bench test</span>
+  <h1>Testing the S-type load cell with the HX711</h1>
+  <p class="muted">The load cell's 4 wires go to an HX711 amplifier board, and the HX711 goes to the ESP32 with 4 more. The <code>actuator-test</code> sketch from commit <code>9d4ac47</code> or later reads it: a <strong>LOAD</strong> box on the Nextion, kg and N on the phone page and in the serial monitor once a second.</p>
+</header>
+
+<div class="warn">
+  <strong>The load cell's signal is tiny</strong>
+  <p>A few millivolts at full load. It cannot go straight to the ESP32: the HX711 is required. Keep these wires short, twisted together, and away from the 12&nbsp;V actuator and motor wires.</p>
+</div>
+
+<section>
+  <span class="eyebrow">Wiring</span>
+  <h2>Load cell → HX711 → ESP32</h2>
+  <div class="fig">
+    <svg viewBox="0 0 880 340" role="img" aria-label="Load cell red to HX711 E+, black to E-, white to A-, green to A+; HX711 VCC to ESP32 3V3, GND to GND, DT to GPIO19, SCK to GPIO18">
+      <!-- Load cell -->
+      <rect class="box" x="30" y="50" width="200" height="200" rx="8"/>
+      <text class="title" x="46" y="78">S-type load cell</text>
+      <text class="sub" x="46" y="96">4 wires</text>
+      <g class="pin" text-anchor="end"><text x="222" y="124">red</text><text x="222" y="154">black</text><text x="222" y="184">white</text><text x="222" y="214">green</text></g>
+      <g class="pd"><circle cx="230" cy="120" r="4"/><circle cx="230" cy="150" r="4"/><circle cx="230" cy="180" r="4"/><circle cx="230" cy="210" r="4"/></g>
+
+      <!-- HX711 -->
+      <rect class="box" x="350" y="50" width="190" height="200" rx="8"/>
+      <text class="title" x="445" y="78" text-anchor="middle">HX711</text>
+      <g class="pin"><text x="360" y="124">E+</text><text x="360" y="154">E−</text><text x="360" y="184">A−</text><text x="360" y="214">A+</text></g>
+      <g class="pin" text-anchor="end"><text x="532" y="124">VCC</text><text x="532" y="154">GND</text><text x="532" y="184">DT</text><text x="532" y="214">SCK</text></g>
+      <g class="pd"><circle cx="350" cy="120" r="4"/><circle cx="350" cy="150" r="4"/><circle cx="350" cy="180" r="4"/><circle cx="350" cy="210" r="4"/>
+        <circle cx="540" cy="120" r="4"/><circle cx="540" cy="150" r="4"/><circle cx="540" cy="180" r="4"/><circle cx="540" cy="210" r="4"/></g>
+      <text class="sub" x="445" y="238" text-anchor="middle">B+ and B− stay empty</text>
+
+      <path class="w red" d="M230 120 H350"/>
+      <path class="w blk" d="M230 150 H350"/>
+      <path class="w wht" d="M230 180 H350"/>
+      <path class="w grn" d="M230 210 H350"/>
+      <text class="wlbl" x="246" y="112">excitation +</text>
+      <text class="wlbl" x="246" y="142">excitation −</text>
+      <text class="wlbl" x="246" y="172">signal −</text>
+      <text class="wlbl" x="246" y="202">signal +</text>
+
+      <!-- ESP32 -->
+      <rect class="box" x="660" y="50" width="190" height="200" rx="8"/>
+      <text class="title" x="755" y="78" text-anchor="middle">ESP32</text>
+      <g class="pin"><text x="672" y="124">3V3</text><text x="672" y="154">GND</text><text x="672" y="184">GPIO19</text><text x="672" y="214">GPIO18</text></g>
+      <g class="pd"><circle cx="660" cy="120" r="4"/><circle cx="660" cy="150" r="4"/><circle cx="660" cy="180" r="4"/><circle cx="660" cy="210" r="4"/></g>
+
+      <path class="w w33" d="M540 120 H660"/>
+      <path class="w blk" d="M540 150 H660"/>
+      <path class="w dt" d="M540 180 H660"/>
+      <path class="w sck" d="M540 210 H660"/>
+      <text class="wlbl" x="556" y="112">3.3 V, not 5 V</text>
+
+      <text class="wlbl" x="30" y="290">If pressing on the cell makes the reading go negative, swap white and green at A− / A+.</text>
+      <text class="wlbl" x="30" y="308">Load goes through the two threaded holes at the ends. Never clamp or press on the middle of the body.</text>
+    </svg>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--red)"></i>red</span>
+    <span><i style="background:var(--blk)"></i>black / GND</span>
+    <span><i style="background:var(--wht)"></i>white</span>
+    <span><i style="background:var(--grn)"></i>green</span>
+    <span><i style="background:var(--w33)"></i>3.3 V</span>
+    <span><i style="background:var(--dt)"></i>DT (data)</span>
+    <span><i style="background:var(--sck)"></i>SCK (clock)</span>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>From</th><th>To</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td><span class="dot" style="background:#dc2626"></span>Load cell red</td><td>HX711 E+</td><td>Excitation +</td></tr>
+        <tr><td><span class="dot" style="background:#111"></span>Load cell black</td><td>HX711 E−</td><td>Excitation −</td></tr>
+        <tr><td><span class="dot" style="background:#fff"></span>Load cell white</td><td>HX711 A−</td><td>Signal −</td></tr>
+        <tr><td><span class="dot" style="background:#16a34a"></span>Load cell green</td><td>HX711 A+</td><td>Signal +</td></tr>
+        <tr><td>HX711 VCC</td><td>ESP32 3V3</td><td>3.3 V keeps DT at a level the ESP32 can take. If your board has separate VCC and VDD, both go to 3V3.</td></tr>
+        <tr><td>HX711 GND</td><td>ESP32 GND</td><td></td></tr>
+        <tr><td>HX711 DT (DOUT)</td><td>GPIO19</td><td>Data out of the HX711</td></tr>
+        <tr><td>HX711 SCK (PD_SCK)</td><td>GPIO18</td><td>Clock from the ESP32</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">Colors differ between makers. If yours aren't red/black/white/green, or you're unsure, use the meter check below to find the pairs.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Before power</span>
+  <h2>Meter check: find the wire pairs</h2>
+  <p>Meter on ohms, load cell disconnected. A typical 350&nbsp;Ω cell reads:</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Between</th><th>Expect</th><th>Means</th></tr></thead>
+      <tbody>
+        <tr><td>Red and black</td><td>about 380 to 420 Ω</td><td>Excitation pair (E+ / E−), the highest reading</td></tr>
+        <tr><td>Green and white</td><td>about 350 Ω</td><td>Signal pair (A+ / A−)</td></tr>
+        <tr><td>Any red or black to any green or white</td><td>about 280 to 300 Ω</td><td>Normal: one leg of the bridge</td></tr>
+        <tr><td>Any pair open (OL) or near 0 Ω</td><td></td><td>Broken wire or damaged cell</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Test</span>
+  <h2>Run it</h2>
+  <ol class="steps">
+    <li><h3>Flash and open the serial monitor</h3>
+      <pre>pio run -e actuator-test -t upload
+pio device monitor</pre>
+      <span class="muted">Leave the load cell unloaded while the ESP32 boots. About 3 s after power-up it zeroes itself and serial prints <code>LOAD tared at raw ...</code>. The first readings before that jump around; ignore them.</span></li>
+    <li><h3>Check it's found</h3>
+      <span class="pass">Pass: <code>LOAD: HX711 found</code>, then once a second <code>LOAD  raw   123456     0.00 kg      0 N</code>. The Nextion's top-right box shows <code>LOAD 0.00 kg</code>.</span>
+      <span class="muted">Seeing <code>LOAD no HX711</code> every few seconds means DT, SCK, VCC or GND isn't connected.</span></li>
+    <li><h3>Load it</h3>
+      <ul><li>Press on it through its end holes, or hang a weight from it, or stand something heavy on it.</li></ul>
+      <span class="pass">Pass: kg and N rise with the load and come back near 0 when you let go. Small jitter, about ±0.05 kg, is normal.</span>
+      <span class="muted">On this rig pressing read negative, so the sketch has <code>LOAD_SIGN = -1</code>, which makes pressing positive. If yours still goes the wrong way, set <code>LOAD_SIGN</code> to <code>1</code> (or swap white and green at A− / A+). Not back at 0 after unloading: press <code>t</code> in the serial monitor to re-zero.</span></li>
+    <li><h3>Calibrate with a known weight</h3>
+      <ul><li>Unloaded, press <code>t</code>. Then put on a known weight, for example a 5 kg bag of rice, and note the <code>raw</code> number and the tare raw that <code>t</code> printed.</li></ul>
+      <pre>LSB_PER_KG = |raw with weight − tare raw| ÷ weight in kg</pre>
+      <span class="muted">Put the result in <code>LSB_PER_KG</code> near the top of <code>actuator_test.cpp</code> and reflash. The README's 22,480 was measured at 5&nbsp;V; at 3.3&nbsp;V expect roughly two-thirds of that (about 14,800), so until you calibrate, readings show low.</span></li>
+    <li><h3>Press stops at the load limit</h3>
+      <ul><li>The 40 cm press stops by itself when LOAD reaches <code>PRESS_STOP_KG</code> (10 kg in the test build). In AUTO RUN that step ends and the run goes on to press HOME. HOME is never blocked.</li>
+      <li>Tap <strong>40cm PRESS (R3)</strong> with the press head loaded against the cell and keep a hand on the E-stop.</li></ul>
+      <span class="pass">Pass: LOAD climbs positive, the press stops at the limit and serial prints <code>LOAD 10.xx kg &gt;= 10.0 kg: press stopped</code>.</span>
+      <span class="muted">Calibrate first, or the real force is about 50% higher than the screen shows. For real briquettes set <code>PRESS_STOP_KG</code> to your target (2000 N is about 204 kg; check that the actuator and the load cell are both rated above it).</span></li>
+  </ol>
+</section>
+
+<section>
+  <span class="eyebrow">Troubleshooting</span>
+  <h2>What the reading tells you</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>You see</th><th>Likely cause</th></tr></thead>
+      <tbody>
+        <tr><td><code>LOAD no HX711</code></td><td>DT and SCK swapped, or VCC/GND missing. DT goes to GPIO19, SCK to GPIO18.</td></tr>
+        <tr><td>raw stuck near 8388607 or −8388608</td><td>A load cell wire is open, or E+/E− is on A+/A−. Re-check with the meter.</td></tr>
+        <tr><td>Reading moves the wrong way</td><td>Flip <code>LOAD_SIGN</code> (1 or -1) in the sketch, or swap white and green at the HX711.</td></tr>
+        <tr><td>Press does not stop at the limit</td><td>Reading goes negative under load (flip <code>LOAD_SIGN</code>), or the scale is uncalibrated so the screen value is lower than the real force.</td></tr>
+        <tr><td>Jumps by kilos with nothing on it</td><td>Loose wire, long untwisted leads near the 12 V wiring, or no shared ground.</td></tr>
+        <tr><td>Slowly drifts after power-up</td><td>Warm-up. Wait a minute, then press <code>t</code>.</td></tr>
+        <tr><td>Reads about two-thirds of the real weight</td><td>Not calibrated yet at 3.3 V. Do step 4.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+</div>
+</body>
+</html>
