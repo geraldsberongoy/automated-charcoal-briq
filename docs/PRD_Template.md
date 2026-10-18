@@ -1,8 +1,8 @@
 # Product Requirements Document (PRD)
 
-**Project:** Semi-Automated Paper-Charcoal Briquette Machine Dashboard
-**Date:** 2026-06-03
-**Version:** 1.0.0
+**Project:** AUTOBRIQ Operator Interfaces (Nextion touchscreen + PWA dashboard)
+**Date:** 2026-10-19
+**Version:** 1.1.0
 **Owner:** PUP Computer Engineering Group 6 (Añonuevo, Berongoy, Galdiano, Tiedra)
 **Status:** In Review
 **BRD:** [BRD_Template.md](BRD_Template.md)
@@ -11,69 +11,79 @@
 
 ## 1. Product Purpose & Value Proposition
 
-The dashboard is a Progressive Web App (PWA) hosted directly on the ESP32's local Access Point via its internal LittleFS storage, functioning entirely off-grid without internet access. It acts as the wireless Human-Machine Interface (HMI) and telemetry hub for the semi-automated paper-charcoal briquette machine. The PWA provides real-time monitoring of the machine's 5-stage finite state machine (FSM), displaying critical parameters such as grinding amperage, water flow volume, mixing timer progress, compaction force (0–2000N), drying enclosure climate conditions, and solar-battery health. By establishing an offline wireless connection, the PWA enables operators to safely authorize workflow stage transitions and monitor operations from a mobile device, protecting them from physical hazards associated with mechanical compaction and high-torque motors.
+AUTOBRIQ has two operator interfaces, both driven by the same ESP32 batch state machine. The **Nextion 7" touchscreen** on the machine handles batch setup and start, process status, water-volume and compression-force readings, and fault notifications. The **Progressive Web App (PWA)** is hosted on the ESP32's local Access Point from its internal LittleFS storage, works with no internet, and gives wireless monitoring, batch status and CSV downloads from a phone. Once the operator presses START, the machine runs water dispensing, mixing, discharge, leveling, compression and retraction **on its own**: there are no mid-cycle confirmations. The interfaces show what is happening and where it stops if something goes wrong, so the operator can keep a safe distance from the moving actuators and the mixer.
 
 ---
 
 ## 2. Target Personas
 
-**Primary Persona — Mang Jun (Community Operator)**
-*   *Who they are:* A 48-year-old community cooperative worker in rural Cavinti, Laguna. He has limited technical training and relies on a budget Android smartphone. He operates the machine in high-vibration, noisy, and outdoor sun-glare environments.
-*   *Their core frustration:* "Industrial machinery is too complicated and dangerous to run. I am afraid of making a mistake that ruins the batch, stalls the motor, or causes an injury during compaction."
-*   *What success looks like for them:* A highly visual, simple mobile interface with large touch buttons, clear progress steps, and prominent safety alerts that tell him exactly when to load raw materials, when to press, and when the batch is ready.
+**Primary Persona: Mang Jun (Community Operator)**
+*   *Who they are:* A 48-year-old community cooperative worker in rural Cavinti, Laguna. He has limited technical training and a budget Android phone. He works in a noisy, outdoor, sun-glare environment.
+*   *Their core frustration:* "Industrial machinery is too complicated and dangerous to run. I am afraid of making a mistake that ruins the batch or hurts someone."
+*   *What success looks like for them:* Few decisions: pick the water level, load paper and charcoal when asked, insert the mold, press START, take the mold out at the end. Large buttons, plain status messages, and loud, unmistakable fault signals.
 
-**Secondary Persona — Engr. Sarah (LGU Environmental Officer)**
+**Secondary Persona: Engr. Sarah (LGU Environmental Officer)**
 *   *Who they are:* An environmental manager tracking local solid waste reduction.
-*   *Their core frustration:* "I have no data on how much alternative fuel the community is actually producing or how stable the solar power bank is during consecutive batches."
-*   *What success looks like for them:* An easy-to-read dashboard detailing solar charging efficiency, battery state of charge (SoC), and the ability to view/export standalone CSV run records stored on the machine's SD card.
+*   *Their core frustration:* "I have no data on how much alternative fuel the community is producing."
+*   *What success looks like for them:* A dashboard with batch status and the ability to download the CSV batch records from the machine's SD card.
 
 ---
 
 ## 3. Core Features & Priorities
 
-Must-Have = Local PWA Telemetry & Control (V1 Release).
+Must-Have = what the thesis names as interface functions (V1).
 
 | Feature | Description | Priority |
 |---------|-------------|----------|
-| **FSM Stage Telemetry Hub** | Renders the active operational phase (1 to 5) with a linear progress bar and visual step guide. | Must-Have |
-| **Real-time Sensory Gauges** | Renders live data: compaction force (HX711, 0–2000N limit), water volume (YF-S201, liters), and curing enclosure climate (DS18B20/DHT22). | Must-Have |
-| **Stage Transition Gates** | Large, interactive confirmation panels allowing the operator to authorize mixing, molding, and drying transitions. | Must-Have |
-| **Fail-safe Visual Interlocks** | Prominent warnings and automatic overlays displaying safety limit switch statuses and casing breach alerts. | Must-Have |
-| **Solar & Battery Health HUD** | Renders battery voltage, solar input current, and system power state to verify off-grid resource capacity. | Should-Have |
-| **CSV Run Log Viewer** | Renders past batch metrics (weight, moisture levels, runtime) appended directly onto the local Micro-SD card. | Should-Have |
-| **Audio-Visual Prompts** | Syncs visual alerts with on-board buzzer signals to prompt physical operator actions (e.g., "Transfer Briquettes"). | Should-Have |
+| **Guided Batch Setup** | Two loading screens: paper plus water level (30% to 100%, preset 100%), then charcoal in the hopper, then START. | Must-Have |
+| **Automatic Cycle Status** | Shows the active step of the automatic cycle with a progress indicator and a plain description. No operator authorization between steps. | Must-Have |
+| **Live Sensor Readings** | Dispensed water volume (YF-S201, liters) and compression force (HX711 + 300 kg load cell, N) during the run. | Must-Have |
+| **Fault and Interlock Alerts** | Full-screen fault state, on-screen message and buzzer when an interlock opens, a force reading is invalid, or a step times out. | Must-Have |
+| **Emergency Stop Handling** | STOP and RESET controls; hardware E-stop cuts switched 12 V while the controller and screen stay powered. | Must-Have |
+| **Mold Removal Prompt** | After retraction: buzzer plus a prompt to remove the pull-out mold. The system returns to setup when the mold is detected as removed. | Must-Have |
+| **Batch Records (CSV)** | Runtime, selected water level, dispensed volume and peak compaction force saved to the SD card and pushed to the PWA. | Must-Have |
+| **Power Health View** | Battery and solar status, SoftAP clients, CPU and filesystem state. | Should-Have |
+| **CSV Download** | PWA downloads the batch records over the local Wi-Fi. | Should-Have |
+| **Audio-Visual Prompts** | Three buzzers sound at process boundaries and faults, in step with the on-screen message. | Should-Have |
 
 ---
 
 ## 4. User Stories & Acceptance Criteria
 
-**US-01 — Process State Progress Tracking**
-> As a community operator, I want to see the active stage of the briquetting process so that I know what physical actions to take next.
+**US-01: Batch Setup and Start**
+> As a community operator, I want to choose the water level, load the materials when prompted and start the batch so that the machine does the rest by itself.
 
 Acceptance Criteria:
-*   Given the machine is booted and connected, when a phase (e.g. Grinding/Soaking) is active, then the PWA shows a horizontal progress bar highlighting the active step with text describing the current process.
-*   Given the active phase finishes, when the system transitions to the idle wait state, then a blinking action prompt is shown on the dashboard and the on-board buzzer sounds.
+*   Given the machine has booted and passed its self-test (interlocks closed, actuators home, power present), when the operator opens setup, then the screen shows the paper prompt and a 30% to 100% water selector preset to 100%.
+*   Given the operator presses NEXT then START, when the cycle begins, then no further confirmation is requested until the mold-removal prompt.
 
-**US-02 — Compaction Load Monitoring**
-> As a community operator, I want to monitor the exact compaction force applied by the linear actuator so that I know the machine is operating within safe physical limits.
-
-Acceptance Criteria:
-*   Given the Compression and Molding Phase is running, when the actuator drives downward, then the PWA displays a dynamic gauge showing force in Newtons (N) updated every 200 ms.
-*   Given the load cell reaches the target limit, when the sensor registers 2000N, then the gauge turns solid green, the actuator halts, and the transition confirmation panel is unlocked.
-
-**US-03 — Casing Breach Safety Override**
-> As a community operator, I want the dashboard to immediately alert me and halt the actuator if a casing breach or safety interlock is triggered.
+**US-02: Process Progress Tracking**
+> As a community operator, I want to see which step the machine is on so that I know it is working normally.
 
 Acceptance Criteria:
-*   Given the actuator is in motion, when the physical safety limit switch detects a casing breach, then the PWA flashes a fullscreen red alert overlay, displays "CRITICAL BREACH: ACTUATOR HALTED", and disables all manual control buttons.
-*   Given the breach is resolved and the switch closed, when the operator presses "RESET FAULT" on the screen, then the overlay disappears and normal operation resumes.
+*   Given a batch is running, when the step changes (water, mixing, discharge, leveling, compression, retraction), then the Nextion and PWA show the active step with a progress bar and short text.
+*   Given the cycle finishes, when retraction completes, then the buzzer sounds and the screen prompts the operator to remove the mold.
 
-**US-04 — Environmental Curing Termination**
-> As a community operator, I want to see the curing relative humidity level so that I don't waste battery power running the halogen dryer once the briquettes are fully dried.
+**US-03: Compaction Force Monitoring**
+> As a community operator, I want to see the compression force so that I know the press is within safe limits.
 
 Acceptance Criteria:
-*   Given the Thermal Curing Phase is active, when the DHT22 relative humidity sensor outputs a value, then the PWA displays the drying humidity percentage.
-*   Given the exhaust relative humidity falls to 15%, when that threshold is met, then the system terminates the halogen relay, turns off the exhaust fan, displays "CURING COMPLETE", and logs the run metrics.
+*   Given the compression step is running, when the 40 cm actuator extends, then the force in newtons is shown and refreshed at least once per second.
+*   Given the load cell reaches the preset force threshold, when the HX711 reading crosses it, then the extend relay turns off and the actuator retracts. The threshold is set by calibration, within the 1,500 N actuator thrust.
+
+**US-04: Interlock Fault**
+> As a community operator, I want the machine to stop and tell me clearly if a safety condition is broken.
+
+Acceptance Criteria:
+*   Given the cycle is running, when the trapdoor opens unexpectedly (SW1), the mold is removed (SW3), the force reading is invalid, or compression times out, then the production loads switch off, a fault screen with buzzer appears on the Nextion and PWA, and normal operation resumes only after the cause is cleared and RESET is pressed.
+*   Given the E-stop is pressed, when switched 12 V drops, then actuators and valve stop, while the controller and touchscreen stay on and show the stopped state.
+
+**US-05: Batch Record**
+> As an LGU officer, I want a record of each batch so that I can verify production.
+
+Acceptance Criteria:
+*   Given a batch completes, when the press has retracted to home (SW2), then one CSV row (runtime, water level, dispensed volume, peak force) is appended to the SD card and pushed to the PWA.
+*   Given the PWA is connected, when the officer opens the history view, then past batches are listed and downloadable as CSV.
 
 ---
 
@@ -83,9 +93,9 @@ Acceptance Criteria:
 
 | Screen | Purpose | Entry points | States to design |
 |--------|---------|--------------|------------------|
-| **Workspace Dashboard** | Primary control hub; renders FSM progress, sensor gauges, and active step authorization panels. | App launch | loading / idle / active-run / safety-halt |
-| **Power & System Health**| Displays battery SoC, solar panel input, CPU frequency, and filesystem status. | Navbar tab | loading / normal-charge / high-draw / low-power |
-| **History Run Logs** | Renders past batch production runs retrieved from the SD card. | Navbar tab | loading / empty-logs / success-list / write-error |
+| **Batch Workspace** | Setup, active step, readings, and the stop/reset controls. | App launch / Nextion home | loading / idle-setup / active-run / fault-halt / unload |
+| **Power & System Health** | Battery, solar, clients, CPU and filesystem status. | Navbar tab | loading / normal-charge / high-draw / low-power |
+| **History Run Logs** | Past batches from the SD card. | Navbar tab | loading / empty-logs / success-list / write-error |
 
 ---
 
@@ -93,55 +103,62 @@ Acceptance Criteria:
 
 ```mermaid
 flowchart TD
-    Start((Boot & Connect SoftAP)) --> Init[Initialization Screen]
-    Init -->|Diagnostics OK| Idle[Workspace Dashboard: IDLE]
-    Idle -->|Operator Loads Materials & Confirms| Stage2[Grinding & Soaking Phase]
-    Stage2 -->|Water 1:1 reached| WaitMix[Awaiting Mixing Authorization]
-    WaitMix -->|Operator Confirms| Stage3[Combining & Mixing Phase]
-    Stage3 -->|Timer Ends| WaitMold[Awaiting Molding Authorization]
-    WaitMold -->|Operator Confirms| Stage4[Compression & Molding Phase]
-    Stage4 -->|Compactor reaches 2000N| WaitDry[Awaiting Curing Authorization]
-    WaitDry -->|Operator Confirms| Stage5[Thermal Curing & Logging Phase]
-    Stage5 -->|Humidity <= 15%| Complete((Cycle Complete - Unload))
-    
-    Stage4 -->|Casing Breach Switch Open| EmergencyHalt[CRITICAL HALT: 0% Duty Cycle]
-    EmergencyHalt -->|Close Switch & Clear Reset| Stage4
+    Start((Power on)) --> Init[Initialization: mount LittleFS and SD, SoftAP, Nextion, self-test]
+    Init -->|Self-test fails| Fault[FAULT: alert and buzzer]
+    Init -->|OK| SetupPaper[Setup 1: load paper, pick water level]
+    SetupPaper -->|NEXT| SetupCharcoal[Setup 2: load charcoal in hopper]
+    SetupCharcoal -->|START| Water[Water dispensing - flow sensor counts to volume]
+    Water --> Mix[Mixing - preset time]
+    Mix --> Discharge[Discharge - mixer off, trapdoor opens, ERM 1 shakes, trapdoor closes, SW1]
+    Discharge --> Level[Leveling - ERM 2]
+    Level --> Compress[Compression - 40 cm actuator extends until force threshold]
+    Compress --> Retract[Retraction until SW2, batch record written]
+    Retract --> Unload[Prompt: remove the mold]
+    Unload -->|SW3 sees mold removed| SetupPaper
+
+    Discharge -->|SW1 unexpected| Fault
+    Compress -->|SW1 or SW3 opens, invalid force, timeout| Fault
+    Fault -->|Cause cleared and RESET| SetupPaper
 ```
 
 ### 5.3 Onboarding Flow
-*   **Aha / first-value moment:** Opening `http://192.168.4.1` on any mobile browser immediately renders the offline dashboard showing the active ESP32 diagnostics and connection state without requiring signups or configurations.
-*   **Time-to-first-value target:** < 10 seconds (time to connect to SoftAP and open the URL).
-*   **Friction budget:** 0 setup steps. The PWA is served completely pre-packaged in LittleFS.
+*   **Aha / first-value moment:** Opening `http://192.168.4.1` on a phone connected to the machine's Wi-Fi renders the offline dashboard immediately, without signups or configuration.
+*   **Time-to-first-value target:** Under 10 seconds from joining the SoftAP.
+*   **Friction budget:** 0 setup steps. The PWA is served pre-packaged from LittleFS.
 
 ### 5.4 UX Constraints
-*   **Consolidated UI Panels:** Every step displays its own focal action button; operators are never presented with multiple primary triggers on the same screen to prevent operational errors.
-*   **Large Touch Targets:** Minimum button size is `48x48px` to facilitate error-free operation even when fingers are wet or soiled from material mixing.
-*   **No Silent Failures:** Any sensor disconnection (DHT22, DS18B20, or HX711) triggers a visible yellow warning badge beside its gauge.
+*   **One Primary Action per Screen:** Each screen shows one focal action, so operators are never presented with several primary triggers at once.
+*   **Large Touch Targets:** Minimum button size `48x48px` on the PWA, and large buttons on the 7" Nextion, for wet or soiled hands.
+*   **No Silent Failures:** Any sensor disconnection or invalid reading (flow sensor, HX711, limit switch) triggers a visible warning beside its reading and the fault path.
+*   **Limited Screen Space:** The 7" touchscreen shows status and readings; deeper data (history, CSV) is on the PWA.
 
 ---
 
 ## 6. Out of Scope for This Release
 
-*   **Remote Web Analytics:** Because the system operates as a local edge node without cellular internet connection, remote tracking is deferred.
-*   **Automated Slurry Wetness Compensation:** The system counts volumetric water flow, but manual paper sorting remains necessary to maintain raw material consistency.
+*   **Thermal drying, humidity or temperature control:** Briquettes are air-dried outside the machine.
+*   **Automatic material handling:** Loading materials and pulling the mold stay manual.
+*   **Remote analytics:** No internet or cellular connection.
+*   **Pre-soak purification:** The machine cannot remove water-insoluble impurities from the paper.
 
 ---
 
 ## 7. AI / Agent Feature Specifications
 
-N/A — no AI component in this release. All control logic is governed by deterministic physical sensor boundaries and FreeRTOS state execution on the ESP32.
+N/A: no AI component in this release. All control logic is deterministic, based on timers, sensor thresholds and interlocks in FreeRTOS on the ESP32.
 
 ---
 
 ## 8. Dependencies & Assumptions
 
 **Dependencies:**
-*   **LittleFS Stability:** The ESP32 partition must mount successfully on boot to serve the React assets.
-*   **Local Hardware Interrupts:** High-speed interrupts for the YF-S201 Hall-Effect sensor must remain unaffected by network tasks.
+*   **LittleFS Stability:** The partition must mount on boot to serve the PWA assets.
+*   **Interrupt Integrity:** The YF-S201 pulse interrupt must not be delayed by network tasks.
+*   **Stable 5 V Supply:** The ESP32 and Nextion need a supply that can carry Wi-Fi start-up current (a USB port alone browns out the ESP32).
 
 **Assumptions:**
-*   Operators will connect directly to the ESP32 Access Point (`Operator-Node-01`) within a 15-meter range of the machine.
-*   The LiFePO4 battery pack holds sufficient charge to power the 50W Halogen arrays during thermal curing batches.
+*   Operators connect to the SoftAP (`Operator-Node-01`) within about 15 m of the machine; the SoftAP is reliable for 4 to 5 phones at once.
+*   The EcoFlow RIVER 2 holds enough charge for the batches run between solar recharges (energy per batch is to be measured).
 
 ---
 
@@ -149,16 +166,17 @@ N/A — no AI component in this release. All control logic is governed by determ
 
 | # | Phase / Milestone | Entry criteria | Exit criteria (Definition of Done) | Deliverable | Depends on | Owner (DRI) | Top risk |
 |---|-------------------|----------------|-------------------------------------|-------------|------------|-------------|----------|
-| M0 | PWA Core Setup | Install `vite-plugin-pwa` | React app builds, outputting `sw.js` and `manifest.json`. | PWA-compliant build folder | — | Añonuevo | Build files exceed LittleFS storage limits |
-| M1 | Hardware Integration | Sensory drivers active on ESP32 | ESP32 endpoints `/api/stats` output real-time sensor JSON. | C++ firmware + API handler | M0 | Berongoy | Compactor noise corrupts I2C readings |
-| Launch | Pilot Testing | PWA and ESP32 integrated | 30 successful briquette runs completed under 1 hour each. | Operational cyber-physical system | M1 | Galdiano | Wet hands disrupt touchscreen responsiveness |
+| M0 | PWA Core Setup | `vite-plugin-pwa` installed | React app builds and outputs `sw.js` and `manifest.json`, with no external CDN requests | PWA-compliant build folder | n/a | Añonuevo | Build exceeds LittleFS size |
+| M1 | Hardware Integration | Relay, flow, load cell and limit-switch drivers on the ESP32 | Firmware drives the real relays and reads real sensors; batch cycle runs end to end | C++ firmware | M0 | Berongoy | Compressor noise on HX711 readings; flow sensor signal noise |
+| M2 | Calibration | Cycle runs on the rig | Force threshold and mixing times set and recorded; flow volume checked against a jug | Calibration record | M1 | Galdiano | Load cell scale drift |
+| Pilot | Guided Evaluation | Machine and PWA integrated | Guided runs with 15 end-users; 30 specimens produced and tested | Evaluation data | M2 | Tiedra | Wet hands on the touchscreen |
 
 **Rollout strategy:**
-Phased deployment starting with cooperative members in Cavinti. Initial runs will be supervised directly by the engineering team before handing over full operational control.
+Evaluation in Barangay Anglas and Barangay Poblacion, Cavinti, with guided runs supervised by the group.
 
 **Rollback plan:**
-*   *Trigger criteria:* A sensor read failure (e.g. compactor failing to halt at 2000N or safety switch bypass failure).
-*   *Revert mechanism:* The physical emergency stop button on the machine chassis physically cuts power to all 12V motor lines, bypassing the microcontroller logic entirely.
+*   *Trigger criteria:* The actuator fails to stop at the force threshold, or an interlock fails to halt the cycle.
+*   *Revert mechanism:* The emergency stop cuts the switched 12 V supply to actuators and valve, bypassing the firmware. The controller and screen stay powered.
 
 ---
 
@@ -167,11 +185,10 @@ Phased deployment starting with cooperative members in Cavinti. Initial runs wil
 - [x] Every Must-Have feature in Section 3 has at least one user story in Section 4
 - [x] Acceptance criteria are testable (Given/When/Then format)
 - [x] Section 5.1: every interactive surface defines empty / loading / error / success states
-- [x] Section 5.2: flow has no unintended dead ends; entry, exit, and edge cases annotated
-- [x] Section 6 explicitly names things that were discussed but cut
+- [x] Section 5.2: flow follows the five thesis modules, with fault paths annotated
+- [x] Section 6 names what was cut (drying, auto material handling)
 - [x] Section 7 marked N/A
-- [x] Section 9 covers all phases through post-launch
-- [x] Section 9 has an explicit rollback trigger and revert mechanism
+- [x] Section 9 covers all phases and has a rollback trigger and revert mechanism
 - [x] Section 9: every milestone has entry + exit criteria and one DRI
 - [x] This document answers *what* to build, not *how* (architecture goes in the SDD)
 

@@ -1,14 +1,14 @@
 # Design System Document (DSD)
 
 **System Name:** Operator Node Design System (ONDS)
-**Date:** 2026-06-03
-**Version:** 1.0.0
+**Date:** 2026-10-19
+**Version:** 1.1.0
 **Owner:** PUP Computer Engineering Group 6 (Añonuevo, Berongoy, Galdiano, Tiedra)
 **PRD:** [PRD_Template.md](PRD_Template.md)
 
 ---
 
-> **Scope:** This design system covers the client-side user interface of the responsive React Progressive Web App (PWA) dashboard, optimized for mobile screens (Android) and fallback desktop monitors. No secondary embed surfaces are in scope.
+> **Scope:** This design system covers the client-side user interface of the responsive React Progressive Web App (PWA) dashboard of the AUTOBRIQ fully automated briquette machine, optimized for mobile screens (Android) and fallback desktop monitors. The on-machine Nextion 7" touchscreen reuses the same color tokens and is specified in [Nextion_HMI_Design.md](Nextion_HMI_Design.md). No other embed surfaces are in scope.
 
 ---
 
@@ -56,7 +56,7 @@ State encoding uses **color + icon + label** — never color alone.
 
 ### Typography
 
-We load **Inter** and **JetBrains Mono** via Google Fonts with local system fallbacks:
+Preferred faces are **Inter** and **JetBrains Mono**, with system fallbacks:
 
 | Role | Font | Weight | Size | Line Height |
 |------|------|--------|------|-------------|
@@ -67,7 +67,7 @@ We load **Inter** and **JetBrains Mono** via Google Fonts with local system fall
 | Mono / Numbers | JetBrains Mono, monospace | 600 (Semi-Bold) | 0.85rem | 1.3 |
 
 **Font loading:**
-Fonts are linked in the HTML head via Google Fonts CDN, but the PWA cache registers these URLs on initial load. If offline, the browser gracefully falls back to system sans-serif (e.g. System UI, BlinkMacSystemFont) and monospace font-stacks.
+The PWA must be self-contained in the ESP32's LittleFS partition, so it requests **no fonts from a CDN** (thesis constraint: no external CDNs for fonts, icons or CSS frameworks). Inter and JetBrains Mono are used where the device already has them; otherwise the browser uses its system sans-serif and monospace stacks. To get the exact faces on every phone, self-host the font files (woff2) inside the PWA build.
 
 ### Elevation & Depth
 
@@ -163,7 +163,7 @@ VISUAL_DENSITY:     8
 | Pattern | Status | Location | Fix Applied |
 |---------|--------|----------|-------------|
 | **Color-Only Alerts** | Avoided | Workspace Dashboard | All error codes are accompanied by text descriptors and a yellow/red warning triangle icon. |
-| **Hidden Operations** | Avoided | Stage Controller | Modals and tabs are minimized; the sequential FSM operates as a wizard layout. |
+| **Hidden Operations** | Avoided | Batch Workspace | Modals and tabs are minimized; setup is a two-step wizard and the automatic cycle is shown as one step bar. |
 | **Small CTA targets** | Fixed | Confirm Buttons | All confirmation buttons have been given a minimum height of `48px`. |
 
 ---

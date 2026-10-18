@@ -1,36 +1,43 @@
 # System Design Document (SDD)
 
-**Project:** Semi-Automated Paper-Charcoal Briquette Machine Embedded Architecture
-**Date:** 2026-06-03
-**Version:** 1.0.0
+**Project:** AUTOBRIQ Fully Automated Paper-Charcoal Briquette Machine: Embedded Architecture
+**Date:** 2026-10-19
+**Version:** 1.1.0
 **Owner:** PUP Computer Engineering Group 6 (Añonuevo, Berongoy, Galdiano, Tiedra)
 **PRD:** [PRD_Template.md](PRD_Template.md)
+**Build status and known gaps:** [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)
 
 ---
 
 ## 1. Architectural Vision & Principles
 
 **Architecture style:**
-Dual-Interface Edge IoT Node. The system relies entirely on localized edge processing on an ESP32-WROOM-32D microcontroller. The microcontroller concurrently runs a deterministic FreeRTOS finite state machine (FSM) for physical sensor/actuator control on Core 1, while Core 0 hosts a local Wi-Fi Access Point, broadcasts a DNS captive portal, and serves the static React PWA dashboard from its internal LittleFS flash partition.
+Closed-loop, dual-interface edge IoT node on an ESP32-WROOM-32D (dual core, FreeRTOS). A finite state machine (FSM) runs the batch cycle from timers, sensor feedback and safety interlocks. The same node hosts a local Wi-Fi Access Point and serves a React PWA from internal LittleFS flash, and drives a Nextion 7" touchscreen over UART.
+
+Core allocation (thesis): **Core 0** runs low-latency hardware ISRs and the fail-safe interlocks; **Core 1** runs the networking stack, the Wi-Fi AP and WebSocket telemetry. See section 9 for how the firmware currently differs.
 
 ```
-       Core 1 [Control Core]                Core 0 [Network Core]
+        Core 0 [Control Core]                 Core 1 [Network Core]
 ┌─────────────────────────────────┐  ┌─────────────────────────────────┐
-│ • FreeRTOS State Loops          │  │ • Wi-Fi SoftAP Access Point     │
-│ • Sensor Polling (HX711/Flow)   │  │ • WebServer (Async HTTP API)    │
-│ • Actuation Relays/BTS7960      │  │ • LittleFS Static Asset Server  │
-│ • SD Card Append-Only Logging   │  │ • DNS Captive Portal Server     │
+│ • Hardware ISRs (flow pulses,   │  │ • Wi-Fi SoftAP                  │
+│   limit switches)               │  │ • Async HTTP server + WebSocket │
+│ • Fail-safe interlocks          │  │ • LittleFS static asset server  │
+│ • FSM, relay outputs            │  │ • DNS captive portal            │
+│ • HX711 polling                 │  │ • Nextion UI and telemetry JSON │
+│ • SD batch logging              │  │                                 │
 └─────────────────────────────────┘  └─────────────────────────────────┘
 ```
 
 **Guiding principles:**
-*   **Separation of Concerns:** Core 1 handles timing-critical control loops (grinder, water valve, compactor safety checks). Core 0 handles network connections and web requests to prevent Wi-Fi stack operations from delaying hardware safety limit checks.
-*   **Offline Independence:** No cloud dependency, external CDNs, or cellular gateways. The app must run 100% locally from the ESP32's flash.
-*   **Safety Overrides:** Low-level safety limit switches trigger hardware interrupts that directly cut off motor drivers, bypassing the high-level dashboard.
+*   **Separation of Concerns:** Timing-critical control (valve cutoff, compression stop, interlocks) must never wait on the network stack.
+*   **Offline Independence:** No cloud, no external CDNs (fonts, icons, CSS frameworks), no cellular gateway. The PWA runs entirely from the ESP32's flash.
+*   **One Output at a Time:** The FSM energises at most one machine output at any moment (`Outputs::driveOnly`), and the two relays of an actuator are never on together.
+*   **Safety Overrides:** The emergency stop cuts the switched 12 V supply in hardware. The controller and touchscreen stay powered so the fault is displayed.
 
-**Key trade-offs made (V1 tech debt):**
-*   **No Relational Database:** Because the ESP32 lacks the RAM/storage to run relational engines, we log data using flat append-only CSV files on a Micro-SD card. Data analysis must be compiled off-machine.
-*   **Single-Client Write Lock:** Only one client (the Nextion Touchscreen or the PWA) can commit a "stage transition confirm" action at a time, preventing split-brain commands.
+**Key trade-offs made:**
+*   **No Relational Database:** The ESP32 lacks the RAM for SQL engines, so data is logged as flat append-only CSV on a Micro-SD card.
+*   **Single Command Queue:** Commands from the touchscreen and from the PWA go into one queue and are applied in order by the FSM.
+*   **Fixed Geometry:** One mold and one briquette size; the actuator stroke caps the slurry volume per cycle.
 
 ---
 
@@ -38,30 +45,29 @@ Dual-Interface Edge IoT Node. The system relies entirely on localized edge proce
 
 ```mermaid
 graph TD
-    User([Operator - Mobile PWA]) -->|WiFi / HTTP GET| AP[ESP32 Web Server - Core 0]
-    Touch[Nextion Touchscreen] -->|UART Serial| ESP32[ESP32 Firmware Core 1]
-    
+    User([Operator - Phone PWA]) -->|WiFi / HTTP + WebSocket| AP[ESP32 Web Server]
+    Touch[Nextion 7in Touchscreen] -->|UART| ESP32[ESP32 Firmware]
+
     subgraph ESP32 Microcontroller
-        AP -->|API Handler / GET stats| State[(FreeRTOS State Machine)]
-        AP -->|Static Files| FS[(LittleFS Partition)]
-        State -->|Append Run Logs| SD[(Micro-SD Card FAT32)]
+        AP -->|Telemetry JSON, commands| State[(FreeRTOS State Machine)]
+        AP -->|Static files| FS[(LittleFS Partition)]
+        State -->|Batch CSV row| SD[(Micro-SD FAT32)]
     end
 
-    subgraph Sensor & Actuator Bridge
-        State -->|GPIO Trigger| Relays[Optocoupled Relays 12V]
-        State -->|PWM / Duty Cycle| BTS[BTS7960 Motor Driver]
-        State -->|Interrupt Event| Flow[YF-S201 Flow Sensor]
-        State -->|24-bit SPI| HX[HX711 Load Cell Amp]
-        State -->|OneWire Protocol| DS[DS18B20 Temp Probes]
-        State -->|GPIO Digital Read| Limits[Safety Limit Switches]
+    subgraph Sensor and Switching Bridge
+        State -->|GPIO| Relays[8-ch Optocoupled Relay Module]
+        State -->|Interrupt| Flow[YF-S201 Flow Sensor]
+        State -->|24-bit| HX[HX711 + 300 kg S-type Load Cell]
+        State -->|GPIO read| Limits[SW1 trapdoor, SW2 compressor home, SW3 mold seated]
+        State -->|GPIO| Buzz[Three Piezo Buzzers]
     end
 
     subgraph Physical Plant
-        Relays --> Grinder[775 DC Grinder Motor]
-        Relays --> Valve[Water Solenoid Valve]
-        Relays --> Mixer[Geared Planetary Mixer]
-        Relays --> Thermal[Halogen Thermal Array & Fans]
-        BTS --> Actuator[Linear Compactor Actuator]
+        Relays --> Valve[12V NC Water Solenoid Valve]
+        Relays --> Trap[15 cm Actuator - trapdoor]
+        Relays --> Press[40 cm Actuator - compression]
+        Relays --> ERM[ERM 1 discharge, ERM 2 leveling]
+        Relays --> Auto[30 A Automotive Relay] --> Mixer[20 V INGCO Mixer]
     end
 ```
 
@@ -69,42 +75,59 @@ graph TD
 
 | Layer | Technology | Responsibility |
 |-------|------------|----------------|
-| **Client / HMI** | React.js + Vite (PWA) | Remote telemetry visual HUD, process stage confirmations. |
-| **Local Host** | ESP32 SoftAP Web Server | Broadcasts localized Wi-Fi Access Point, serving offline assets. |
-| **Edge Controller**| ESP32 Core 1 (FreeRTOS) | Executes FSM states, polls sensors, handles safety interrupts. |
-| **Storage** | LittleFS & FAT32 Micro-SD | LittleFS stores web app files. SD card stores batch CSV logs. |
-| **Actuator Drivers**| BTS7960 & Optocoupled Relays | Translates 3.3V logic signals into high-current 12V motor drives. |
-| **Power Plant** | 100W Panel + 30Ah LiFePO4 | Off-grid power supply with solar charger telemetry. |
+| **Physical Plant** | INGCO 20 V mixer, 15 cm and 40 cm 12 V linear actuators (1,500 N, 7 mm/s), solenoid valve, two ERM vibration motors | Performs the production steps |
+| **Bridge** | YF-S201, 300 kg S-type load cell + HX711, three limit switches, 8-channel relay module, 30 A automotive relay, buzzers | Senses the machine and switches loads |
+| **Edge Controller** | ESP32 FreeRTOS FSM | Runs the cycle, handles interlocks, logs batches |
+| **Storage** | LittleFS and FAT32 Micro-SD | LittleFS holds the PWA files; SD holds batch CSV logs |
+| **HMI** | Nextion NX8048T070 (UART) and React + Vite PWA | Batch start, status, readings, faults, CSV download |
+| **Power Plant** | 110 W panel, EcoFlow RIVER 2 (256 Wh LiFePO4, MPPT), UME S2415 supply set to 20 V | Off-grid power: 12 V DC outlet for actuators and control, AC outlet to the mixer supply |
+
+### Relay channel map (8-channel module)
+
+| Channel | Load | Notes |
+|---------|------|-------|
+| CH1, CH2 | 15 cm actuator, extend / retract | Never both on (extend closes the trapdoor, retract opens it) |
+| CH3, CH4 | 40 cm actuator, extend / retract | Extend presses, retract goes home |
+| CH5 | Water solenoid valve | Normally closed valve; flyback diode across the coil |
+| CH6 | 30 A automotive relay coil | Switches the mixer's 20 V supply |
+| CH7, CH8 | Spare (see the open question about the ERM motors in [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)) | |
+
+### Interlocks and faults
+
+| Input | Meaning | When it matters | Fault action |
+|-------|---------|-----------------|--------------|
+| SW1 | Trapdoor closed | Before leveling and during compression | Unexpected open: stop production loads, fault state |
+| SW2 | Compressor fully retracted (home) | Self-test, end of retraction | Home not reached: fault; at home the retract relay turns off |
+| SW3 | Mold fully seated | Before and during compression; end of cycle | Mold removed mid-cycle: stop, fault. Mold removed after unload: return to setup |
+| E-stop | Switched 12 V cut | Any time | Actuators and valve stop; controller and screen stay on |
+| Force reading | HX711 validity and threshold | Compression | Invalid reading or timeout: stop, fault. Threshold reached: extend relay off |
 
 ---
 
 ## 3. Data Architecture
 
 ### Filesystem Layout
-*   **LittleFS (Internal Flash):** Stores `/index.html`, `/manifest.json`, `/sw.js`, `/registerSW.js`, and visual resources (JS/CSS bundles).
-*   **Micro-SD Card (FAT32 External):** Mounted on `/sd` to support data logging.
+*   **LittleFS (Internal Flash):** `/index.html`, `/manifest.json`, `/sw.js`, `/registerSW.js` and the JS/CSS bundles. All assets are local.
+*   **Micro-SD Card (FAT32 External):** mounted on `/sd` for logging. The NVS registry keeps state across power cycles (for example the next batch ID).
 
 ### SD Card Data Schemas
 
-**File: `/sd/production_runs.csv`** (Append-only)
+**File: `/sd/production_runs.csv`** (append-only, one row per batch)
 
 | Field | Type | Constraint | Description |
 |-------|------|------------|-------------|
-| `batch_id` | unsigned long | PK (incrementing) | Unique identifier for the batch. |
-| `timestamp` | char[20] | ISO 8601 string | Date and time of run initialization. |
-| `grind_time_s` | unsigned int | >= 0 | Pulverization duration in seconds. |
-| `water_vol_l` | float | >= 0.0 | Total water volume dispensed. |
-| `mix_time_s` | unsigned int | >= 0 | Planetary mixer run duration. |
-| `max_force_n` | float | 0.0 to 2500.0 | Peak compaction force recorded by HX711. |
-| `dry_time_s` | unsigned int | >= 0 | Total duration of halogen curing. |
-| `final_humidity` | float | 0.0 to 100.0 | Exhaust humidity recorded at termination. |
+| `batch_id` | unsigned long | PK (incrementing, kept in NVS) | Unique identifier for the batch. |
+| `water_level_pct` | unsigned int | 30 to 100 | Water level selected by the operator. |
+| `water_vol_l` | float | >= 0.0 | Water volume dispensed (YF-S201 count). |
+| `runtime_s` | unsigned int | >= 0 | Elapsed time from START to batch completion. |
+| `peak_force_n` | float | >= 0.0 | Peak compaction force recorded by the HX711. |
 | `status` | char[6] | "OK" or "FAULT" | Termination status of the batch. |
 
-**File: `/sd/system_events.csv`** (Append-only event log)
+**File: `/sd/system_events.csv`** (append-only event log)
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `timestamp` | char[20] | Timestamp of event. |
+| `uptime_s` | unsigned long | Seconds since boot (the ESP32 has no real-time clock). |
 | `level` | char[5] | "INFO", "WARN", "ERROR". |
 | `source` | char[10] | "FSM", "NET", "SAFETY". |
 | `message` | char[64] | Structured text message of the event. |
@@ -113,14 +136,32 @@ graph TD
 
 ## 4. API Design & External Integrations
 
-The web server utilizes `ESPAsyncWebServer` to process non-blocking API calls.
+The web server uses `ESPAsyncWebServer`. All endpoints are local to the SoftAP.
 
-### API Endpoints
+### HTTP
 
-#### 1. System Telemetry Endpoint
-*   **HTTP Method:** `GET`
-*   **Path:** `/api/stats`
-*   **Response (200 OK):**
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/` | Serves the PWA from LittleFS |
+| GET | `/api/stats` | Current system and process snapshot (JSON, below) |
+| GET | `/generate_204`, `/hotspot-detect.html`, `/connecttest.txt`, `/ncsi.txt` | Captive-portal probes from Android, iOS and Windows |
+
+### WebSocket `/ws`
+
+*   **Server to client:** the telemetry JSON below, sent on connect and then on a timer.
+*   **Client to server:** small JSON commands `{"action":"<NAME>","payload":{...}}`.
+
+| Action | Payload | Effect |
+|--------|---------|--------|
+| `SET_WATER` | `{"pct":80}` | Set the water level (setup screen only; 30 to 100, steps of 10) |
+| `NEXT` / `BACK` | none | Move between the two setup screens |
+| `START` | none | Begin the automatic cycle (from the charcoal screen) |
+| `STOP` (alias `TRIP_SAFETY`) | none | Stop all outputs; state becomes STOPPED |
+| `RESET` | none | From STOPPED, retract the press and close the trapdoor, then return to setup |
+| `DONE` | none | Acknowledge unload and return to setup |
+
+### Telemetry JSON (`/api/stats` and the WebSocket)
+
 ```json
 {
   "uptime_ms": 1420500,
@@ -128,75 +169,55 @@ The web server utilizes `ESPAsyncWebServer` to process non-blocking API calls.
   "total_heap": 327680,
   "clients": 2,
   "ssid": "Operator-Node-01",
-  "channel": 6,
-  "mac": "24:6F:28:AE:C2:1C",
   "ip": "192.168.4.1",
-  "active_state": 3,
-  "safety_switch": 1,
-  "sensors": {
-    "volumetric_flow_l": 2.45,
-    "compaction_force_n": 1450.2,
-    "curing_temp_c": 42.5,
-    "relative_humidity": 24.1,
-    "grinder_current_a": 4.2
+  "channel": 6,
+  "security": "WPA2-PSK",
+  "process": {
+    "step": "PRESS",
+    "run_index": 8,
+    "water_pct": 100,
+    "target_l": 3.00,
+    "flow_l": 3.00,
+    "force_n": 1450,
+    "peak_force_n": 1450,
+    "step_elapsed_ms": 9000,
+    "step_duration_ms": 0,
+    "batch_ms": 241000
   },
-  "power": {
-    "battery_voltage_v": 13.2,
-    "solar_amperage_a": 2.1
-  }
+  "outputs": {
+    "solenoid": "OFF", "mixer_motor": "OFF", "gate_actuator": "OFF",
+    "mixer_erm": "OFF", "box_erm": "OFF", "press_actuator": "EXTEND"
+  },
+  "power": { "battery_voltage_v": 12.9, "solar_amperage_a": 1.6 }
 }
 ```
 
-#### 2. Workflow Stage Transition Confirmation
-*   **HTTP Method:** `POST`
-*   **Path:** `/api/action`
-*   **Payload (JSON):**
-```json
-{
-  "action": "confirm_transition",
-  "current_state": 3
-}
-```
-*   **Response (200 OK):**
-```json
-{
-  "status": "success",
-  "next_state": 4
-}
-```
-
-#### 3. Emergency Software Halt
-*   **HTTP Method:** `POST`
-*   **Path:** `/api/halt`
-*   **Response (200 OK):**
-```json
-{
-  "status": "halted",
-  "reason": "operator_manual_trigger"
-}
-```
+The thesis calls for 10 Hz telemetry; see section 9 for the current rate. Excerpted fields only: the full object also carries MAC, DNS counters and the remaining process fields.
 
 ---
 
 ## 5. Security & Authorization
 
-*   **Wi-Fi Access Control:** The ESP32 SoftAP is secured with WPA2-PSK encryption using a pre-shared key printed on the inside of the machine control panel.
-*   **Local Routing Only:** The DNS server intercepts all domains (UDP Port 53) and issues a 302 redirect to `192.168.4.1` to ensure local captive portal loading.
-*   **HMI Priority Lockout:** The Nextion physical touchscreen is connected via a hardwired UART connection and holds input priority. If a physical button is pressed, PWA dashboard controls are locked out for 5 seconds to prevent conflicting commands.
+*   **Wi-Fi Access Control:** WPA2-PSK. The key is set in firmware configuration and must be changed from the default before deployment.
+*   **Local Routing Only:** The DNS server answers all names with `192.168.4.1` and the OS captive-portal probes are redirected, so the dashboard opens automatically.
+*   **Client Limit:** The AP accepts up to 8 connections in firmware; the reliable range is 4 to 5 phones (thesis constraint).
+*   **Command Arbitration (planned):** Touchscreen priority over the PWA (a short lockout of PWA controls after a touchscreen press) is a design goal and is not implemented yet.
+*   **No outside access:** No WAN, cloud or cellular path exists.
 
 ---
 
 ## 6. Infrastructure, CI/CD & Deployment
 
 ### Build Chain
-*   **Embedded Firmware:** Compiled using PlatformIO inside VS Code using the ESP32 Arduino framework.
-*   **Web Dashboard:** Built via Node.js Vite, outputting assets to the `operator-node/data` folder.
+*   **Embedded Firmware:** PlatformIO in VS Code, ESP32 Arduino framework. Environments: `esp32doit-devkit-v1` (main firmware), `actuator-test` (relay bench test sketch), `nextion-test` and `nextion-bridge` (display bring-up tools).
+*   **Web Dashboard:** Node.js + Vite builds to `operator-node/data`, which is flashed to LittleFS.
 
 ### Deployment Process
-1.  Run `npm run build` inside `operator-node/dashboard/`. This outputs built files, including `sw.js` and `manifest.json`, to `operator-node/data`.
-2.  Connect ESP32 via USB.
-3.  Execute PlatformIO task: `Upload Filesystem Image` (this flashes the `data/` folder directly to the LittleFS flash partition).
-4.  Execute PlatformIO task: `Upload` (flashes Core 0 and Core 1 firmware binaries).
+1.  Run `npm run build` inside `operator-node/dashboard/`. Output (including `sw.js` and `manifest.json`) goes to `operator-node/data`.
+2.  Connect the ESP32 over USB.
+3.  PlatformIO task `Upload Filesystem Image` (flashes `data/` to LittleFS).
+4.  PlatformIO task `Upload` (flashes the firmware).
+5.  Real relay outputs are off by default (`OUTPUTS_LIVE=0`); enable them only after the pin map matches the wiring.
 
 ---
 
@@ -204,18 +225,26 @@ The web server utilizes `ESPAsyncWebServer` to process non-blocking API calls.
 
 | Requirement | Target | Notes |
 |-------------|--------|-------|
-| **Telemetry Poll Latency** | < 250 ms | GUI response time during compaction force updates. |
-| **Water Valve Cutoff** | < 50 ms | Max delay to close solenoid once 1:1 ratio is polled. |
-| **Safety Interlock Shutdown** | < 5 ms | Core interrupt routine response to limit switch opening. |
-| **Max Concurrent Mobile Connections** | 4 clients | Constraint of the ESP32 network stack. |
-| **SD Write Retention** | 100,000 cycles | Flash wear-leveling handled by ESP32 SD library. |
-| **Battery Cycle Endurance**| >= 10 batches | Single charge capacity on 30Ah LiFePO4 battery. |
+| **Telemetry Rate** | 10 Hz WebSocket (thesis) | Display update during compression force changes |
+| **Water Valve Cutoff** | < 50 ms | Delay from reaching the preset volume to closing the valve |
+| **Safety Interlock Shutdown** | < 5 ms | ISR response to a limit switch opening |
+| **Concurrent Phones** | 4 to 5 reliable | SoftAP and ESP32 network stack limit |
+| **Load Cell Resolution** | Limited by noise | Vibration from motors adds reading fluctuation; filter and read between vibration steps |
+| **Water Volume Resolution** | One YF-S201 pulse | About 450 pulses per liter (calibrated by jug) |
+| **Energy per Batch** | To be measured | EcoFlow RIVER 2 has 256 Wh; log it before claiming a batch count |
+| **SD Logging** | Append-only CSV, FAT32 | No relational engine |
 
 ---
 
 ## 8. AI / Agent Architecture
 
-N/A — no AI components are integrated into the embedded firmware or web dashboard.
+N/A: no AI components are integrated into the embedded firmware or web dashboard.
+
+---
+
+## 9. Implementation Status
+
+The firmware and the thesis differ in several places (limit switches, buzzers and SD logging not yet implemented; telemetry rate; core assignment; relay pin map; a mixer-pulse step). The authoritative list, with the action for each, is in [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) section 3.
 
 ---
 
@@ -223,12 +252,13 @@ N/A — no AI components are integrated into the embedded firmware or web dashbo
 
 - [x] Section 2 has an actual Mermaid diagram
 - [x] Section 3 defines every entity with typed fields, keys, constraints
-- [x] Section 3 has a forward-only migration strategy (append-only flat CSV file write versioning)
-- [x] Section 7 latency/accuracy targets are specific numbers
+- [x] Section 3 has a forward-only migration strategy (append-only CSV; new fields append as new columns at the end)
+- [x] Section 7 targets are specific; numbers not yet measured are marked "to be measured"
 - [x] Section 8 marked N/A
-- [x] V1 shortcuts documented as explicit tech debt in Section 1 (CSV storage, single-client command lock)
+- [x] Trade-offs are documented in Section 1 (CSV storage, single command queue, fixed geometry)
+- [x] Endpoints in Section 4 match the firmware
 - [x] This document answers *how* to build; *what* stays in [PRD_Template.md](PRD_Template.md)
 
 ---
 
-*Next in sequence: [QAD_Template.md](QAD_Template.md) — QA and test plan.*
+*Next in sequence: [QAD_Template.md](QAD_Template.md): QA and test plan.*

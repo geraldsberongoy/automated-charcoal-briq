@@ -1,45 +1,33 @@
-# Documentation Template Suite
+# AUTOBRIQ Documentation Suite
 
-Reusable templates derived from the Mate document suite (`docs/*-mate.md`). Use these when starting a new project or regenerating a document type from scratch.
+Filled documents for **AUTOBRIQ: Development of a Fully Automated Paper-Charcoal Briquette Machine** (PUP Computer Engineering Group 6). The source of truth is the thesis: [../chapters/AUTOBRIQ_fully_automated_thesis.md](../chapters/AUTOBRIQ_fully_automated_thesis.md). Agents working on these files should read [../agent.md](../agent.md) first.
+
+Start with [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md): what the machine is, what is built, and every place where the code and the docs differ from the thesis.
 
 ## Reading / writing order
 
 ```
-BRD → PRD → DSD → SDD → RFC (feature-specific) → QAD → CLR → GTM
+PROJECT_CONTEXT → BRD → PRD → DSD → SDD → QAD → CLR → GTM
+                                  Nextion_HMI_Design (alongside DSD)
 ```
 
-| Template | Output path | Depends on |
-|----------|-------------|------------|
-| [BRD_Template.md](BRD_Template.md) | `docs/brd-{{slug}}.md` | — |
-| [PRD_Template.md](PRD_Template.md) | `docs/prd-{{slug}}.md` | BRD |
-| [DSD_Template.md](DSD_Template.md) | `docs/dsd-{{slug}}.md` | PRD |
-| [SDD_Template.md](SDD_Template.md) | `docs/sdd-{{slug}}.md` | PRD |
-| RFC (not in this folder) | `docs/rfc-{{slug}}-{{feature}}.md` | PRD, SDD |
-| [QAD_Template.md](QAD_Template.md) | `docs/qad-{{slug}}.md` | PRD, RFC(s) |
-| [CLR_Template.md](CLR_Template.md) | `docs/clr-{{slug}}.md` | PRD, SDD |
-| [GTM_Template.md](GTM_Template.md) | `docs/gtm-{{slug}}.md` | PRD, CLR |
+| Document | Depends on | Covers |
+|----------|------------|--------|
+| [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) | Thesis | Summary, build status, thesis-vs-code gaps |
+| [BRD_Template.md](BRD_Template.md) | Thesis | Business problem, scope, success metrics |
+| [PRD_Template.md](PRD_Template.md) | BRD | Interface requirements, user stories, app flow |
+| [DSD_Template.md](DSD_Template.md) | PRD | PWA design system (tokens, components) |
+| [Nextion_HMI_Design.md](Nextion_HMI_Design.md) | PRD, DSD | On-machine 7" touchscreen |
+| [SDD_Template.md](SDD_Template.md) | PRD | Architecture, relay map, data, API |
+| [QAD_Template.md](QAD_Template.md) | PRD, SDD | Test plan and release criteria |
+| [CLR_Template.md](CLR_Template.md) | PRD, SDD | Data privacy and legal readiness |
+| [GTM_Template.md](GTM_Template.md) | PRD, CLR | Pilot and launch strategy |
 
-## How to use
+The `*_Template.md` file names are kept so existing links keep working; the content is the filled AUTOBRIQ version.
 
-1. Read [AGENT_ROUTING.md](AGENT_ROUTING.md) to pick the right template.
-2. Copy the template to the output path (or ask an agent to fill it in place).
-3. Replace every `{{PLACEHOLDER}}` with project-specific content.
-4. Cross-link sibling docs with relative paths (e.g. `[PRD](prd-mate.md)`).
-5. Complete the **Self-Check** section before marking the doc done.
+## Keeping them consistent
 
-## Placeholder convention
-
-| Placeholder | Meaning |
-|-------------|---------|
-| `{{PROJECT_NAME}}` | Full product/project name |
-| `{{PROJECT_SLUG}}` | Lowercase slug for filenames (e.g. `mate`) |
-| `{{DATE}}` | Document date (`YYYY-MM-DD`) |
-| `{{VERSION}}` | Semantic version (e.g. `0.1`) |
-| `{{OWNER}}` | Owning entity or team |
-| `{{STATUS}}` | Draft / In review / Final |
-| `{{PRIMARY_MARKET}}` | Launch jurisdiction (e.g. Philippines) |
-| `{{LAUNCH_DATE}}` | Target launch or milestone date |
-
-## Reference implementation
-
-The Mate suite in `docs/` is the canonical filled example for every template in this folder.
+1. If code, docs and the thesis disagree, the thesis wins (agent.md Rule 4).
+2. Shared parameters (cycle, batch size, force threshold, power, relay map) live in [../agent.md](../agent.md) section 2. Change them there first.
+3. Do not invent numbers the thesis leaves to calibration or measurement; mark them "to be measured".
+4. Update the Self-Check section of a document when you change it.
