@@ -1,66 +1,87 @@
-# DEVELOPMENT OF SEMI-AUTOMATED PAPER-CHARCOAL BRIQUETTE PRODUCTION WITH GRAPHICAL USER INTERFACE
+# AUTOBRIQ: DEVELOPMENT OF A FULLY AUTOMATED PAPER-CHARCOAL BRIQUETTE MACHINE
 
 > **Bachelor of Science in Computer Engineering (BSCpE) Thesis Project**  
 > **Faculty of Computer Engineering | Polytechnic University of the Philippines, Sta. Mesa, Manila**  
-> _Target Field Deployment Area: Cavinti, Laguna, Philippines (Off-Grid Communities)_
+> _Study areas: Barangay Anglas and Barangay Poblacion, Cavinti, Laguna, Philippines (off-grid communities)_
 
 ---
 
 ## Executive Research Summary
 
-This repository contains the complete cyber-physical system (CPS) architecture, mathematical calibration matrices, off-grid power sizing equations, and embedded firmware/software designs for the **Semi-Automated Paper-Charcoal Briquette Production System**.
+This repository holds the firmware, dashboards and documentation for **AUTOBRIQ**, a solar-powered, **fully automated** paper-charcoal briquette machine. The operator selects the water level, loads shredded paper and crushed charcoal, inserts the mold and presses START. From there the ESP32 runs water dispensing, soaking and mixing, gravity discharge into a partitioned mold, compression molding and press retraction on its own, using timers, sensor feedback and safety interlocks, with no mid-cycle prompts. The operator then pulls out the mold.
 
-Designed as a sustainable, community-scale waste-to-energy utility, this system intercepts municipal paper waste streams and residual charcoal fines, converting them into uniform, high-density, extended-burn solid fuel briquettes. Operating completely off-grid, the system utilizes a high-efficiency solar harvesting array and a closed-loop microcontroller pipeline, resolving the severe labor bottlenecks and quality inconsistencies inherent in traditional manual briquette production.
+The machine cycle **ends after compression and press retraction**. There is no thermal drying in the machine: the briquettes are air-dried outside it, so the machine is free for the next batch sooner. Each batch targets **at least 20 solid rectangular briquettes** of one fixed size.
 
 ```
 +---------------------------------------------------------------------------------------------------+
 |                                 CIRCULAR ECONOMY VALUE CHAIN                                      |
 |                                                                                                   |
-|  [Lignocellulosic Waste] ---> Shred & Wetting ---> Hydrated Cellulose Fiber Activation (Binder)   |
-|  [Charcoal Dust/Fines]   ---> Pulverization ---> High-Calorific Density Matrix                    |
-|  [Off-Grid Solar PV]     ---> MPPT Charging  ---> 12V 30Ah LiFePO4 Battery Buffer                 |
+|  [Waste Paper]          ---> Shred & Soak ----> Hydrated Cellulose Fibers (natural binder)        |
+|  [Charcoal Fines]       ---> Load into hopper -> Mixed into a paper-charcoal slurry               |
+|  [Water]                ---> Flow-metered   ---> Preset volume (30% to 100% of the container)     |
+|  [Solar PV + EcoFlow]   ---> 110 W panel -> RIVER 2 power station (MPPT, 256 Wh LiFePO4)          |
 |                                                                                                   |
-|  ====> OUTPUT: Denser, uniform cooking briquettes with 2x burn duration of store-bought wood coal  |
+|  ====> OUTPUT: pressed rectangular briquettes (>= 20 per batch), air-dried outside the machine    |
 +---------------------------------------------------------------------------------------------------+
 ```
+
+The source of truth for every design decision is the thesis. Its text is in [`chapters/AUTOBRIQ_fully_automated_thesis.md`](chapters/AUTOBRIQ_fully_automated_thesis.md); what is built and where the build still differs from it is tracked in [`docs/PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md).
+
+---
+
+## How a Batch Runs (five modules)
+
+| # | Module | What happens |
+|---|--------|--------------|
+| 1 | **Initialization, loading, batch start** | Mount LittleFS and the SD card, start the Wi-Fi AP and PWA, init the Nextion, self-test (interlocks closed, actuators home, power present). Setup screens: paper plus water level (30% to 100%, preset 100%), then charcoal, then START. |
+| 2 | **Water dispensing and mixing** | The normally closed valve opens and the YF-S201 pulse count meters the volume, then the valve closes. The mixer runs for a preset time into a homogeneous slurry. |
+| 3 | **Mixture discharge** | The mixer stops. The 15 cm actuator retracts to open the container's trapdoor while ERM motor 1 shakes the remaining mixture down; the actuator then closes the trapdoor (SW1 confirms). |
+| 4 | **Leveling and compression** | ERM motor 2 levels the mixture. With SW1 and SW3 confirmed, the 40 cm actuator presses into the partitioned mold while the HX711 reads the 300 kg load cell; the extend relay turns off at the preset force threshold. |
+| 5 | **Retraction and unload** | The actuator retracts to home (SW2). The batch record (runtime, water level, dispensed volume, peak force) is saved to the SD card as a CSV row and pushed to the PWA. The buzzer sounds and the screen asks the operator to remove the mold. |
 
 ---
 
 ## Repository Structural Map
 
-This workspace organizes the theoretical research, mathematical sizing models, and empirical testing parameters:
+| Path | Description |
+|------|-------------|
+| [`chapters/AUTOBRIQ_fully_automated_thesis.md`](chapters/AUTOBRIQ_fully_automated_thesis.md) | **Current thesis text** (Chapters 1 to 3, October 2026): the source of truth. The original `.docx` with figures is kept outside git. |
+| [`chapters/`](chapters/) (older files) | **Superseded** semi-automated thesis, kept for history only. See [`chapters/README.md`](chapters/README.md). |
+| [`docs/`](docs/) | Filled document suite: BRD, PRD, DSD, SDD, QAD, CLR, GTM and the Nextion HMI guide. Start with [`docs/PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md). |
+| [`docs/guides/`](docs/guides/) | Wiring and test guides as HTML: whole-system wiring and perfboard layout, test rig, solenoid valve, YF-S201 flow sensor, load cell. |
+| [`agent.md`](agent.md) | Rules and shared parameters for agents and contributors editing the docs. |
+| [`operator-node/`](operator-node/) | ESP32 firmware (`src`, `include`), bench-test sketches (`actuator-test`, `hmi-test`, `hmi-bridge`) and the React PWA (`dashboard`). |
+| [`mockups/`](mockups/) | Pixel mockups of the PWA and the Nextion screens. |
 
-| Document / Asset             | File Path                                                                                                                                                                                      | Description & Academic Scope                                                                                                                                                                                                                                                                                                                  |
-| :--------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Complete Thesis Chapters** | [GROUP 6 - DEVELOPMENT OF AN EMBEDDED SYSTEM ARCHITECTURE FOR SEMI-AUTOMATED PAPER-CHARCOAL  BRIQUETTE MACHINE (1).md](<file:///c:/Users/User/CODERIST/mor/automated-charcoal-briq/chapters/GROUP%206%20-%20DEVELOPMENT%20OF%20AN%20EMBEDDED%20SYSTEM%20ARCHITECTURE%20FOR%20SEMI-AUTOMATED%20PAPER-CHARCOAL%20%20BRIQUETTE%20MACHINE%20(1).md>) | **Core Research Content:**<br/>• **Ch. 1:** Problem Setting, UN SDGs (Goal 7, 12, 13) alignment, Socioeconomic Context of Cavinti, Laguna.<br/>• **Ch. 2:** Thematic Literature, Biomass Densification, Cellulose Fiber Chemistry.<br/>• **Ch. 3:** Cyber-Physical specifications, core pin maps, sensor calibration, statistical treatments. |
-| **Academic Thesis Document** | [GROUP 6 - DEVELOPMENT OF AN EMBEDDED SYSTEM ARCHITECTURE FOR SEMI-AUTOMATED PAPER-CHARCOAL  BRIQUETTE MACHINE.pdf](file:///c:/Users/User/CODERIST/mor/automated-charcoal-briq/chapters/GROUP%206%20-%20DEVELOPMENT%20OF%20AN%20EMBEDDED%20SYSTEM%20ARCHITECTURE%20FOR%20SEMI-AUTOMATED%20PAPER-CHARCOAL%20%20BRIQUETTE%20MACHINE.pdf)           | Original publication-ready thesis containing high-resolution mechanical CAD renders and complete PCB schematics.                                                                                                                                                                                                                              |
-| **System Blueprint & Guide** | [README.md](file:///c:/Users/User/CODERIST/mor/automated-charcoal-briq/README.md)                                                                                                              | This master documentation file, detailing system architecture, calibration code, and deployment steps.                                                                                                                                                                                                                                        |
+> The final operator interfaces (the Nextion dashboard and the React PWA) must not be deleted or rewritten wholesale. See [`agent.md`](agent.md) Rule 6.
 
 ---
 
 ## Material Science: Cellulose Adhesion & Mix Design
 
-The mechanical strength of the briquettes relies on **100% chemical-free adhesion**, completely removing the need for costly starch binders or toxic synthetic glues.
+The briquettes bind with **no synthetic adhesive**: soaked paper breaks down into pulp, and its hydrated cellulose fibers interlock with the charcoal fines under compression.
 
 ```
 CELLULOSE FIBER WETTING, SWELLING, AND HYDROGEN BOND FORMATION
 
-Dry Paper Fiber          Soaked & Hydrated           Compacted & Dried
+Dry Paper Fiber          Soaked & Hydrated           Compacted
 [ -OH ... HO- ]  ===>   [ -OH  (H2O)  HO- ]  ===>    [ -OH-O-H ... O-H-O- ]
-Intra-chain H-bonds      Fiber Swelling/Libration     Inter-chain H-bonds
+Intra-chain H-bonds      Fiber Swelling              Inter-chain H-bonds
 (Crystalline)             (Amorphous Activation)       (Mechanical Interlock)
 ```
 
-- **Cellulose Fiber Swelling:** Wetting Kraft-pulp paper activates its amorphous cellulose chains. Under mechanical compression, these fibers swell, interlock, and form tight inter-chain hydrogen bonds with adjacent carbon particles upon drying.
-- **Water Retention Value (WRV):** Kraft paper holds a WRV of **$1.0 - 1.2$**, retaining moisture even under moderate mechanical pressure.
-- **Water Holding Capacity (WHC):** Residual charcoal fines hold a WHC of **$2.0 - 3.0$**.
-- **Volumetric Mixture Ratios:** To yield a **$1:1$ dry-weight ratio**, the initial wet mixture is prepared within a wet mass ratio of **$1.0 : 1.0 : 3.0$ to $1.0 : 1.0 : 4.2$** (Charcoal : Paper : Water).
+- **Water Retention Value (WRV):** Kraft paper holds a WRV of **1.0 to 1.2** (it keeps its water even under compression).
+- **Water Holding Capacity (WHC):** Charcoal fines hold a WHC of **2.0 to 3.0**.
+- **Mix ratio:** The goal is paper : charcoal = **1 : 1** by weight, which gives a wet mixture of charcoal : paper : water from **1.0 : 1.0 : 3.0** to **1.0 : 1.0 : 4.2**.
 
-### Evaluated Composition Matrix (Dry-Weight Ratios)
+| Material | Initial Wet Mix | Final Dried Briquette (after air-drying outside the machine) |
+|----------|-----------------|---------------------------------------------------------------|
+| Paper waste | 16.13% to 20% | 50% |
+| Residual charcoal fines | 16.13% to 20% | 50% |
+| Water | 67.7% to 60% | 0% |
+| **Total** | **100%** | **100%** |
 
-- **10:90 Formulation:** Minimal binder threshold. Extreme calorific output, but prone to mechanical shattering during transport.
-- **20:80 Formulation (Recommended):** The optimal balance of thermodynamic output and structural durability.
-- **30:70 Formulation:** High durability blend. Slower burn rate due to dense cellulose matrix alignment.
+The machine only removes water mechanically, by compression. Residual moisture after the press is reduced by air-drying and is not a controlled variable.
 
 ---
 
@@ -68,209 +89,195 @@ Intra-chain H-bonds      Fiber Swelling/Libration     Inter-chain H-bonds
 
 ```mermaid
 graph TD
+    subgraph Power [Power Plant]
+        PV[110 W Solar Panel] --> ECO[EcoFlow RIVER 2: MPPT, 256 Wh LiFePO4]
+        ECO -->|12 V DC outlet| RAIL[Switched 12 V rail]
+        ECO -->|AC outlet| SMPS[UME S2415 supply set to 20 V]
+        ESTOP[Emergency Stop] --- RAIL
+    end
+
     subgraph ControlLayer [Control Layer]
         MCU[ESP32-WROOM-32D Dual-Core MCU]
-        Nextion[Nextion 4.3in HMI Touch Screen]
-        SD[SPI Micro-SD Logging Module]
-        PWA[LittleFS React PWA Hotspot]
+        Nextion[Nextion NX8048T070 7in Touchscreen]
+        SD[SPI Micro-SD CSV Logger]
+        PWA[LittleFS React PWA over SoftAP]
         MCU <--> Nextion
         MCU <--> SD
         MCU <--> PWA
     end
 
-    subgraph SensoryLayer [Sensory and Telemetry Layer]
+    subgraph SensoryLayer [Sensory and Interlock Layer]
         Flow[YF-S201 Flow Sensor]
-        LoadCell[HX711 Strain Gauge Load Cell]
-        Level[XK-Y25 Capacitive Sensor]
-        DS18B20[DS18B20 Temp Probe Array]
-        DHT22[DHT22 Exhaust Humidity Sensor]
-        Interlock[Roller-Lever Safety Switches]
+        LoadCell[300 kg S-type Load Cell + HX711]
+        Limits[SW1 trapdoor closed, SW2 compressor home, SW3 mold seated]
+        Buzz[Three Piezo Buzzers]
     end
 
     subgraph MechanicalLayer [Mechanical Actuation Layer]
-        Actuator[4000N Linear Compaction Ram]
-        Grinder[775 High-Speed Pulverizer]
-        Mixer[Planetary Geared Mixer 60 RPM]
-        Solenoid[Water Solenoid Valve]
-        Vibrator[ERM Slurry-Settling Vibrator]
-        Curing[50W Halogen Array and Fan]
+        Relays[8-channel Optocoupled Relay Module]
+        Trap[15 cm Actuator: trapdoor]
+        Press[40 cm Actuator: compression]
+        Valve[12 V NC Solenoid Water Valve]
+        ERM[ERM Vibration Motors 1 and 2]
+        Auto[30 A Automotive Relay] --> Mixer[INGCO 20 V Mixer]
     end
 
     MCU -- Pulse Interrupts --> Flow
-    MCU -- Digital Strain --> LoadCell
-    MCU -- Proximity Logic --> Level
-    MCU -- Dallas 1-Wire Bus --> DS18B20
-    MCU -- Calibrated RH --> DHT22
-    MCU -- Safety Ground Loop --> Interlock
-
-    MCU -- BTS7960 PWM --> Actuator
-    MCU -- Isolated Relays --> Grinder
-    MCU -- Isolated Relays --> Mixer
-    MCU -- Isolated Relays --> Solenoid
-    MCU -- Isolated Relays --> Vibrator
-    MCU -- Isolated Relays --> Curing
+    MCU -- 24-bit Digital --> LoadCell
+    MCU -- GPIO --> Limits
+    MCU -- GPIO --> Buzz
+    MCU -- GPIO --> Relays
+    RAIL --> Relays
+    SMPS --> Auto
+    Relays --> Trap
+    Relays --> Press
+    Relays --> Valve
+    Relays --> ERM
+    Relays -->|CH6 coil| Auto
 ```
 
-### Component Specifications (Table 2 - 5 Mapping)
+### Component Specifications (Thesis Tables 6 to 9)
 
-#### 1. Central Processing & HMI Interfacing
+#### 1. Central Processing, HMI and Storage
 
-- **Microcontroller:** Dual-Core 32-bit Tensilica Xtensa ESP32-WROOM-32D ($240\text{ MHz}$). Core 0 runs high-speed sensor interrupts and safety watchdogs; Core 1 schedules local Wi-Fi AP networking and WebSocket telemetry.
-- **Smart HMI Panel:** Nextion Discovery 4.3" capacitive touch screen with onboard memory and independent graphics processor, communicating via asynchronous Hardware UART.
-- **Edge Data Logger:** SPI Micro-SD Card module writing continuous binary arrays to a physical FAT32 partition.
+- **Microcontroller:** ESP32-WROOM-32D, dual core, FreeRTOS. Per the thesis, Core 0 handles hardware ISRs and fail-safe interlocks; Core 1 handles the networking stack, the Wi-Fi AP and WebSocket telemetry.
+- **Touchscreen:** Nextion NX8048T070, 7.0", UART. Batch start, process status, water-volume and force readings, fault notifications.
+- **Storage:** SPI Micro-SD (FAT32) for the append-only CSV batch log; LittleFS in internal flash for the PWA assets.
 
-#### 2. Power Infrastructure (Autonomous Off-Grid)
+#### 2. Power Infrastructure (Off-Grid)
 
-- **Solar Array:** 100W Monocrystalline PV panel delivering continuous power under varying irradiance.
-- **Charge Controller:** 10A Intelligent MPPT Solar Regulator.
-- **Battery Storage:** 12V 30Ah Lithium Iron Phosphate ($LiFePO_4$) bank chosen for high cycle life, thermal stability, and current discharge capacity.
-- **Logic Rails:** Dual LM2596S DC-DC step-down buck converters providing isolated, stable $5\text{V}$ and $3.3\text{V}$ logic lines.
+- **Solar array:** 110 W monocrystalline panel.
+- **Power station:** EcoFlow RIVER 2: 256 Wh LiFePO4, built-in MPPT charge controller (up to 110 W solar input), 300 W AC outlet, 12.6 V / 8 A (100 W max) DC outlet.
+- **Mixer supply:** UME S2415 switching supply (24 V, 15 A) adjusted to 20 V DC, fed from the AC outlet and switched by a 30 A automotive relay.
+- **Actuator and control circuits:** from the DC outlet, through the emergency stop.
 
 #### 3. Electromechanical Actuators & Fluidics
 
-- **Compression Ram:** Heavy-duty linear actuator delivering up to $4000\text{N}$ of linear force, driven by a high-current BTS7960 H-bridge driver.
-- **Pulverizer:** High-speed 12V 775 motor.
-- **Agitator:** Low-speed, high-torque planetary geared motor ($60\text{ RPM}$).
-- **Water Valve:** 12V Solenoid fluid valve + motorized brass ball valve to automatically purge excess compaction fluid.
-- **Settling Array:** 12V ERM vibration motor providing high-frequency vibrations to eliminate air bubbles in the mold.
-- **Thermal Curing Enclosure:** Forced-air curing cabinet featuring a 50W short-wave infrared halogen lamp array and a brushless DC exhaust blower.
+- **Linear actuators:** two 12 V actuators rated 1,500 N at 7 mm/s: **15 cm** (mixing-container trapdoor) and **40 cm** (compression). Two relay channels each set the direction.
+- **Mixer:** INGCO MXLI2001 20 V paddle mixer, 0 to 650 rpm.
+- **Water valve:** 12 V DC normally closed solenoid valve, closed by the flow-sensor count.
+- **Vibration:** two 12 V ERM motors: ERM 1 on the mixing container (discharge), ERM 2 on the compression box (leveling).
+- **Relay module:** 8-channel, 10 A, optocoupled. CH1 to CH4 actuator directions, **CH5 water valve**, **CH6 automotive relay (mixer)**, CH7 and CH8 spare.
+
+#### 4. Sensing, Interlocks and Signalling
+
+- **Force:** 300 kg S-type load cell with an HX711 24-bit ADC on the compressor block.
+- **Water:** YFS-201G1 Hall-effect flow sensor, pulse counted by interrupt.
+- **Position:** three roller-lever switches: SW1 trapdoor closed, SW2 compressor home, SW3 mold seated.
+- **Safety:** red mushroom emergency stop (cuts the switched 12 V; controller and screen stay powered), 1N4007 flyback diodes, decoupling capacitors, IP65 enclosure, common ground terminal block (14 AWG power, 22 AWG signal).
+- **Signalling:** three piezo buzzers for process boundaries and faults.
 
 ---
 
 ## Sensor Calibration & Mathematical Models
 
-The system relies on high-accuracy calibration curves configured in the microcontroller firmware to translate raw electrical signals into physical units:
-
 ### 1. YF-S201 Water Flow Sensor
 
-Integrates digital pulse counts over time to calculate volumetric water infusion:
-$$V_w = \sum_{i=1}^{P} \frac{1}{C_{\text{flow}}}$$
+Integrates the pulse count to the dispensed volume:
+$$V_w = \frac{P}{C_{\text{flow}}}$$
 
-- **Flow Rate Calibrated Constant ($C_{\text{flow}}$):** **$450.0\text{ pulses/Liter}$** ($R^2 = 0.9982$, derived through gravimetric control testing).
-- **Flow Velocity Equation:**
-  $$Q_{\text{actual}} = 0.00222 \cdot f + 0.015 \text{ (L/min)}$$
-  _(where $f$ represents pulse frequency in Hz)._
+- **Calibration constant:** the project used **450 pulses per liter** from earlier gravimetric testing. Re-check it against a measuring jug on the assembled machine before relying on it; the thesis requires the valve to close at the preset volume from this count.
+- **Flow Velocity Equation:** $Q = 0.00222 \cdot f + 0.015\ \text{L/min}$ (where $f$ is the pulse frequency in Hz).
 
 ### 2. Compaction Load Cell (HX711)
 
-Converts 24-bit digital ADC inputs from the S-type strain gauge load cell into linear force ($F$):
-$$F\text{ (N)} = \left( \frac{ADC_{\text{raw}} - 142,500}{22,480.0} \right) \times 9.80665$$
+Converts the 24-bit reading to force:
+$$F\ (\text{N}) = \frac{ADC_{\text{raw}} - ADC_{\text{tare}}}{k} \times 9.80665$$
 
-- **Scale Factor:** **$22,480\text{ LSB/kg}$** ($R^2 = 0.9999$).
-- **Compaction Threshold:** The firmware triggers linear actuator retraction immediately upon reaching **$2000.0\text{ N}$** of force, matching a compaction pressure of $400.0\text{ kPa}$ over the $10\times5\text{ cm}$ mold surface.
-
-### 3. DHT22 Humidity Polynomial Correction
-
-Compensates for humidity drift caused by high thermal levels inside the curing chamber:
-$$\text{RH}_{\text{calibrated}} = a_3 \cdot \text{RH}_{\text{raw}}^3 + a_2 \cdot \text{RH}_{\text{raw}}^2 + a_1 \cdot \text{RH}_{\text{raw}} + a_0 + \beta \cdot (T_{\text{sensor}} - 25.0)$$
-
-- **Calibration Constants:**
-  - $a_3 = -2.13 \times 10^{-5}$
-  - $a_2 = 3.84 \times 10^{-3}$
-  - $a_1 = 0.892$
-  - $a_0 = 1.450$
-  - $\beta = -0.054\text{ RH/}^\circ\text{C}$
-- **Target Accuracy:** Limits standard error to **$\pm 1.8\%$ RH**. The exhaust fan shuts down automatically when relative humidity hits **$\leq 15\%$**, signaling drying cycle completion.
+- **Scale factor $k$:** an earlier calibration measured about **22,480 LSB/kg** with the cell excited at 5 V. Excitation voltage changes this, so **recalibrate with a known weight** on the final wiring (the bench rig runs the HX711 from 3.3 V).
+- **Force threshold:** set by calibration before performance testing, and always **below the 1,500 N thrust** of the 40 cm actuator. The extend relay turns off when the reading reaches it. The thesis does not fix a number.
 
 ---
 
-## Solar Power Budgeting & Sizing Equations
+## Power Notes
 
-The energy harvesting system was designed around mathematical power budgets to guarantee continuous, off-grid self-sufficiency:
-
-### 1. Daily Electrical Consumption Sizing
-
-- **Logic Draw (ESP32, screen, sensors):** $2.5\text{ W} \times 8\text{ hr} = 20.0\text{ Wh}$
-- **Actuator Power Per 10-Batch Run:**
-  - _Water Valve:_ $3.2\text{ Wh}$
-  - _Pulverizer Motor:_ $30.0\text{ Wh}$
-  - _Geared Slurry Mixer:_ $30.0\text{ Wh}$
-  - _Compression Actuator:_ $4.0\text{ Wh}$
-  - _IR Thermal Drying:_ $166.7\text{ Wh}$
-  - _Exhaust Ventilation:_ $8.0\text{ Wh}$
-- **Cumulative Daily Load ($E_{\text{total}}$):** **$261.9\text{ Wh}$**
-
-### 2. Battery Storage Capacity Sizing ($LiFePO_4$)
-
-Calculated with a safety factor ($S_f = 1.2$) and an $80\%$ depth of discharge ($DoD$) limit:
-$$C_{\text{batt}} = \frac{E_{\text{total}} \times S_f}{V_{\text{sys}} \times DoD} = \frac{261.9\text{ Wh} \times 1.2}{12.8\text{ V} \times 0.8} \approx 30.7\text{ Ah} \implies \text{\bf 12V 30Ah LiFePO4 Battery Pack}$$
-
-### 3. Solar PV Panel Sizing
-
-Based on local peak sun hours ($H_{\text{peak}} = 4.0\text{ hours}$) and system loss coefficient ($\eta_{\text{sys}} = 0.75$):
-$$P_{\text{PV}} = \frac{E_{\text{total}}}{H_{\text{peak}} \times \eta_{\text{sys}}} = \frac{261.9\text{ Wh}}{4.0\text{ hours} \times 0.75} \approx 87.3\text{ W} \implies \text{\bf 100W Monocrystalline PV Panel}$$
+The off-grid design is a 110 W panel charging the EcoFlow RIVER 2, which supplies the 12 V circuits and the mixer supply. Energy per batch has not been measured yet: log the Wh used per batch before claiming how many batches one charge gives. The thesis names two limits: operation depends on solar irradiance (prolonged overcast weather can interrupt operation), and the machine draws power only from this system.
 
 ---
 
 ## Quantitative Verification Framework
 
-To systematically evaluate the mechanical, thermal, and software interfaces, the following empirical formulas are used:
+The thesis evaluates the machine against a manual baseline and against store-bought charcoal:
 
-- **Mean Burn Duration (Thermal Longevity):**
+- **Mean (manual baseline, burn duration, heat retention):**
   $$\bar{x} = \frac{\sum_{i=1}^{n} x_i}{n}$$
-- **Compaction Consistency (Output Dimensional Deviation):**
+- **Consistency of output (mass and dimensions, 30 specimens):**
   $$\sigma = \sqrt{\frac{\sum_{i=1}^{n} (x_i - \bar{x})^2}{n}}$$
-- **Briquette Production Rate (Units per Hour):**
+- **Production rate (units per hour):**
   $$R = \frac{U}{T}$$
-- **Labor Reduction Index (Percentage Man-Hour Reduction):**
-  $$\%\text{ Reduction} = \frac{T_{\text{manual}} - T_{\text{semi-automated}}}{T_{\text{manual}}} \times 100$$
-- **Shatter Resistance Index (Briquette Durability):**
+- **Labor and time reduction (percentage, equal quantities):**
+  $$\%\text{ Reduction} = \frac{\bar{T}_{\text{manual}} - \bar{T}_{\text{automated}}}{\bar{T}_{\text{manual}}} \times 100$$
+- **Shatter resistance index (1 m drop test):**
   $$\%\text{ Weight Loss} = \frac{W_i - W_o}{W_i} \times 100$$
-  _(where $W_i$ is initial weight and $W_o$ is the weight of the largest solid piece surviving a 1-meter drop test onto concrete)._
+  _(where $W_i$ is the initial weight and $W_o$ the weight of the largest remaining piece)._
+- **Acceptability:** weighted mean of a 5-point Likert ISO 25010 questionnaire given to 15 end-users.
+
+Batch yield is counted against the target of at least 20 briquettes per batch.
 
 ---
 
 ## Build & Deployment Instructions
 
-### 1. ESP32 Firmware Installation
+### 1. ESP32 Firmware
 
-Ensure you have **PlatformIO** installed on VS Code, then:
+Install **PlatformIO** in VS Code. Environments in `operator-node/platformio.ini`:
 
-- Add libraries: `OneWire`, `DallasTemperature`, `Adafruit INA219`, `HX711`.
-- Connect the ESP32 dev board via USB.
-- Run the command:
-  ```bash
-  pio run --target upload
-  ```
-
-### 2. Nextion HMI Visual Flash
-
-- Open the Nextion HMI screen layout file using the **Nextion Editor**.
-- Compile the layout to generate the binary `.tft` file.
-- Copy the `.tft` file to a standard FAT32-formatted Micro-SD Card.
-- Insert the SD card into the Nextion screen slot, power on the display, and wait for the flashing process to complete.
-
-### 3. PWA Web Interface Upload
-
-The local Progress Web App (PWA) is hosted directly on the ESP32’s internal LittleFS partition:
+| Environment | Purpose |
+|-------------|---------|
+| `esp32doit-devkit-v1` | Main firmware (batch FSM, Nextion dashboard, SoftAP and PWA server). Relay outputs are simulated until `OUTPUTS_LIVE` is enabled. |
+| `actuator-test` | Bench-test sketch that drives the real relays from the Nextion, a phone, or serial (also the HX711 load cell). |
+| `nextion-test`, `nextion-bridge` | Display bring-up and a USB to Nextion serial bridge. |
 
 ```bash
-# Navigate to web dashboard source
-cd webapp
-
-# Compile PWA assets
-npm install && npm run build
-
-# Flash LittleFS partition to ESP32
-pio run --target uploadfs
+cd operator-node
+pio run -e esp32doit-devkit-v1 -t upload
 ```
+
+### 2. Nextion Display
+
+No custom `.HMI` or `.tft` flash is needed. The firmware draws every screen at runtime on the NX8048T070 (800 x 480) with Nextion drawing commands and takes over the factory demo project. The Nextion boots at 9600 baud and the ESP32 switches it to 115200. See [`docs/Nextion_HMI_Design.md`](docs/Nextion_HMI_Design.md) and the pixel mockups in [`mockups/nextion/`](mockups/nextion/).
+
+### 3. PWA Web Interface
+
+The PWA is served from the ESP32's internal LittleFS partition and must not load anything from a CDN:
+
+```bash
+cd operator-node/dashboard
+npm install
+npm run build        # outputs to operator-node/data
+
+cd ..
+pio run -e esp32doit-devkit-v1 -t uploadfs
+```
+
+Join the machine's Wi-Fi (`Operator-Node-01`) and open `http://192.168.4.1`.
 
 ---
 
 ## Safety Protocols & Multiple Constraints
 
 1.  > [!IMPORTANT]
-    > **Human-in-the-Loop Safeguard:** The machine is strictly _semi-automated_. For safety, the operator must manually load the dry inputs into the hoppers and physically trigger the next phase using the touch screen graphical interface.
-2.  > [!WARNING]
-    > **Material Restriction:** The system lacks chemical filtering mechanisms. Only water-soluble impurities can be extracted; synthetic elements (e.g., plastic elements or ink solvents in paper) remain in the briquette.
-3.  > [!CAUTION]
-    > **High-Pressure Compaction Interlock:** The enclosure is protected by active ground-loop limit switches. If opened, all electromechanical drivers are shut down within **19.2 ms** to protect the operator.
+    > **Operator involvement is limited** to selecting the water level, loading the paper and crushed charcoal when prompted, inserting the mold, pressing START, and removing the mold at the end. Every stage in between is automatic, with no mid-cycle prompts.
+2.  > [!CAUTION]
+    > **Interlocks and emergency stop:** limit switches SW1 (trapdoor), SW2 (compressor home) and SW3 (mold seated) gate the cycle. An unexpected trapdoor opening, mold removal, invalid force reading or compression timeout stops the production loads and raises a fault. The emergency stop cuts the switched 12 V to the actuators and valve while the controller and screen stay powered.
+3.  > [!WARNING]
+    > **Material restriction:** the machine processes exactly three inputs (paper waste, charcoal fines, water) and cannot extract water-insoluble impurities from the paper; they stay in the briquette.
 4.  > [!IMPORTANT]
-    > **Power Boundary:** The system runs entirely off-grid. It must draw its operational power exclusively from the solar PV array and battery bank.
+    > **Power boundary:** the machine runs entirely off-grid from the 110 W solar panel and the EcoFlow RIVER 2.
+5.  > [!NOTE]
+    > **Batch and geometry limits:** one fixed rectangular-prism briquette size; a new batch needs the previous cycle finished, the filled mold removed and an empty, correctly seated mold inserted. Compaction is hard-capped by the 1,500 N actuator thrust.
+6.  > [!NOTE]
+    > **Network limits:** a local edge node with no internet; the SoftAP is reliable for about 4 to 5 phones; the PWA is fully self-contained with no external CDNs.
+
+---
+
+## Current Build Status
+
+Firmware and dashboards are built and run on a bench rig; the main firmware still simulates its relay outputs and sensors. Limit switches, buzzers and SD logging are not implemented in firmware yet. The complete, dated list of what is built and where it differs from the thesis is in [`docs/PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md).
 
 ---
 
 > 🎓 **Academic Proponents & Citation:**  
 > Developed by the Computer Engineering research team at the Polytechnic University of the Philippines:  
-> **Gero B. Añonuevo, Gerald R. Berongoy, Marco Gabriel P. Galdiano, and Jester Carl C. Tiedra.**  
+> **Gero B. Añonuevo, Gerald S. Berongoy, Marco Gabriel P. Galdiano, and Jester Carl C. Tiedra.**  
 > Under the guidance and supervision of the **Faculty of Computer Engineering, PUP Sta. Mesa, Manila.**
