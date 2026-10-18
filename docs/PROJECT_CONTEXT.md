@@ -89,3 +89,30 @@ For the authors to settle in the document:
 - Relay **channels 7 and 8 are "spare"**, yet two ERM vibration motors need switching (the block diagram says the relay module switches the vibration motors).
 - The Mix Design table has a "Final Dried Briquette Proportion" column (50% / 50% / 0% water): that is the air-dried state outside the machine, which the machine does not control.
 - Equations in the Statistical Treatment are images in the .docx and do not survive text extraction.
+
+---
+
+## 5. Wiring and test guides
+
+Self-contained HTML pages in [guides/](guides/), openable in any browser (they also exist as claude.ai artifacts, but those belong to one account, so these files are the durable copy):
+
+| File | What it covers |
+|------|----------------|
+| [autobriq-perfboard-layout.html](guides/autobriq-perfboard-layout.html) | Whole-system wiring (EcoFlow, E-stop, relays, loads, USB-A 5 V, bus terminals, 10 A fuse), wire sizes, universal-PCB layout, solder list, parts |
+| [autobriq-test-rig-wiring.html](guides/autobriq-test-rig-wiring.html) | Bench rig: ESP32 pin map, actuators, mixer, water, AUTO RUN, bring-up order |
+| [autobriq-solenoid-valve.html](guides/autobriq-solenoid-valve.html) | Water valve wiring, flyback diode, dry and wet tests |
+| [autobriq-flow-sensor-yfs201.html](guides/autobriq-flow-sensor-yfs201.html) | YF-S201 hookup, test, calibration (code currently off) |
+| [autobriq-load-cell-test.html](guides/autobriq-load-cell-test.html) | HX711 and S-type load cell: wiring, zeroing, sign, calibration, press stop |
+
+The relay channels in the rig guides follow the bench rig as wired (CH5 mixer, CH6 water valve), which differs from the thesis (section 3, item 1).
+
+---
+
+## 6. Protected files: do not delete or replace
+
+These are the final operator interfaces. Extend or fix them, but never delete, rename or rewrite them wholesale without the group's agreement:
+
+- **Nextion HMI:** `operator-node/src/NextionDashboard.cpp`, `operator-node/include/NextionDashboard.h`, `operator-node/src/NextionManager.cpp`, `operator-node/include/NextionManager.h`, and the screen mockups in `mockups/nextion/`.
+- **PWA dashboard:** everything under `operator-node/dashboard/` (React + Vite, including `src/components/`, `src/hooks/`, `process.js`, `index.css`) and the generated `operator-node/include/WebAssets.h`.
+
+The 2026-10-19 doc sync touched only one CSS import line, one comment and one constant's comment in this area, and deleted nothing.

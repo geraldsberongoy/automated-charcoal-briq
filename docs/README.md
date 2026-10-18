@@ -25,6 +25,8 @@ PROJECT_CONTEXT → BRD → PRD → DSD → SDD → QAD → CLR → GTM
 
 The `*_Template.md` file names are kept so existing links keep working; the content is the filled AUTOBRIQ version.
 
+Wiring and test guides (open in a browser) are in [guides/](guides/), listed in [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) section 5.
+
 ## Keeping them consistent
 
 1. If code, docs and the thesis disagree, the thesis wins (agent.md Rule 4).

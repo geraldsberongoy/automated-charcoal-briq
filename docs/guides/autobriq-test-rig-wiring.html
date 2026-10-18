@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AUTOBRIQ Actuator Wiring</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: single reading column, diagrams break out wider; wire colours are the only loud colour */
+:root {
+  --bg: #f6f7f5;
+  --panel: #ffffff;
+  --ink: #1b2120;
+  --muted: #5b6663;
+  --line: #d5dbd8;
+  --accent: #0f766e;
+  --w12: #dc2626;      /* switched +12 V / PSU V+ */
+  --w5: #ea580c;       /* +5 V */
+  --gnd: #3f4644;      /* ground */
+  --sig: #2563eb;      /* relay signals */
+  --tx: #0891b2;       /* Nextion TX -> ESP RX */
+  --rx: #b45309;       /* ESP TX -> Nextion RX */
+  --ac: #7c3aed;       /* AC mains */
+  --warn-bg: #fff4e5;
+  --warn-ink: #8a3b00;
+  --f-display: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121615; --panel: #1a201f; --ink: #e6ebe9; --muted: #9aa6a2; --line: #2c3533;
+  --accent: #2dd4bf; --w12: #f87171; --w5: #fb923c; --gnd: #b9c3c0; --sig: #60a5fa;
+  --tx: #22d3ee; --rx: #fbbf24; --ac: #a78bfa; --warn-bg: #2a1f12; --warn-ink: #fdba74; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #121615; --panel: #1a201f; --ink: #e6ebe9; --muted: #9aa6a2; --line: #2c3533;
+  --accent: #2dd4bf; --w12: #f87171; --w5: #fb923c; --gnd: #b9c3c0; --sig: #60a5fa;
+  --tx: #22d3ee; --rx: #fbbf24; --ac: #a78bfa; --warn-bg: #2a1f12; --warn-ink: #fdba74; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 var(--f-body); }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 16px; padding-block: 32px 64px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 24px; font-weight: 700; margin-top: 8px; }
+h3 { font-size: 18px; font-weight: 700; }
+p { margin: 0; max-width: 68ch; }
+code, .mono { font-family: var(--f-mono); font-size: 0.88em; }
+.eyebrow { font: 600 12px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); }
+
+header { display: grid; gap: 12px; margin-bottom: 28px; }
+section { display: grid; gap: 14px; margin-top: 44px; }
+
+.warn { background: var(--warn-bg); color: var(--warn-ink); border-left: 4px solid var(--w12);
+  padding: 14px 16px; border-radius: 4px; display: grid; gap: 6px; }
+.warn strong { font-family: var(--f-display); }
+
+.fig { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; }
+.fig svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 22px; height: 4px; border-radius: 2px; display: inline-block; }
+
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px/1.2 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td.mono { white-space: nowrap; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.pill { font: 600 11px/1 var(--f-mono); padding: 3px 7px; border-radius: 99px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.fix { color: var(--w12); }
+.pill.new { color: var(--accent); }
+
+ol.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; counter-reset: s; }
+ol.steps > li { counter-increment: s; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 14px 16px 14px 60px; position: relative; display: grid; gap: 6px; }
+ol.steps > li::before { content: counter(s); position: absolute; left: 16px; top: 14px; width: 30px; height: 30px;
+  border-radius: 50%; background: var(--accent); color: var(--bg); font: 700 15px/30px var(--f-display); text-align: center; }
+ol.steps ul { margin: 0; padding-left: 20px; }
+.pass { font-weight: 600; color: var(--accent); }
+
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 6px; min-width: 0; }
+
+/* SVG */
+svg text { font-family: var(--f-mono); fill: var(--ink); }
+svg .box { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5; }
+svg .board { fill: var(--bg); stroke: var(--ink); stroke-width: 1.5; }
+svg .title { font: 700 15px var(--f-display); fill: var(--ink); }
+svg .sub { font-size: 11px; fill: var(--muted); }
+svg .pin { font-size: 12px; }
+svg .pinlbl { font-size: 11px; fill: var(--muted); }
+svg .w { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+svg .w12 { stroke: var(--w12); } svg .w5 { stroke: var(--w5); } svg .gnd { stroke: var(--gnd); }
+svg .sig { stroke: var(--sig); } svg .tx { stroke: var(--tx); } svg .rx { stroke: var(--rx); }
+svg .ac { stroke: var(--ac); } svg .mot { stroke: var(--ink); }
+svg .pd { fill: var(--ink); }
+svg .jn { fill: var(--ink); }
+svg .tag { fill: var(--panel); stroke-width: 1.5; }
+svg .tag.t5 { stroke: var(--w5); } svg .tag.tg { stroke: var(--gnd); }
+svg .t5t { fill: var(--w5); font-size: 11px; font-weight: 600; }
+svg .tgt { fill: var(--gnd); font-size: 11px; font-weight: 600; }
+svg .x { stroke: var(--w12); stroke-width: 2.5; }
+svg .note { font: 600 11px var(--f-mono); fill: var(--w12); }
+svg .wlbl { font-size: 11px; fill: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="eyebrow">AUTOBRIQ · 70% prototype · bench test</span>
+  <h1>Wiring the actuators and mixer to the ESP32</h1>
+  <p class="muted">For the <code>actuator-test</code> sketch (branch <code>test/actuator-bench-mixer</code>). It covers the 15&nbsp;cm trapdoor actuator, the 40&nbsp;cm press actuator, the mixer motor on relay 5, the 8-channel relay board, the ESP32 and the Nextion. It also covers the water solenoid on relay 6 and the YF-S201 flow sensor. The load cell has its own guide. This page describes the <strong>test rig</strong> (5 V from a power module); the final build with USB-A 5 V, bus terminals, a 10 A fuse and a perfboard is in the Perfboard Layout guide.</p>
+</header>
+
+<div class="warn"><strong>Relay map note</strong><p>The relay channels in this guide are the <strong>bench rig as wired</strong> (CH5 mixer, CH6 water valve). The thesis assigns <strong>CH5 to the water valve</strong> and <strong>CH6 to the 30 A automotive relay for the mixer</strong>. See <code>docs/PROJECT_CONTEXT.md</code> in the repository. Swap two signal wires and two GPIO entries before the final build if the thesis map is kept.</p></div>
+<div class="warn">
+  <strong>Before you touch a wire</strong>
+  <p>Do all wiring with the EcoFlow off and the AC-DC supply unplugged from the wall. Keep the E-stop within reach whenever switched 12&nbsp;V is live. Leave the actuators and the mixer unplugged until their meter checks pass. One wrong H-bridge wire shorts 12&nbsp;V straight to ground.</p>
+</div>
+
+<section>
+  <span class="eyebrow">Part 1</span>
+  <h2>Control side: ESP32, relay board, Nextion</h2>
+  <p>Every signal wire runs straight across. Power pins are marked with a <span style="color:var(--w5);font-weight:600">+5V</span> or <span style="color:var(--gnd);font-weight:600">GND</span> tag: connect them to the 5&nbsp;V bus and the common ground block from Part 2.</p>
+  <p><strong>Every +5V tag is the same wire: the 5&nbsp;V power module's output.</strong> ESP32 VIN, the Nextion's red wire and relay JD-VCC each connect to it in parallel. The ESP32 does not power the Nextion: the 7" panel pulls up to about 500&nbsp;mA, more than a USB port can supply together with the ESP32's Wi-Fi.</p>
+  <div class="grid2">
+    <div class="card"><h3>The 5&nbsp;V power module</h3><p>Turns the 12&nbsp;V supply into a steady 5&nbsp;V for the control side. Rate it 1.5&nbsp;A or more: the 7" Nextion takes about 500&nbsp;mA, and the ESP32's Wi-Fi bursts add up to 500&nbsp;mA. A small breadboard module (MB102 type, about 700&nbsp;mA) is borderline. An adjustable buck board such as the LM2596 also works: it has a brass screw (trimpot) to set the output. Either way, meter the output at 5.0&nbsp;V <em>before</em> connecting anything.</p></div>
+    <div class="card"><h3>Wi-Fi needs the power module</h3><p>On laptop USB alone (about 500&nbsp;mA) the ESP32 dies about 2&nbsp;s after Wi-Fi starts: serial goes dead, the Nextion falls back to its demo, taps do nothing. With ESP32 VIN, the Nextion's red wire and JD-VCC on the 5&nbsp;V power module and one shared ground, it stays up. If you ever have to run on USB alone, set <code>WEB_ENABLED = false</code> in the sketch and re-flash.</p></div>
+  </div>
+  <div class="fig">
+    <svg viewBox="0 0 880 500" role="img" aria-label="ESP32 pins wired to relay board inputs and Nextion">
+      <!-- ESP32 -->
+      <rect class="box" x="40" y="40" width="220" height="430" rx="6"/>
+      <text class="title" x="60" y="68">ESP32-WROOM</text>
+      <text class="sub" x="60" y="86">DOIT DevKit V1</text>
+      <g class="pin" text-anchor="end">
+        <text x="250" y="94">VIN</text>
+        <text x="250" y="124">GND</text>
+        <text x="250" y="174">GPIO16 RX2</text>
+        <text x="250" y="204">GPIO17 TX2</text>
+        <text x="250" y="254">GND</text>
+        <text x="250" y="284">GPIO25</text>
+        <text x="250" y="314">GPIO26</text>
+        <text x="250" y="344">GPIO27</text>
+        <text x="250" y="374">GPIO33</text>
+        <text x="250" y="404">GPIO23</text>
+        <text x="250" y="434">3V3</text>
+      </g>
+      <g class="pd">
+        <circle cx="260" cy="90" r="4"/><circle cx="260" cy="120" r="4"/><circle cx="260" cy="170" r="4"/>
+        <circle cx="260" cy="200" r="4"/><circle cx="260" cy="250" r="4"/><circle cx="260" cy="280" r="4"/>
+        <circle cx="260" cy="310" r="4"/><circle cx="260" cy="340" r="4"/><circle cx="260" cy="370" r="4"/>
+        <circle cx="260" cy="400" r="4"/><circle cx="260" cy="430" r="4"/>
+      </g>
+      <!-- ESP power tags -->
+      <path class="w w5" d="M260 90 H300"/>
+      <rect class="tag t5" x="300" y="80" width="46" height="20" rx="10"/><text class="t5t" x="323" y="94" text-anchor="middle">+5V</text>
+      <path class="w gnd" d="M260 120 H300"/>
+      <rect class="tag tg" x="300" y="110" width="46" height="20" rx="10"/><text class="tgt" x="323" y="124" text-anchor="middle">GND</text>
+
+      <!-- Nextion -->
+      <rect class="box" x="580" y="40" width="250" height="180" rx="6"/>
+      <text class="title" x="680" y="68">Nextion 7"</text>
+      <text class="sub" x="680" y="86">NX8048T070</text>
+      <g class="pin">
+        <text x="592" y="114">+5V (red)</text>
+        <text x="592" y="144">GND (black)</text>
+        <text x="592" y="174">TX (blue)</text>
+        <text x="592" y="204">RX (yellow)</text>
+      </g>
+      <g class="pd"><circle cx="580" cy="110" r="4"/><circle cx="580" cy="140" r="4"/><circle cx="580" cy="170" r="4"/><circle cx="580" cy="200" r="4"/></g>
+      <path class="w w5" d="M534 110 H580"/>
+      <rect class="tag t5" x="488" y="100" width="46" height="20" rx="10"/><text class="t5t" x="511" y="114" text-anchor="middle">+5V</text>
+      <path class="w gnd" d="M534 140 H580"/>
+      <rect class="tag tg" x="488" y="130" width="46" height="20" rx="10"/><text class="tgt" x="511" y="144" text-anchor="middle">GND</text>
+      <path class="w tx" d="M260 170 H580"/>
+      <path class="w rx" d="M260 200 H580"/>
+      <text class="wlbl" x="300" y="164">← Nextion TX into ESP RX</text>
+      <text class="wlbl" x="300" y="194">ESP TX out to Nextion RX →</text>
+
+      <!-- Relay board -->
+      <rect class="board" x="580" y="236" width="250" height="226" rx="6"/>
+      <text class="title" x="735" y="262">8-ch relay</text>
+      <text class="sub" x="735" y="280">active-LOW</text>
+      <g class="pin">
+        <text x="592" y="254">GND</text>
+        <text x="592" y="284">IN1</text>
+        <text x="592" y="314">IN2</text>
+        <text x="592" y="344">IN3</text>
+        <text x="592" y="374">IN4</text>
+        <text x="592" y="404">IN5</text>
+        <text x="592" y="434">VCC</text>
+      </g>
+      <g class="pinlbl">
+        <text x="628" y="284">15cm CLOSE</text>
+        <text x="628" y="314">15cm OPEN</text>
+        <text x="628" y="344">40cm PRESS</text>
+        <text x="628" y="374">40cm HOME</text>
+        <text x="628" y="404">MIXER ON</text>
+      </g>
+      <g class="pd">
+        <circle cx="580" cy="250" r="4"/><circle cx="580" cy="280" r="4"/><circle cx="580" cy="310" r="4"/>
+        <circle cx="580" cy="340" r="4"/><circle cx="580" cy="370" r="4"/><circle cx="580" cy="400" r="4"/>
+        <circle cx="580" cy="430" r="4"/>
+      </g>
+      <path class="w gnd" d="M260 250 H580"/>
+      <path class="w sig" d="M260 280 H580"/>
+      <path class="w sig" d="M260 310 H580"/>
+      <path class="w sig" d="M260 340 H580"/>
+      <path class="w sig" d="M260 370 H580"/>
+      <path class="w sig" d="M260 400 H580"/>
+      <path class="w w5" d="M260 430 H580" style="stroke:var(--w5);stroke-dasharray:2 6"/>
+      <text class="wlbl" x="300" y="424">3.3 V, not 5 V</text>
+
+      <!-- JD-VCC header -->
+      <text class="pin" x="735" y="300">JD-VCC</text>
+      <circle class="pd" cx="760" cy="314" r="4"/>
+      <path class="w w5" d="M760 314 V340"/>
+      <rect class="tag t5" x="737" y="340" width="46" height="20" rx="10"/><text class="t5t" x="760" y="354" text-anchor="middle">+5V</text>
+      <line class="x" x1="790" y1="296" x2="812" y2="318"/><line class="x" x1="812" y1="296" x2="790" y2="318"/>
+      <text class="note" x="736" y="384">blue jumper</text>
+      <text class="note" x="736" y="398">REMOVED</text>
+    </svg>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--sig)"></i>relay signal</span>
+    <span><i style="background:var(--tx)"></i>Nextion TX to GPIO16</span>
+    <span><i style="background:var(--rx)"></i>GPIO17 to Nextion RX</span>
+    <span><i style="background:var(--w5)"></i>+5 V</span>
+    <span><i style="background:var(--gnd)"></i>ground</span>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Pin map</span>
+  <h2>Every wire on the ESP32</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>ESP32 pin</th><th>Goes to</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td class="mono"><span class="dot" style="background:var(--w5)"></span>VIN</td><td>5 V power module output</td><td>Powers the ESP32</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--gnd)"></span>GND</td><td>Common ground block</td><td>Shared ground for everything</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--w5)"></span>3V3</td><td>Relay board VCC</td><td>Opto input side. Must be 3.3 V so a HIGH pin really turns the relay off</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO25</td><td>Relay IN1</td><td>LOW = 15 cm extends, trapdoor closes</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO26</td><td>Relay IN2</td><td>LOW = 15 cm retracts, trapdoor opens</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO27</td><td>Relay IN3</td><td>LOW = 40 cm extends, press goes down</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO33</td><td>Relay IN4 <span class="pill fix">not GPIO14</span></td><td>LOW = 40 cm retracts, press goes home. The spec says GPIO14, but GPIO14 pulses during boot and would twitch the press.</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO23</td><td>Relay IN5 <span class="pill new">mixer</span></td><td>LOW = mixer motor runs. CH5 closes the AC-DC supply's V+ line into the motor driver (Part 3).</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--tx)"></span>GPIO16</td><td>Nextion TX (blue)</td><td>Touch events into the ESP32</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--rx)"></span>GPIO17</td><td>Nextion RX (yellow)</td><td>Screen drawing commands out</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO32</td><td>Relay IN6 <span class="pill new">water</span></td><td>LOW = solenoid valve opens (Part 4).</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO34</td><td>YF-S201 yellow, through one 10k resistor <span class="pill new">flow</span></td><td>One pulse per 1/450 L. Input-only pin, nothing else on it.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Part 2</span>
+  <h2>Power side: 12 V, E-stop and the two H-bridges</h2>
+  <p>Each actuator uses two relays. Both NO contacts go to switched +12&nbsp;V, both NC contacts go to ground, and the two COM contacts go to the two actuator leads. When both relays are off, both leads sit at ground, so the actuator is braked.</p>
+  <div class="fig">
+    <svg viewBox="0 0 920 540" role="img" aria-label="12 volt supply through E-stop to relay H-bridges driving two actuators">
+      <!-- EcoFlow -->
+      <rect class="box" x="30" y="24" width="170" height="86" rx="6"/>
+      <text class="title" x="44" y="50">EcoFlow</text>
+      <text class="title" x="44" y="68">RIVER 2</text>
+      <text class="sub" x="44" y="86">12 V DC port</text>
+      <g class="pin" text-anchor="end"><text x="192" y="54">+</text><text x="192" y="98">−</text></g>
+      <circle class="pd" cx="200" cy="50" r="4"/><circle class="pd" cx="200" cy="94" r="4"/>
+      <path class="w gnd" d="M200 94 H226"/>
+      <rect class="tag tg" x="226" y="84" width="46" height="20" rx="10"/><text class="tgt" x="249" y="98" text-anchor="middle">GND</text>
+
+      <!-- unswitched to 5 V power module -->
+      <path class="w w12" d="M200 50 H290"/>
+      <circle class="jn" cx="290" cy="50" r="5"/>
+      <path class="w w12" d="M290 50 V170" style="opacity:.55"/>
+      <text class="wlbl" x="298" y="140">unswitched 12 V</text>
+      <rect class="box" x="220" y="170" width="160" height="70" rx="6"/>
+      <text class="title" x="234" y="196">5 V module</text>
+      <text class="sub" x="234" y="214">meter 5.0 V first</text>
+      <text class="sub" x="234" y="230">with nothing attached</text>
+      <circle class="pd" cx="380" cy="205" r="4"/>
+      <path class="w w5" d="M380 205 H410"/>
+      <rect class="tag t5" x="410" y="195" width="46" height="20" rx="10"/><text class="t5t" x="433" y="209" text-anchor="middle">+5V</text>
+      <text class="wlbl" x="220" y="262">+5V feeds ESP32 VIN, Nextion, relay JD-VCC</text>
+      <text class="wlbl" x="220" y="278">Module IN− and OUT− go to GND</text>
+
+      <!-- E-stop -->
+      <path class="w w12" d="M290 50 H340"/>
+      <rect class="box" x="340" y="26" width="120" height="48" rx="24" style="stroke:var(--w12)"/>
+      <text class="title" x="400" y="49" text-anchor="middle">E-STOP</text>
+      <text class="sub" x="400" y="64" text-anchor="middle">NC contacts</text>
+      <path class="w w12" d="M460 50 H520 V470"/>
+      <text class="wlbl" x="470" y="40">switched +12 V</text>
+
+      <!-- GND bus -->
+      <path class="w gnd" d="M550 178 V500"/>
+      <rect class="tag tg" x="527" y="500" width="46" height="20" rx="10"/><text class="tgt" x="550" y="514" text-anchor="middle">GND</text>
+
+      <g>
+        <rect class="board" x="590" y="120" width="130" height="80" rx="4"/>
+        <text class="pin" x="604" y="140" style="font-weight:600">CH1</text><text class="pinlbl" x="640" y="140">IN1 · G25</text>
+        <rect class="board" x="590" y="210" width="130" height="80" rx="4"/>
+        <text class="pin" x="604" y="230" style="font-weight:600">CH2</text><text class="pinlbl" x="640" y="230">IN2 · G26</text>
+        <rect class="board" x="590" y="320" width="130" height="80" rx="4"/>
+        <text class="pin" x="604" y="340" style="font-weight:600">CH3</text><text class="pinlbl" x="640" y="340">IN3 · G27</text>
+        <rect class="board" x="590" y="410" width="130" height="80" rx="4"/>
+        <text class="pin" x="604" y="430" style="font-weight:600">CH4</text><text class="pinlbl" x="640" y="430">IN4 · G33</text>
+      </g>
+      <g class="pinlbl">
+        <text x="598" y="163">NO</text><text x="598" y="191">NC</text>
+        <text x="598" y="253">NO</text><text x="598" y="281">NC</text>
+        <text x="598" y="363">NO</text><text x="598" y="391">NC</text>
+        <text x="598" y="453">NO</text><text x="598" y="481">NC</text>
+        <g text-anchor="end">
+          <text x="712" y="164">COM</text><text x="712" y="254">COM</text>
+          <text x="712" y="364">COM</text><text x="712" y="454">COM</text>
+        </g>
+      </g>
+      <path class="w w12" d="M520 160 H590 M520 250 H590 M520 360 H590 M520 450 H590"/>
+      <g class="jn"><circle cx="520" cy="160" r="5"/><circle cx="520" cy="250" r="5"/><circle cx="520" cy="360" r="5"/></g>
+      <path class="w gnd" d="M550 188 H590 M550 278 H590 M550 388 H590 M550 478 H590"/>
+      <g class="jn"><circle cx="550" cy="188" r="5"/><circle cx="550" cy="278" r="5"/><circle cx="550" cy="388" r="5"/><circle cx="550" cy="478" r="5"/></g>
+      <g class="pd">
+        <circle cx="590" cy="160" r="3.5"/><circle cx="590" cy="188" r="3.5"/><circle cx="590" cy="250" r="3.5"/><circle cx="590" cy="278" r="3.5"/>
+        <circle cx="590" cy="360" r="3.5"/><circle cx="590" cy="388" r="3.5"/><circle cx="590" cy="450" r="3.5"/><circle cx="590" cy="478" r="3.5"/>
+        <circle cx="720" cy="160" r="4"/><circle cx="720" cy="250" r="4"/><circle cx="720" cy="360" r="4"/><circle cx="720" cy="450" r="4"/>
+      </g>
+
+      <path class="w mot" d="M720 160 H780 M720 250 H780"/>
+      <path class="w mot" d="M720 360 H780 M720 450 H780"/>
+      <text class="wlbl" x="728" y="152">lead A</text><text class="wlbl" x="728" y="242">lead B</text>
+      <text class="wlbl" x="728" y="352">lead A</text><text class="wlbl" x="728" y="442">lead B</text>
+
+      <rect class="box" x="780" y="130" width="120" height="150" rx="6"/>
+      <text class="title" x="840" y="196" text-anchor="middle">15 cm</text>
+      <text class="sub" x="840" y="214" text-anchor="middle">trapdoor</text>
+      <text class="sub" x="840" y="230" text-anchor="middle">1500 N · 7 mm/s</text>
+      <rect class="box" x="780" y="330" width="120" height="150" rx="6"/>
+      <text class="title" x="840" y="396" text-anchor="middle">40 cm</text>
+      <text class="sub" x="840" y="414" text-anchor="middle">press</text>
+      <text class="sub" x="840" y="430" text-anchor="middle">1500 N · 7 mm/s</text>
+      <g class="pd"><circle cx="780" cy="160" r="4"/><circle cx="780" cy="250" r="4"/><circle cx="780" cy="360" r="4"/><circle cx="780" cy="450" r="4"/></g>
+    </svg>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--w12)"></i>switched +12 V (14 AWG)</span>
+    <span><i style="background:var(--ink)"></i>actuator lead (14 AWG)</span>
+    <span><i style="background:var(--gnd)"></i>ground (14 AWG)</span>
+    <span><i style="background:var(--w5)"></i>+5 V</span>
+    <span>Lines crossing without a dot are not connected.</span>
+  </div>
+
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Relays on</th><th>Lead A</th><th>Lead B</th><th>Result</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">none</td><td>GND</td><td>GND</td><td>Stopped and braked</td></tr>
+        <tr><td class="mono">CH1 (or CH3)</td><td>+12 V</td><td>GND</td><td>Extends: trapdoor closes / press goes down</td></tr>
+        <tr><td class="mono">CH2 (or CH4)</td><td>GND</td><td>+12 V</td><td>Retracts: trapdoor opens / press goes home</td></tr>
+        <tr><td class="mono">both</td><td>+12 V</td><td>+12 V</td><td>Nothing moves and nothing shorts. The sketch never does this anyway.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Part 3</span>
+  <h2>Mixer: AC-DC supply, relay 5 and the motor driver</h2>
+  <p>The mixer runs from its own AC-DC supply, not from the EcoFlow 12&nbsp;V. Relay CH5 is a plain switch in the supply's V+ line: COM takes PSU V+, NO feeds the motor driver's V+ input, NC stays empty. Tap <strong>MIXER ON</strong> on the Nextion and GPIO23 goes LOW, CH5 closes, and the driver turns the motor.</p>
+  <div class="fig">
+    <svg viewBox="0 0 920 330" role="img" aria-label="AC mains into AC-DC supply, relay 5 switching V+ to the motor driver, driver to mixer motor">
+      <!-- AC outlet -->
+      <rect class="box" x="30" y="50" width="140" height="120" rx="6" style="stroke:var(--ac)"/>
+      <text class="title" x="44" y="76">AC mains</text>
+      <text class="sub" x="44" y="94">wall outlet</text>
+      <g class="pin" text-anchor="end"><text x="162" y="114">L</text><text x="162" y="138">N</text><text x="162" y="162">PE</text></g>
+      <g class="pd"><circle cx="170" cy="110" r="4"/><circle cx="170" cy="134" r="4"/><circle cx="170" cy="158" r="4"/></g>
+      <path class="w ac" d="M170 110 H260 M170 134 H260 M170 158 H260"/>
+      <text class="wlbl" x="182" y="102">fused, insulated</text>
+
+      <!-- PSU -->
+      <rect class="box" x="260" y="50" width="170" height="130" rx="6"/>
+      <text class="title" x="345" y="76" text-anchor="middle">AC-DC PSU</text>
+      <text class="sub" x="345" y="94" text-anchor="middle">set to the motor's</text>
+      <text class="sub" x="345" y="108" text-anchor="middle">rated voltage</text>
+      <g class="pin"><text x="270" y="130">L</text><text x="270" y="152">N</text><text x="270" y="174">⏚</text></g>
+      <g class="pd"><circle cx="260" cy="110" r="4"/><circle cx="260" cy="134" r="4"/><circle cx="260" cy="158" r="4"/></g>
+      <g class="pin" text-anchor="end"><text x="422" y="74">V+</text><text x="422" y="166">V−</text></g>
+      <g class="pd"><circle cx="430" cy="70" r="4"/><circle cx="430" cy="162" r="4"/></g>
+
+      <!-- Relay CH5 -->
+      <rect class="board" x="500" y="40" width="140" height="80" rx="4"/>
+      <text class="pin" x="512" y="60" style="font-weight:600">CH5</text><text class="pinlbl" x="552" y="60">IN5 · G23</text>
+      <g class="pinlbl"><text x="510" y="84">COM</text><text x="630" y="84" text-anchor="end">NO</text><text x="630" y="110" text-anchor="end">NC · empty</text></g>
+      <g class="pd"><circle cx="500" cy="80" r="3.5"/><circle cx="640" cy="80" r="3.5"/></g>
+      <path class="w sig" d="M570 40 V14"/>
+      <text class="wlbl" x="580" y="22">GPIO23 · Nextion MIXER ON</text>
+
+      <!-- V+ through relay -->
+      <path class="w w12" d="M430 70 H470 V80 H500"/>
+      <path class="w w12" d="M640 80 H700"/>
+      <text class="wlbl" x="438" y="62">PSU V+</text>
+      <text class="wlbl" x="648" y="72">switched V+</text>
+      <!-- V- -->
+      <path class="w gnd" d="M430 162 H700"/>
+      <text class="wlbl" x="440" y="154">PSU V− straight to driver</text>
+
+      <!-- Motor driver -->
+      <rect class="box" x="700" y="50" width="190" height="130" rx="6"/>
+      <text class="title" x="795" y="112" text-anchor="middle">Motor driver</text>
+      <g class="pin"><text x="712" y="84">V+ in</text><text x="712" y="166">V− in</text></g>
+      <g class="pd"><circle cx="700" cy="80" r="4"/><circle cx="700" cy="162" r="4"/></g>
+      <g class="pin" text-anchor="middle"><text x="770" y="196">M+</text><text x="830" y="196">M−</text></g>
+      <g class="pd"><circle cx="770" cy="180" r="4"/><circle cx="830" cy="180" r="4"/></g>
+      <path class="w mot" d="M770 180 V240 M830 180 V240"/>
+
+      <!-- Mixer motor -->
+      <rect class="box" x="720" y="240" width="160" height="70" rx="6"/>
+      <text class="title" x="800" y="270" text-anchor="middle">Mixer motor</text>
+      <text class="sub" x="800" y="290" text-anchor="middle">20 V · 5 A</text>
+
+      <text class="wlbl" x="260" y="230">PSU V− does not need to join the ESP32 ground:</text>
+      <text class="wlbl" x="260" y="246">the relay contact isolates it. Join them only if the</text>
+      <text class="wlbl" x="260" y="262">driver takes a signal wire from the ESP32.</text>
+    </svg>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--ac)"></i>AC mains (L, N, PE)</span>
+    <span><i style="background:var(--w12)"></i>PSU V+ (14 AWG)</span>
+    <span><i style="background:var(--gnd)"></i>PSU V− (14 AWG)</span>
+    <span><i style="background:var(--ink)"></i>motor lead</span>
+    <span><i style="background:var(--sig)"></i>relay signal</span>
+  </div>
+  <div class="warn">
+    <strong>Mains on this side</strong>
+    <p>The PSU's L, N and PE terminals carry wall voltage. Use a fused, earthed plug cord, put the terminal cover back on before you plug it in, and never work on it while it is plugged in. The E-stop does not cut this supply. To stop the mixer fast, tap STOP ALL or pull the PSU plug.</p>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Part 4</span>
+  <h2>Water: solenoid valve on relay 6, YF-S201 flow sensor</h2>
+  <p>Relay CH6 switches the solenoid from switched +12&nbsp;V, so the E-stop also shuts the water. The flow sensor runs on the 5&nbsp;V power module, and its signal reaches GPIO34 through one 10k resistor, which keeps the 5&nbsp;V pulse from pushing current into the 3.3&nbsp;V pin. In AUTO RUN, the valve closes at 1.0&nbsp;L (450 pulses per litre), or after 60&nbsp;s if the flow is too low.</p>
+  <div class="fig">
+    <svg viewBox="0 0 920 360" role="img" aria-label="Relay 6 switching 12 volts to the solenoid valve with a flyback diode, and the flow sensor signal through a resistor divider into GPIO34">
+      <!-- switched +12 -->
+      <text class="wlbl" x="40" y="62">switched +12 V (after E-stop)</text>
+      <path class="w w12" d="M40 80 H120"/>
+      <!-- CH6 -->
+      <rect class="board" x="120" y="40" width="150" height="90" rx="4"/>
+      <text class="pin" x="132" y="60" style="font-weight:600">CH6</text><text class="pinlbl" x="172" y="60">IN6 · G32</text>
+      <g class="pinlbl"><text x="130" y="84">NO</text><text x="260" y="84" text-anchor="end">COM</text><text x="130" y="116">NC · empty</text></g>
+      <g class="pd"><circle cx="120" cy="80" r="3.5"/><circle cx="270" cy="80" r="3.5"/></g>
+      <path class="w w12" d="M270 80 H400"/>
+      <text class="wlbl" x="280" y="72">valve +</text>
+      <!-- Solenoid -->
+      <rect class="box" x="400" y="40" width="170" height="100" rx="6"/>
+      <text class="title" x="485" y="80" text-anchor="middle">Solenoid valve</text>
+      <text class="sub" x="485" y="98" text-anchor="middle">12 V DC, normally closed</text>
+      <g class="pin"><text x="410" y="84">+</text><text x="410" y="132">−</text></g>
+      <g class="pd"><circle cx="400" cy="80" r="4"/><circle cx="400" cy="128" r="4"/></g>
+      <path class="w gnd" d="M400 128 H330 V180"/>
+      <rect class="tag tg" x="307" y="180" width="46" height="20" rx="10"/><text class="tgt" x="330" y="194" text-anchor="middle">GND</text>
+      <!-- Diode across coil -->
+      <path class="w mot" d="M360 80 V96 M360 112 V128" style="stroke-width:2"/>
+      <polygon points="350,112 370,112 360,98" class="pd"/>
+      <line x1="349" y1="97" x2="371" y2="97" class="w mot" style="stroke-width:2.5"/>
+      <g class="jn"><circle cx="360" cy="80" r="4"/><circle cx="360" cy="128" r="4"/></g>
+      <text class="note" x="600" y="70">1N4007 across the coil</text>
+      <text class="wlbl" x="600" y="86">stripe (cathode) to valve +</text>
+      <text class="wlbl" x="600" y="102">plain end to valve −</text>
+      <text class="wlbl" x="600" y="118">kills the switch-off spike</text>
+
+      <!-- Flow sensor -->
+      <rect class="box" x="40" y="220" width="190" height="110" rx="6"/>
+      <text class="title" x="54" y="246">YF-S201</text>
+      <text class="sub" x="54" y="264">flow sensor, arrow = flow</text>
+      <g class="pin" text-anchor="end"><text x="222" y="270">red</text><text x="222" y="294">black</text><text x="222" y="318">yellow</text></g>
+      <g class="pd"><circle cx="230" cy="266" r="4"/><circle cx="230" cy="290" r="4"/><circle cx="230" cy="314" r="4"/></g>
+      <path class="w w5" d="M230 266 H260"/>
+      <rect class="tag t5" x="260" y="256" width="46" height="20" rx="10"/><text class="t5t" x="283" y="270" text-anchor="middle">+5V</text>
+      <path class="w gnd" d="M230 290 H260"/>
+      <rect class="tag tg" x="260" y="280" width="46" height="20" rx="10"/><text class="tgt" x="283" y="294" text-anchor="middle">GND</text>
+      <!-- divider -->
+      <path class="w sig" d="M230 314 H360"/>
+      <rect class="box" x="360" y="304" width="70" height="20" rx="3"/><text class="pin" x="395" y="318" text-anchor="middle">10k</text>
+      <path class="w sig" d="M430 314 H620"/>
+      <rect class="box" x="620" y="294" width="160" height="40" rx="6"/>
+      <text class="title" x="700" y="319" text-anchor="middle">ESP32 GPIO34</text>
+      <circle class="pd" cx="620" cy="314" r="4"/>
+      <text class="wlbl" x="440" y="340">push yellow in firmly: loose = noise</text>
+    </svg>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--w12)"></i>switched +12 V</span>
+    <span><i style="background:var(--gnd)"></i>ground</span>
+    <span><i style="background:var(--w5)"></i>+5 V (power module)</span>
+    <span><i style="background:var(--sig)"></i>flow signal</span>
+  </div>
+  <div class="warn">
+    <strong>Check the valve's label first</strong>
+    <p>This assumes a 12&nbsp;V DC, normally closed valve. A 24&nbsp;V or AC valve needs its own supply on CH6 COM/NO, like the mixer in Part 3. Mount the flow sensor with its arrow pointing the way the water runs. It reads low or nothing if it's backwards.</p>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Bring-up</span>
+  <h2>Test in this order</h2>
+  <p>Don't move to the next step until the current one passes.</p>
+  <ol class="steps">
+    <li><h3>Power only</h3>
+      <ul><li>EcoFlow timeouts set to Never in the app.</li>
+      <li>Meter the 5 V power module's output with nothing connected to it.</li></ul>
+      <span class="pass">Pass: meter reads 5.0 V. Pressing the E-stop kills switched 12 V but the 5 V stays on.</span></li>
+    <li><h3>ESP32 + relay board, no 12 V on the contacts</h3>
+      <ul><li>Remove the blue jumper. VCC to ESP32 3V3, JD-VCC to +5 V, GND to ground.</li>
+      <li>Flash: <code>pio run -e actuator-test -t upload</code>, then tap each button.</li></ul>
+      <span class="pass">Pass: CH1 to CH5 each click and light their LED. Nothing clicks while the ESP32 powers up or when you press EN (reset).</span></li>
+    <li><h3>H-bridges with the actuators unplugged</h3>
+      <ul><li>Wire NO, NC and COM as in Part 2. Turn on switched 12 V.</li>
+      <li>Put the meter across COM1 and COM2, then across COM3 and COM4.</li></ul>
+      <span class="pass">Pass: 0 V with all relays off, about 12 V when a channel is on, and the sign flips between the two buttons of a pair. No spark, no hot wire.</span></li>
+    <li><h3>Actuators connected</h3>
+      <ul><li>Plug in the 15 cm actuator, try CLOSE then OPEN. Then the 40 cm, PRESS then HOME.</li>
+      <li>If a button moves the wrong way, swap that actuator's two leads at COM. No code change.</li></ul>
+      <span class="pass">Pass: each one moves the right way and stops by itself at its built-in end limit.</span></li>
+    <li><h3>Mixer, motor unplugged first</h3>
+      <ul><li>Wire Part 3 with the PSU unplugged. Leave the motor off the driver's M+ and M−.</li>
+      <li>Plug in the PSU. Meter on the driver's V+ in and V− in, then tap MIXER ON and tap it again.</li>
+      <li>Connect the motor and repeat. If it turns the wrong way, swap M+ and M−.</li></ul>
+      <span class="pass">Pass: 0 V at the driver with MIXER off, full PSU voltage with it on. The motor spins on MIXER ON and stops on a second tap or STOP ALL.</span></li>
+    <li><h3>Water: valve, then flow sensor</h3>
+      <ul><li>Wire Part 4. With the hose off, tap WATER ON: the valve clicks open, tap again and it clicks shut.</li>
+      <li>Connect the water. Tap WATER ON with a measuring jug under the outlet and stop at 1&nbsp;L on the jug.</li>
+      <li>Compare with the litres on the status line. If they differ, set <code>PULSES_PER_L</code> to 450 × screen litres ÷ jug litres.</li></ul>
+      <span class="pass">Pass: the litres count climbs while water runs and matches the jug within about 5%. AUTO RUN closes the valve at 1.0&nbsp;L.</span></li>
+  </ol>
+</section>
+
+<section>
+  <span class="eyebrow">Running the test</span>
+  <h2>Three ways to drive it</h2>
+  <div class="grid2">
+    <div class="card"><h3>Nextion</h3><p>Tap a button to start that move, the mixer or the water; it turns green. While water runs, the status line shows the litres so far. Tap it again, or the red STOP ALL bar, to stop. The blue AUTO RUN button plays the sequence below.</p></div>
+    <div class="card"><h3>Phone or laptop</h3><p>Join <code>Actuator-Test</code>, password <code>OperatorPassword</code>, open <code>http://192.168.4.1</code>. Same buttons, AUTO RUN included.</p></div>
+    <div class="card"><h3>Serial Monitor</h3><p>At 115200 baud, press <code>1</code> to <code>4</code> for the four moves, <code>5</code> for the mixer, <code>6</code> for water, <code>a</code> for AUTO RUN, any other key to stop.</p></div>
+  </div>
+  <h3>AUTO RUN sequence</h3>
+  <p>One relay at a time, 100&nbsp;ms gap between steps, about 90 seconds plus the water fill. Any tap, any key or STOP ALL ends it with all relays off. Tapping AUTO RUN again starts over from step 1, so jog the trapdoor and press home by hand first if a run was stopped halfway. The times live in <code>AUTO[]</code> near the top of <code>actuator_test.cpp</code>.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>#</th><th>Relay</th><th>Step</th><th>Time</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">1</td><td class="mono">R6</td><td>Water in, stops at 1.0 L (<code>WATER_TARGET_L</code>)</td><td class="mono">up to 60 s</td></tr>
+        <tr><td class="mono">2</td><td class="mono">R5</td><td>Mixer: mix</td><td class="mono">5 s</td></tr>
+        <tr><td class="mono">3</td><td class="mono">R2</td><td>Open trapdoor (15 cm, about 21 s of travel)</td><td class="mono">20 s</td></tr>
+        <tr><td class="mono">4</td><td class="mono">R5</td><td>Mixer burst, pushes the mix through</td><td class="mono">5 s</td></tr>
+        <tr><td class="mono">5</td><td class="mono">R1</td><td>Close trapdoor</td><td class="mono">20 s</td></tr>
+        <tr><td class="mono">6</td><td class="mono">R3</td><td>Press down (about 14 cm of its 40 cm in 20 s)</td><td class="mono">20 s</td></tr>
+        <tr><td class="mono">7</td><td class="mono">R4</td><td>Press home</td><td class="mono">20 s</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">Every move, mixer included, stops by itself after 70 s. A full 40 cm stroke takes about 57 s. Only one relay is ever on, so starting the mixer stops any actuator and the other way round, with 100 ms off-time before the change. If the phone drops off Wi-Fi mid-move, the actuator keeps going to its end limit, so use the E-stop for a fast stop.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Troubleshooting</span>
+  <h2>When something's off</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Symptom</th><th>Likely cause</th></tr></thead>
+      <tbody>
+        <tr><td>No relay clicks at all</td><td>JD-VCC has no 5 V, or the blue jumper is still on while VCC is on 3V3.</td></tr>
+        <tr><td>All relays on and won't turn off</td><td>Relay VCC is on 5 V instead of 3V3. A 3.3 V HIGH can't switch the opto off then.</td></tr>
+        <tr><td>Press twitches at boot</td><td>IN4 still wired to GPIO14. Move it to GPIO33.</td></tr>
+        <tr><td>Nextion blank or ignores taps</td><td>TX and RX swapped, or no shared ground. The Nextion's blue wire goes to GPIO16.</td></tr>
+        <tr><td>Nextion shows the factory demo, taps do nothing, STOP ALL missing</td><td>The ESP32 died after boot. If it happens about 2 s in, Wi-Fi start-up current is browning it out: keep <code>WEB_ENABLED = false</code> or power the ESP32 and Nextion from the 5 V power module.</td></tr>
+        <tr><td>Nextion has no MIXER or AUTO RUN button</td><td>Old sketch on the ESP32. Flash the <code>test/actuator-bench-mixer</code> build.</td></tr>
+        <tr><td>Upload fails: "The chip stopped responding"</td><td>Close any serial monitor on the port, replug USB, hold BOOT until "Connecting..." shows. A failed upload leaves the ESP32 boot-looping until a good one lands.</td></tr>
+        <tr><td>Mixer runs as soon as the PSU is plugged in</td><td>PSU V+ is on CH5 NC instead of NO, or CH5 is bypassed.</td></tr>
+        <tr><td>Water runs but litres stay at 0.00</td><td>Sensor not on 5 V, yellow wire not reaching GPIO34, or the sensor is fitted backwards. If the yellow wire shows no pulses on a meter, add a 10k from yellow to +5 V.</td></tr>
+        <tr><td>AUTO RUN says "time cap hit" on water</td><td>Flow too low to reach 1.0 L in 60 s: low water pressure, or the valve needs more pressure to open fully. Raise the cap or lower <code>WATER_TARGET_L</code>.</td></tr>
+        <tr><td>ESP32 resets when the valve closes</td><td>Flyback diode missing or backwards across the solenoid coil.</td></tr>
+        <tr><td>CH5 clicks but the mixer doesn't turn</td><td>Driver's V− not on PSU V−, driver enable or speed knob at zero, or a loose motor lead.</td></tr>
+        <tr><td>ESP32 or Nextion resets when an actuator starts</td><td>5 V sags on motor inrush. Check that the 5 V power module is fed from unswitched 12 V with thick wire, and that grounds meet at one block.</td></tr>
+        <tr><td>Actuator hums but doesn't move</td><td>Lead on NO and NC of the same relay, or a loose 14 AWG connection. Re-check Part 2.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+</div>
+</body>
+</html>

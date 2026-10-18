@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>YF-S201 Flow Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #f6f7f5; --panel: #ffffff; --ink: #1b2120; --muted: #5b6663; --line: #d5dbd8;
+  --accent: #0f766e; --w12: #dc2626; --w5: #ea580c; --gnd: #3f4644; --sig: #ca8a04; --w33: #2563eb;
+  --warn-bg: #fff4e5; --warn-ink: #8a3b00; --red: #dc2626;
+  --f-display: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121615; --panel: #1a201f; --ink: #e6ebe9; --muted: #9aa6a2; --line: #2c3533;
+  --accent: #2dd4bf; --w12: #f87171; --w5: #fb923c; --gnd: #b9c3c0; --sig: #facc15; --w33: #60a5fa;
+  --warn-bg: #2a1f12; --warn-ink: #fdba74; --red: #f87171; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #121615; --panel: #1a201f; --ink: #e6ebe9; --muted: #9aa6a2; --line: #2c3533;
+  --accent: #2dd4bf; --w12: #f87171; --w5: #fb923c; --gnd: #b9c3c0; --sig: #facc15; --w33: #60a5fa;
+  --warn-bg: #2a1f12; --warn-ink: #fdba74; --red: #f87171; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 var(--f-body); }
+.wrap { max-width: 880px; margin: 0 auto; padding: 32px 16px 64px; }
+h1, h2, h3 { font-family: var(--f-display); line-height: 1.15; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(28px, 5vw, 40px); font-weight: 800; }
+h2 { font-size: 23px; }
+h3 { font-size: 18px; }
+p { margin: 0; max-width: 68ch; }
+code { font-family: var(--f-mono); font-size: 0.88em; }
+.eyebrow { font: 600 12px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); }
+header { display: grid; gap: 12px; margin-bottom: 24px; }
+section { display: grid; gap: 14px; margin-top: 40px; }
+.warn { background: var(--warn-bg); color: var(--warn-ink); border-left: 4px solid var(--red); padding: 14px 16px; border-radius: 4px; display: grid; gap: 6px; }
+.warn strong { font-family: var(--f-display); }
+.fig { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; }
+.fig svg { display: block; width: 100%; min-width: 640px; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 22px; height: 4px; border-radius: 2px; display: inline-block; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px/1.2 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+ol.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; counter-reset: s; }
+ol.steps > li { counter-increment: s; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px 14px 60px; position: relative; display: grid; gap: 6px; }
+ol.steps > li::before { content: counter(s); position: absolute; left: 16px; top: 14px; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--bg); font: 700 15px/30px var(--f-display); text-align: center; }
+ol.steps ul { margin: 0; padding-left: 20px; }
+.pass { font-weight: 600; color: var(--accent); }
+pre { margin: 0; font: 14px/1.5 var(--f-mono); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; overflow-x: auto; }
+svg text { font-family: var(--f-mono); fill: var(--ink); }
+svg .box { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5; }
+svg .title { font: 700 15px var(--f-display); fill: var(--ink); }
+svg .sub { font-size: 11px; fill: var(--muted); }
+svg .pin { font-size: 12px; }
+svg .w { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+svg .w12 { stroke: var(--w12); } svg .w5 { stroke: var(--w5); } svg .gnd { stroke: var(--gnd); } svg .sig { stroke: var(--sig); } svg .w33 { stroke: var(--w33); }
+svg .pd { fill: var(--ink); }
+svg .wlbl { font-size: 11px; fill: var(--muted); }
+svg .opt { font: 600 11px var(--f-mono); fill: var(--w33); }
+svg .res { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="eyebrow">AUTOBRIQ · bench test</span>
+  <h1>Testing the YF-S201 flow sensor</h1>
+  <p class="muted">Just the sensor, the ESP32 and one 10k resistor. No valve, no hose: blow through the sensor and watch the litres count. Uses the <code>actuator-test</code> sketch from commit <code>18efb7e</code> or later.</p>
+</header>
+
+<div class="warn">
+  <strong>Don't wire yellow straight to a 5 V pull-up into the ESP32 with no resistor</strong>
+  <p>The sensor's signal swings to 5&nbsp;V and the ESP32 pin is rated for 3.3&nbsp;V. The 10k in series keeps the current into the pin tiny, about 0.1&nbsp;mA, which is safe. Don't add a pull-up from GPIO34 to 3V3 with it: the two make a divider and no pulse ever counts.</p>
+</div>
+
+<section>
+  <span class="eyebrow">Wiring</span>
+  <h2>Three wires and one resistor</h2>
+  <div class="fig">
+    <svg viewBox="0 0 860 400" role="img" aria-label="EcoFlow 12 volts into the 5 volt power module; module 5 volt output to ESP32 VIN and sensor red; module ground to ESP32 ground and sensor black; sensor yellow through a 10k resistor to GPIO34">
+      <!-- EcoFlow 12 V in -->
+      <text class="wlbl" x="30" y="52">EcoFlow 12 V +</text>
+      <text class="wlbl" x="30" y="96">EcoFlow 12 V −</text>
+      <path class="w w12" d="M130 48 H330"/>
+      <path class="w gnd" d="M130 92 H330"/>
+
+      <!-- Power module -->
+      <rect class="box" x="330" y="20" width="230" height="110" rx="8" style="stroke:var(--w5)"/>
+      <text class="title" x="445" y="80" text-anchor="middle">5 V power module</text>
+      <text class="sub" x="445" y="98" text-anchor="middle">meter 5.0 V on OUT first</text>
+      <g class="pin"><text x="342" y="52">IN+</text><text x="342" y="96">IN−</text></g>
+      <g class="pin" text-anchor="end"><text x="552" y="52">5V OUT</text><text x="552" y="116">GND</text></g>
+      <g class="pd"><circle cx="330" cy="48" r="4"/><circle cx="330" cy="92" r="4"/><circle cx="560" cy="48" r="4"/><circle cx="560" cy="112" r="4"/></g>
+
+      <!-- ESP32 -->
+      <rect class="box" x="660" y="20" width="180" height="340" rx="8"/>
+      <text class="title" x="750" y="200" text-anchor="middle">ESP32</text>
+      <g class="pin"><text x="672" y="52">VIN</text><text x="672" y="116">GND</text><text x="672" y="276">GPIO34</text><text x="672" y="336">3V3</text></g>
+      <g class="pd"><circle cx="660" cy="48" r="4"/><circle cx="660" cy="112" r="4"/><circle cx="660" cy="272" r="4"/><circle cx="660" cy="332" r="4"/></g>
+
+      <!-- 5 V: module to ESP32 VIN, branch down to sensor red -->
+      <path class="w w5" d="M560 48 H660"/>
+      <circle class="pd" cx="600" cy="48" r="5"/>
+      <path class="w w5" d="M600 48 V212 H300"/>
+      <!-- GND: module to ESP32 GND, branch down to sensor black -->
+      <path class="w gnd" d="M560 112 H660"/>
+      <circle class="pd" cx="625" cy="112" r="5"/>
+      <path class="w gnd" d="M625 112 V242 H300"/>
+
+      <!-- Sensor -->
+      <rect class="box" x="30" y="170" width="270" height="130" rx="8"/>
+      <text class="title" x="46" y="198">YF-S201</text>
+      <text class="sub" x="46" y="216">flow sensor</text>
+      <text class="sub" x="46" y="232">arrow on body =</text>
+      <text class="sub" x="46" y="248">water direction</text>
+      <g class="pin" text-anchor="end"><text x="292" y="216">red</text><text x="292" y="246">black</text><text x="292" y="276">yellow</text></g>
+      <g class="pd"><circle cx="300" cy="212" r="4"/><circle cx="300" cy="242" r="4"/><circle cx="300" cy="272" r="4"/></g>
+
+      <!-- Signal -->
+      <path class="w sig" d="M300 272 H380"/>
+      <rect class="res" x="380" y="262" width="80" height="20" rx="3"/><text class="pin" x="420" y="276" text-anchor="middle">10k</text>
+      <path class="w sig" d="M460 272 H660"/>
+
+      <text class="opt" x="300" y="360">no pull-up: push yellow in firmly, a loose</text>
+      <text class="opt" x="300" y="376">wire leaves GPIO34 floating and counts noise</text>
+
+      <text class="wlbl" x="400" y="204">5 V OUT to sensor red</text>
+      <text class="wlbl" x="400" y="234">module GND to sensor black</text>
+      <text class="wlbl" x="574" y="40">to VIN</text>
+    </svg>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--w12)"></i>12 V in</span>
+    <span><i style="background:var(--w5)"></i>+5 V</span>
+    <span><i style="background:var(--gnd)"></i>ground</span>
+    <span><i style="background:var(--sig)"></i>pulse signal</span>
+        <span>A dot is a joint. Lines that cross without a dot are not connected.</span>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Sensor wire</th><th>Goes to</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td><span class="dot" style="background:#dc2626"></span>Red</td><td>Power module 5V OUT</td><td>Same terminal that feeds ESP32 VIN. Not the ESP32's 3V3: the Hall sensor needs 4.5 V or more.</td></tr>
+        <tr><td><span class="dot" style="background:#111"></span>Black</td><td>Power module GND</td><td>Same ground the ESP32 GND goes to.</td></tr>
+        <tr><td><span class="dot" style="background:#eab308"></span>Yellow</td><td>10k resistor, then GPIO34</td><td>One pulse per 1/450 L. GPIO34 is input-only and has no other job.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Test</span>
+  <h2>Run it</h2>
+  <ol class="steps">
+    <li><h3>Flash the sketch</h3>
+      <ul><li>Close any serial monitor first, then run:</li></ul>
+      <pre>pio run -e actuator-test -t upload</pre></li>
+    <li><h3>Open the serial monitor</h3>
+      <pre>pio device monitor</pre>
+      <span class="muted">Ctrl+C quits it. Close it again before the next flash.</span></li>
+    <li><h3>Blow through the sensor</h3>
+      <ul><li>No button needed. Blow in the direction of the arrow on its body, or pour water through it.</li>
+      <li>Watch the <strong>FLOW</strong> box at the top right of the Nextion, e.g. <code>FLOW 0.03 L</code>. It is always on screen and updates once a second.</li>
+      <li>The phone page shows it after the status, and the serial monitor prints <code>FLOW TEST  0.03 L  (14 pulses)</code> each second pulses arrive.</li></ul>
+      <span class="pass">Pass: the FLOW number goes up while air or water moves and holds when it stops.</span></li>
+    <li><h3>Optional: count one fill</h3>
+      <ul><li>Tap <strong>WATER ON (R6)</strong>, or press <code>6</code>, to count from zero for one run. Relay 6 clicks; with no valve connected that's harmless.</li>
+      <li>Tap again or STOP ALL. The serial monitor prints that run's total, e.g. <code>Water: 0.05 L</code>.</li>
+      <li>Reset the ESP32 (EN button) to zero the FLOW TEST total.</li></ul></li>
+  </ol>
+</section>
+
+<section>
+  <span class="eyebrow">Results</span>
+  <h2>What the count tells you</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>You see</th><th>Meaning</th><th>Do</th></tr></thead>
+      <tbody>
+        <tr><td>Litres climb while you blow, stop when you stop</td><td>Sensor works</td><td>Done. Calibrate with water later (below).</td></tr>
+        <tr><td>FLOW stays at 0.00 L</td><td>No pulses reach GPIO34</td><td>Check 5 V on red, the 10k on yellow and the arrow direction. Push each jumper in firmly, and blow hard in short bursts.</td></tr>
+        <tr><td>Jumps by hundreds or thousands with nothing flowing, or when you touch the wires</td><td>GPIO34 floating: the yellow wire is loose or unplugged</td><td>Seat the wires firmly and keep yellow short. There is no noise filter in the firmware, so press EN to zero the count afterwards.</td></tr>
+        <tr><td>Blowing gives only 0.01 to 0.05 L</td><td>Normal: air is light and spins the rotor slowly</td><td>Nothing. Water gives the real reading.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Calibration</span>
+  <h2>Check the 450 pulses per litre with water</h2>
+  <p>Run water through the sensor into a measuring jug and stop at 1&nbsp;L on the jug. Compare with the litres on the screen. If they differ, change <code>PULSES_PER_L</code> near the top of <code>actuator-test/actuator_test.cpp</code>:</p>
+  <pre>PULSES_PER_L = 450 × screen litres ÷ jug litres</pre>
+  <p class="muted">Example: the screen says 1.10 L when the jug has 1.00 L, so 450 × 1.10 = 495. Do it two or three times and average; the flow rate changes the reading slightly.</p>
+</section>
+</div>
+</body>
+</html>

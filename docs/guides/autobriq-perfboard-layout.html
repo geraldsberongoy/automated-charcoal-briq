@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AUTOBRIQ Perfboard Layout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root {
+  --bg: #f6f7f5; --panel: #ffffff; --ink: #1b2120; --muted: #5b6663; --line: #d5dbd8;
+  --accent: #0f766e;
+  --board: #e9dcb8; --board-edge: #b89a5a; --hole: #a8905c; --esp: rgba(27,33,32,0.07);
+  --sig: #2563eb; --w33: #0d9488; --hx: #9333ea; --tx: #0891b2; --rx: #b45309;
+  --flow: #ca8a04; --w5: #ea580c; --gnd: #3f4644; --red: #dc2626;
+  --warn-bg: #fff4e5; --warn-ink: #8a3b00;
+  --f-display: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121615; --panel: #1a201f; --ink: #e6ebe9; --muted: #9aa6a2; --line: #2c3533;
+  --accent: #2dd4bf;
+  --board: #3a3322; --board-edge: #7a6638; --hole: #8a7444; --esp: rgba(230,235,233,0.07);
+  --sig: #60a5fa; --w33: #2dd4bf; --hx: #c084fc; --tx: #22d3ee; --rx: #fbbf24;
+  --flow: #facc15; --w5: #fb923c; --gnd: #b9c3c0; --red: #f87171;
+  --warn-bg: #2a1f12; --warn-ink: #fdba74; color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #121615; --panel: #1a201f; --ink: #e6ebe9; --muted: #9aa6a2; --line: #2c3533;
+  --accent: #2dd4bf;
+  --board: #3a3322; --board-edge: #7a6638; --hole: #8a7444; --esp: rgba(230,235,233,0.07);
+  --sig: #60a5fa; --w33: #2dd4bf; --hx: #c084fc; --tx: #22d3ee; --rx: #fbbf24;
+  --flow: #facc15; --w5: #fb923c; --gnd: #b9c3c0; --red: #f87171;
+  --warn-bg: #2a1f12; --warn-ink: #fdba74; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 var(--f-body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 32px 16px 64px; }
+h1, h2, h3 { font-family: var(--f-display); line-height: 1.15; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(28px, 5vw, 42px); font-weight: 800; }
+h2 { font-size: 23px; }
+h3 { font-size: 18px; }
+p { margin: 0; max-width: 72ch; }
+code { font-family: var(--f-mono); font-size: 0.88em; }
+.eyebrow { font: 600 12px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); }
+header { display: grid; gap: 12px; margin-bottom: 24px; }
+section { display: grid; gap: 14px; margin-top: 40px; }
+.warn { background: var(--warn-bg); color: var(--warn-ink); border-left: 4px solid var(--red); padding: 14px 16px; border-radius: 4px; display: grid; gap: 6px; }
+.warn strong { font-family: var(--f-display); }
+.fig { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; }
+.fig svg { display: block; width: 100%; min-width: 900px; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 22px; height: 4px; border-radius: 2px; display: inline-block; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px/1.2 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td.mono { font-family: var(--f-mono); font-size: 14px; white-space: nowrap; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+ol.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; counter-reset: s; }
+ol.steps > li { counter-increment: s; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px 14px 60px; position: relative; display: grid; gap: 6px; }
+ol.steps > li::before { content: counter(s); position: absolute; left: 16px; top: 14px; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--bg); font: 700 15px/30px var(--f-display); text-align: center; }
+ol.steps ul { margin: 0; padding-left: 20px; }
+.pass { font-weight: 600; color: var(--accent); }
+svg text { font-family: var(--f-mono); fill: var(--ink); }
+svg .lbl { font-size: 12px; }
+svg .lblb { font-size: 12px; font-weight: 600; }
+svg .pinl { font-size: 9.5px; fill: var(--muted); }
+svg .pinu { font-size: 9.5px; font-weight: 600; fill: var(--ink); }
+svg .title { font: 700 15px var(--f-display); fill: var(--ink); }
+svg .sub { font-size: 11px; fill: var(--muted); }
+svg .w { fill: none; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+svg .rail { fill: none; stroke-width: 7; stroke-linecap: round; opacity: 0.85; }
+svg .pin { fill: var(--ink); }
+svg .fpin { fill: var(--panel); stroke: var(--ink); stroke-width: 1.2; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="eyebrow">AUTOBRIQ · control board</span>
+  <h1>Universal PCB layout for the ESP32 control side</h1>
+  <p class="muted">One perfboard carries the ESP32 and does all the 5&nbsp;V / 3.3&nbsp;V / GND distribution. Every module plugs into a labeled pin with a Dupont jumper. Every signal runs straight across its own row, so no wires cross. Matches the <code>actuator-test</code> pin map.</p>
+</header>
+
+<div class="warn"><strong>Relay map note</strong><p>The relay channels in this guide are the <strong>bench rig as wired</strong> (CH5 mixer, CH6 water valve). The thesis assigns <strong>CH5 to the water valve</strong> and <strong>CH6 to the 30 A automotive relay for the mixer</strong>. See <code>docs/PROJECT_CONTEXT.md</code> in the repository. Swap two signal wires and two GPIO entries before the final build if the thesis map is kept.</p></div>
+<div class="warn">
+  <strong>Low voltage only on this board</strong>
+  <p>Only 5&nbsp;V, 3.3&nbsp;V and the signal wires go on the perfboard. The 12&nbsp;V side (EcoFlow, E-stop, relay contacts, actuators, valve) and the mixer's AC-DC supply stay on the relay board's screw terminals, as in the wiring guide. Never bring 12&nbsp;V onto this board.</p>
+</div>
+
+<section>
+  <span class="eyebrow">Whole system</span>
+  <h2>Every component and every wire</h2>
+  <p>The perfboard sits in the middle. Left of it is the 12&nbsp;V side (EcoFlow, E-stop, relay contacts, actuators, valve), bottom is the mixer's own AC supply, right is the 5&nbsp;V side (EcoFlow USB-A 5&nbsp;V, Nextion, HX711 and load cell, flow sensor). A dot is a joint; lines that cross without a dot are not connected.</p>
+  <div class="fig">
+    <svg viewBox="0 0 1560 1160" role="img" aria-label="Whole-system wiring: EcoFlow 12 V through the E-stop to relay contacts and loads, EcoFlow USB-A 5 V to the perfboard, perfboard Dupont lines to the relay board inputs, Nextion, HX711 with load cell and flow sensor, mixer AC-DC supply through relay 5 to the motor driver and motor">
+      <!-- ===== EcoFlow, E-stop, 12 V lines ===== -->
+      <rect x="30" y="50" width="190" height="110" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="46" y="80">EcoFlow RIVER 2</text>
+      <text class="sub" x="46" y="98">12 V DC port</text>
+      <text class="lblb" x="208" y="84" text-anchor="end">+</text><text class="lblb" x="208" y="134" text-anchor="end">−</text>
+      <circle class="pin" cx="220" cy="80" r="4"/><circle class="pin" cx="220" cy="130" r="4"/>
+
+      <rect x="300" y="58" width="140" height="44" rx="22" fill="var(--panel)" stroke="var(--red)" stroke-width="1.8"/>
+      <text class="title" x="370" y="80" text-anchor="middle">E-STOP</text>
+      <text class="sub" x="370" y="95" text-anchor="middle">NC contacts</text>
+      <path class="w" d="M220 80 H300" stroke="var(--red)"/>
+      <!-- inline fuse -->
+      <rect x="224" y="72" width="22" height="16" rx="3" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <line x1="228" y1="80" x2="242" y2="80" stroke="var(--ink)" stroke-width="1.2"/>
+      <text class="lblb" x="235" y="114" text-anchor="middle" style="fill:var(--red)">10 A fuse</text>
+      <!-- unswitched +12 V bus terminal -->
+      <rect x="252" y="70" width="18" height="20" rx="2" fill="var(--panel)" stroke="var(--red)" stroke-width="1.8"/>
+      <text class="pinl" x="261" y="66" text-anchor="middle">+12 bus</text>
+      <!-- switched 12 V bus -->
+      <path class="w" d="M440 80 H460 V190 H280 V790" stroke="var(--red)"/>
+      <text class="lblb" x="470" y="150" style="fill:var(--red)">switched +12 V</text>
+      <!-- 12 V ground -->
+      <path class="w" d="M220 130 H250 V850" stroke="var(--gnd)"/>
+      <circle class="pin" cx="250" cy="130" r="5"/>
+      <text class="lblb" x="150" y="186" style="fill:var(--gnd)">12 V GND</text>
+
+      <!-- ===== Bus terminal strips (drawn over the bus lines; dots = screws) ===== -->
+      <rect x="273" y="250" width="14" height="550" rx="3" fill="none" stroke="var(--red)" stroke-width="1.6" stroke-dasharray="5 3"/>
+      <text class="pinl" x="280" y="244" text-anchor="middle" style="fill:var(--red)">SW bus</text>
+      <rect x="243" y="300" width="14" height="560" rx="3" fill="none" stroke="var(--gnd)" stroke-width="1.6" stroke-dasharray="5 3"/>
+      <text class="pinl" x="250" y="878" text-anchor="middle" style="fill:var(--gnd)">GND bus</text>
+
+      <!-- ===== Relay board ===== -->
+      <rect x="300" y="230" width="220" height="640" rx="8" fill="var(--bg)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="410" y="226" text-anchor="middle">8-ch relay board</text>
+      <!-- channel blocks: CH1 240, CH2 345, CH3 450, CH4 555, CH6 765; CH5 on bottom edge -->
+      <g>
+        <rect x="306" y="240" width="120" height="95" rx="4" fill="var(--panel)" stroke="var(--line)"/>
+        <rect x="306" y="345" width="120" height="95" rx="4" fill="var(--panel)" stroke="var(--line)"/>
+        <rect x="306" y="450" width="120" height="95" rx="4" fill="var(--panel)" stroke="var(--line)"/>
+        <rect x="306" y="555" width="120" height="95" rx="4" fill="var(--panel)" stroke="var(--line)"/>
+        <rect x="306" y="660" width="120" height="95" rx="4" fill="var(--panel)" stroke="var(--line)"/>
+        <rect x="306" y="765" width="120" height="95" rx="4" fill="var(--panel)" stroke="var(--line)"/>
+      </g>
+      <g class="lblb">
+        <text x="360" y="262">CH1</text><text x="360" y="367">CH2</text><text x="360" y="472">CH3</text>
+        <text x="360" y="577">CH4</text><text x="360" y="682">CH5</text><text x="360" y="787">CH6</text>
+      </g>
+      <g class="pinl">
+        <text x="312" y="269">NO</text><text x="312" y="294">COM</text><text x="312" y="319">NC</text>
+        <text x="312" y="374">NO</text><text x="312" y="399">COM</text><text x="312" y="424">NC</text>
+        <text x="312" y="479">NO</text><text x="312" y="504">COM</text><text x="312" y="529">NC</text>
+        <text x="312" y="584">NO</text><text x="312" y="609">COM</text><text x="312" y="634">NC</text>
+        <text x="312" y="794">NO</text><text x="312" y="819">COM</text><text x="312" y="844">NC · empty</text>
+        <text x="352" y="700">contacts on</text><text x="352" y="713">bottom edge</text>
+      </g>
+      <!-- terminals on left edge -->
+      <g class="pin">
+        <circle cx="300" cy="265" r="4"/><circle cx="300" cy="290" r="4"/><circle cx="300" cy="315" r="4"/>
+        <circle cx="300" cy="370" r="4"/><circle cx="300" cy="395" r="4"/><circle cx="300" cy="420" r="4"/>
+        <circle cx="300" cy="475" r="4"/><circle cx="300" cy="500" r="4"/><circle cx="300" cy="525" r="4"/>
+        <circle cx="300" cy="580" r="4"/><circle cx="300" cy="605" r="4"/><circle cx="300" cy="630" r="4"/>
+        <circle cx="300" cy="790" r="4"/><circle cx="300" cy="815" r="4"/>
+      </g>
+      <!-- NO to switched bus -->
+      <path class="w" d="M280 265 H300 M280 370 H300 M280 475 H300 M280 580 H300 M280 790 H300" stroke="var(--red)"/>
+      <g class="pin"><circle cx="280" cy="265" r="5"/><circle cx="280" cy="370" r="5"/><circle cx="280" cy="475" r="5"/><circle cx="280" cy="580" r="5"/></g>
+      <!-- NC to GND -->
+      <path class="w" d="M250 315 H300 M250 420 H300 M250 525 H300 M250 630 H300" stroke="var(--gnd)"/>
+      <g class="pin"><circle cx="250" cy="315" r="5"/><circle cx="250" cy="420" r="5"/><circle cx="250" cy="525" r="5"/><circle cx="250" cy="630" r="5"/></g>
+
+      <!-- ===== Actuators ===== -->
+      <rect x="40" y="250" width="160" height="180" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="120" y="330" text-anchor="middle">15 cm actuator</text>
+      <text class="sub" x="120" y="348" text-anchor="middle">trapdoor</text>
+      <text class="pinl" x="190" y="286" text-anchor="end">lead A</text><text class="pinl" x="190" y="391" text-anchor="end">lead B</text>
+      <path class="w" d="M200 290 H300 M200 395 H300" stroke="var(--ink)"/>
+      <circle class="pin" cx="200" cy="290" r="4"/><circle class="pin" cx="200" cy="395" r="4"/>
+
+      <rect x="40" y="460" width="160" height="180" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="120" y="540" text-anchor="middle">40 cm actuator</text>
+      <text class="sub" x="120" y="558" text-anchor="middle">press</text>
+      <text class="pinl" x="190" y="496" text-anchor="end">lead A</text><text class="pinl" x="190" y="601" text-anchor="end">lead B</text>
+      <path class="w" d="M200 500 H300 M200 605 H300" stroke="var(--ink)"/>
+      <circle class="pin" cx="200" cy="500" r="4"/><circle class="pin" cx="200" cy="605" r="4"/>
+
+      <!-- ===== Solenoid valve on CH6 ===== -->
+      <rect x="40" y="680" width="160" height="190" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="110" y="720" text-anchor="middle">Solenoid valve</text>
+      <text class="sub" x="110" y="738" text-anchor="middle">12 V DC, NC</text>
+      <text class="pinl" x="190" y="811" text-anchor="end">+</text><text class="pinl" x="190" y="846" text-anchor="end">−</text>
+      <circle class="pin" cx="200" cy="815" r="4"/><circle class="pin" cx="200" cy="850" r="4"/>
+      <path class="w" d="M200 815 H300" stroke="var(--red)"/>
+      <path class="w" d="M200 850 H250" stroke="var(--gnd)"/>
+      <circle class="pin" cx="250" cy="850" r="5"/>
+      <!-- diode inside valve box -->
+      <path d="M170 772 V788 M170 806 V815" stroke="var(--ink)" stroke-width="2" fill="none"/>
+      <line x1="160" y1="788" x2="180" y2="788" stroke="var(--ink)" stroke-width="3"/>
+      <polygon points="160,806 180,806 170,790" fill="var(--ink)"/>
+      <text class="sub" x="56" y="770">1N4007</text><text class="sub" x="56" y="784">stripe to +</text>
+      <path d="M170 772 V762 H200" stroke="var(--ink)" stroke-width="1.5" fill="none" stroke-dasharray="2 3"/>
+      <text class="sub" x="56" y="860">across + and −</text>
+
+      <!-- ===== Mixer chain ===== -->
+      <rect x="30" y="950" width="140" height="130" rx="8" fill="var(--panel)" stroke="#7c3aed" stroke-width="1.8"/>
+      <text class="title" x="46" y="978">AC mains</text>
+      <text class="sub" x="46" y="996">wall outlet</text>
+      <g class="pinl" text-anchor="end"><text x="162" y="1019">L</text><text x="162" y="1044">N</text><text x="162" y="1069">PE</text></g>
+      <path class="w" d="M170 1015 H220 M170 1040 H220 M170 1065 H220" stroke="#7c3aed"/>
+      <rect x="220" y="950" width="150" height="130" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="295" y="1010" text-anchor="middle">AC-DC PSU</text>
+      <text class="sub" x="295" y="1028" text-anchor="middle">motor voltage</text>
+      <text class="pinl" x="340" y="966">V+</text><text class="pinl" x="350" y="1060">V−</text>
+      <circle class="pin" cx="330" cy="950" r="4"/><circle class="pin" cx="370" cy="1050" r="4"/>
+      <!-- CH5 contacts on relay bottom edge -->
+      <g class="pin"><circle cx="400" cy="870" r="4"/><circle cx="440" cy="870" r="4"/><circle cx="480" cy="870" r="4"/></g>
+      <g class="pinl" text-anchor="middle"><text x="400" y="890">COM</text><text x="440" y="890">NO</text><text x="480" y="890">NC</text></g>
+      <text class="lblb" x="440" y="906" text-anchor="middle">CH5</text>
+      <path class="w" d="M330 950 V920 H400 V870" stroke="var(--red)"/>
+      <path class="w" d="M440 870 V935 H500 V960" stroke="var(--red)"/>
+      <text class="sub" x="380" y="940">PSU V+ in, switched V+ out</text>
+      <rect x="460" y="960" width="170" height="110" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="545" y="1010" text-anchor="middle">Motor driver</text>
+      <text class="pinl" x="470" y="985">V+ in</text><text class="pinl" x="470" y="1056">V− in</text>
+      <circle class="pin" cx="500" cy="960" r="4"/><circle class="pin" cx="460" cy="1050" r="4"/>
+      <path class="w" d="M370 1050 H460" stroke="var(--gnd)"/>
+      <text class="sub" x="378" y="1068">PSU V− (separate ground)</text>
+      <g class="pinl" text-anchor="end"><text x="622" y="994">M+</text><text x="622" y="1034">M−</text></g>
+      <circle class="pin" cx="630" cy="990" r="4"/><circle class="pin" cx="630" cy="1030" r="4"/>
+      <path class="w" d="M630 990 H700 M630 1030 H700" stroke="var(--ink)"/>
+      <rect x="700" y="960" width="160" height="110" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="780" y="1010" text-anchor="middle">Mixer motor</text>
+      <text class="sub" x="780" y="1028" text-anchor="middle">20 V · 5 A</text>
+
+      <!-- ===== Relay input header (right edge of relay board) ===== -->
+      <g class="pin">
+        <rect x="514" y="294" width="12" height="12"/><rect x="514" y="324" width="12" height="12"/><rect x="514" y="354" width="12" height="12"/>
+        <rect x="514" y="384" width="12" height="12"/><rect x="514" y="414" width="12" height="12"/><rect x="514" y="444" width="12" height="12"/>
+        <rect x="514" y="474" width="12" height="12"/><rect x="514" y="514" width="12" height="12"/><rect x="514" y="554" width="12" height="12"/>
+      </g>
+      <g class="pinl" text-anchor="end">
+        <text x="508" y="304">GND</text><text x="508" y="334">IN1</text><text x="508" y="364">IN2</text><text x="508" y="394">IN3</text>
+        <text x="508" y="424">IN4</text><text x="508" y="454">IN5</text><text x="508" y="484">IN6</text><text x="508" y="524">VCC</text><text x="508" y="564">JD-VCC</text>
+      </g>
+      <text class="sub" x="508" y="584" text-anchor="end">blue jumper off</text>
+
+      <!-- ===== Perfboard ===== -->
+      <rect x="640" y="230" width="330" height="420" rx="10" fill="var(--board)" stroke="var(--board-edge)" stroke-width="2"/>
+      <rect x="730" y="280" width="150" height="280" rx="6" fill="var(--esp)" stroke="var(--ink)" stroke-dasharray="6 4"/>
+      <text class="title" x="805" y="400" text-anchor="middle">ESP32</text>
+      <text class="sub" x="805" y="418" text-anchor="middle">on the perfboard</text>
+      <text class="sub" x="805" y="432" text-anchor="middle">(layout below)</text>
+      <text class="lblb" x="805" y="250" text-anchor="middle">Universal PCB</text>
+      <!-- left edge pins -->
+      <g class="pin">
+        <rect x="634" y="294" width="12" height="12"/><rect x="634" y="334" width="12" height="12"/><rect x="634" y="364" width="12" height="12"/>
+        <rect x="634" y="394" width="12" height="12"/><rect x="634" y="424" width="12" height="12"/><rect x="634" y="454" width="12" height="12"/>
+      </g>
+      <g class="pinl" text-anchor="start">
+        <text x="652" y="304">FLOW</text><text x="652" y="344">IN6</text><text x="652" y="374">IN4</text>
+        <text x="652" y="404">IN1</text><text x="652" y="434">IN2</text><text x="652" y="464">IN3</text>
+      </g>
+      <!-- power terminal -->
+      <rect x="642" y="576" width="26" height="56" rx="3" fill="var(--panel)" stroke="var(--ink)"/>
+      <circle cx="655" cy="590" r="5" fill="none" stroke="var(--ink)"/><circle cx="655" cy="620" r="5" fill="none" stroke="var(--ink)"/>
+      <text class="pinl" x="674" y="594">+5V IN</text><text class="pinl" x="674" y="624">GND IN</text>
+      <!-- right edge pins -->
+      <g class="pin">
+        <rect x="964" y="254" width="12" height="12"/><rect x="964" y="334" width="12" height="12"/><rect x="964" y="364" width="12" height="12"/>
+        <rect x="964" y="424" width="12" height="12"/><rect x="964" y="454" width="12" height="12"/>
+      </g>
+      <g class="pinl" text-anchor="end">
+        <text x="958" y="264">IN5</text><text x="958" y="344">HX DT</text><text x="958" y="374">HX SCK</text>
+        <text x="958" y="434">NX RX</text><text x="958" y="464">NX TX</text>
+      </g>
+      <!-- bottom strips -->
+      <g class="pin">
+        <rect x="684" y="644" width="12" height="12"/><rect x="699" y="644" width="12" height="12"/><rect x="714" y="644" width="12" height="12"/>
+        <rect x="759" y="644" width="12" height="12"/><rect x="774" y="644" width="12" height="12"/><rect x="789" y="644" width="12" height="12"/><rect x="804" y="644" width="12" height="12"/>
+        <rect x="884" y="644" width="12" height="12"/><rect x="904" y="644" width="12" height="12"/>
+      </g>
+      <text class="lblb" x="705" y="636" text-anchor="middle" style="fill:var(--w5)">5V</text>
+      <text class="lblb" x="788" y="636" text-anchor="middle" style="fill:var(--gnd)">GND</text>
+      <text class="lblb" x="900" y="636" text-anchor="middle" style="fill:var(--w33)">3V3</text>
+
+      <!-- ===== Dupont: relay inputs ===== -->
+      <path class="w" d="M520 330 L640 400" stroke="var(--sig)" style="stroke-width:2.5"/>
+      <path class="w" d="M520 360 L640 430" stroke="var(--sig)" style="stroke-width:2.5"/>
+      <path class="w" d="M520 390 L640 460" stroke="var(--sig)" style="stroke-width:2.5"/>
+      <path class="w" d="M520 420 L640 370" stroke="var(--sig)" style="stroke-width:2.5"/>
+      <path class="w" d="M520 480 L640 340" stroke="var(--sig)" style="stroke-width:2.5"/>
+      <path class="w" d="M520 450 H560 V205 H995 V260 H970" stroke="var(--sig)" style="stroke-width:2.5"/>
+      <!-- relay power -->
+      <path class="w" d="M520 300 H590 V680 H765 V650" stroke="var(--gnd)" style="stroke-width:2.5"/>
+      <path class="w" d="M520 520 H575 V695 H890 V650" stroke="var(--w33)" style="stroke-width:2.5"/>
+      <path class="w" d="M520 560 H605 V665 H690 V650" stroke="var(--w5)" style="stroke-width:2.5"/>
+
+      <!-- ===== EcoFlow USB-A 5 V ===== -->
+      <rect x="1270" y="50" width="230" height="110" rx="8" fill="var(--panel)" stroke="var(--w5)" stroke-width="1.8" stroke-dasharray="6 4"/>
+      <text class="title" x="1385" y="82" text-anchor="middle">EcoFlow USB-A port</text>
+      <text class="sub" x="1385" y="100" text-anchor="middle">same RIVER 2 · 5 V, 2.4 A</text>
+      <text class="sub" x="1385" y="116" text-anchor="middle">output timeout: Never</text>
+      <text class="pinl" x="1340" y="152" text-anchor="middle">VBUS (red)</text><text class="pinl" x="1440" y="152" text-anchor="middle">GND (black)</text>
+      <circle class="pin" cx="1340" cy="160" r="4"/><circle class="pin" cx="1440" cy="160" r="4"/>
+      <path class="w" d="M1340 160 V195 H1010 V800 H560 V590 H650" stroke="var(--w5)"/>
+      <path class="w" d="M1440 160 V185 H1020 V818 H546 V620 H650" stroke="var(--gnd)"/>
+      <text class="lblb" x="1030" y="790" style="fill:var(--w5)">USB 5 V into the perfboard</text>
+      <text class="sub" x="1030" y="776">20 AWG pair, 50 cm max</text>
+
+      <!-- ===== Nextion ===== -->
+      <rect x="1080" y="230" width="220" height="130" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="1200" y="300" text-anchor="middle">Nextion 7"</text>
+      <g class="pinl"><text x="1090" y="264">red 5V</text><text x="1090" y="289">black GND</text><text x="1090" y="314">blue TX</text><text x="1090" y="339">yellow RX</text></g>
+      <g class="pin"><circle cx="1080" cy="260" r="4"/><circle cx="1080" cy="285" r="4"/><circle cx="1080" cy="310" r="4"/><circle cx="1080" cy="335" r="4"/></g>
+      <path class="w" d="M1080 310 H1040 V460 H970" stroke="var(--tx)" style="stroke-width:2.5"/>
+      <path class="w" d="M1080 335 H1050 V430 H970" stroke="var(--rx)" style="stroke-width:2.5"/>
+      <path class="w" d="M1080 260 H1030 V760 H705 V650" stroke="var(--w5)" style="stroke-width:2.5"/>
+      <path class="w" d="M1080 285 H1060 V745 H780 V650" stroke="var(--gnd)" style="stroke-width:2.5"/>
+
+      <!-- ===== HX711 + load cell ===== -->
+      <rect x="1080" y="410" width="160" height="140" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="1160" y="432" text-anchor="middle">HX711</text>
+      <g class="pinl"><text x="1090" y="449">VCC</text><text x="1090" y="474">GND</text><text x="1090" y="499">DT</text><text x="1090" y="524">SCK</text></g>
+      <g class="pin"><circle cx="1080" cy="445" r="4"/><circle cx="1080" cy="470" r="4"/><circle cx="1080" cy="495" r="4"/><circle cx="1080" cy="520" r="4"/></g>
+      <g class="pinl" text-anchor="end"><text x="1232" y="449">E+</text><text x="1232" y="474">E−</text><text x="1232" y="499">A−</text><text x="1232" y="524">A+</text></g>
+      <g class="pin"><circle cx="1240" cy="445" r="4"/><circle cx="1240" cy="470" r="4"/><circle cx="1240" cy="495" r="4"/><circle cx="1240" cy="520" r="4"/></g>
+      <path class="w" d="M1080 495 H1066 V340 H970" stroke="var(--hx)" style="stroke-width:2.5"/>
+      <path class="w" d="M1080 520 H1072 V370 H970" stroke="var(--hx)" style="stroke-width:2.5"/>
+      <path class="w" d="M1080 445 H1046 V700 H905 V650" stroke="var(--w33)" style="stroke-width:2.5"/>
+      <path class="w" d="M1080 470 H1056 V725 H795 V650" stroke="var(--gnd)" style="stroke-width:2.5"/>
+      <rect x="1320" y="410" width="200" height="140" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="1420" y="470" text-anchor="middle">S-type load cell</text>
+      <text class="sub" x="1420" y="488" text-anchor="middle">load through the end holes</text>
+      <path class="w" d="M1240 445 H1320" stroke="#dc2626" style="stroke-width:2.5"/>
+      <path class="w" d="M1240 470 H1320" stroke="var(--gnd)" style="stroke-width:2.5"/>
+      <path class="w" d="M1240 495 H1320" stroke="var(--muted)" style="stroke-width:2.5"/>
+      <path class="w" d="M1240 520 H1320" stroke="#16a34a" style="stroke-width:2.5"/>
+      <g class="pinl"><text x="1252" y="441">red</text><text x="1252" y="466">black</text><text x="1252" y="491">white</text><text x="1252" y="516">green</text></g>
+
+      <!-- ===== Flow sensor ===== -->
+      <rect x="1080" y="860" width="200" height="110" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="1180" y="920" text-anchor="middle">YF-S201 flow</text>
+      <text class="sub" x="1180" y="938" text-anchor="middle">code currently off</text>
+      <g class="pinl"><text x="1090" y="884">red 5V</text><text x="1090" y="909">black GND</text><text x="1090" y="954">yellow SIG</text></g>
+      <g class="pin"><circle cx="1080" cy="880" r="4"/><circle cx="1080" cy="905" r="4"/><circle cx="1080" cy="950" r="4"/></g>
+      <path class="w" d="M1080 880 H720 V650" stroke="var(--w5)" style="stroke-width:2.5"/>
+      <path class="w" d="M1080 905 H810 V650" stroke="var(--gnd)" style="stroke-width:2.5"/>
+      <path class="w" d="M1080 950 H625 V300 H640" stroke="var(--flow)" style="stroke-width:2.5"/>
+
+      <!-- ===== ESP32 to relay note ===== -->
+      <text class="sub" x="530" y="196">Dupont jumpers: relay inputs ↔ perfboard edge pins</text>
+    </svg>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--red)"></i>12 V (switched after the E-stop; faded = unswitched)</span>
+    <span><i style="background:var(--gnd)"></i>ground</span>
+    <span><i style="background:var(--w5)"></i>5 V</span>
+    <span><i style="background:var(--w33)"></i>3.3 V</span>
+    <span><i style="background:var(--sig)"></i>relay inputs</span>
+    <span><i style="background:var(--hx)"></i>HX711</span>
+    <span><i style="background:var(--tx)"></i>Nextion TX → ESP</span>
+    <span><i style="background:var(--rx)"></i>ESP → Nextion RX</span>
+    <span><i style="background:var(--flow)"></i>flow signal</span>
+    <span><i style="background:#7c3aed"></i>AC mains</span>
+    <span><i style="background:var(--ink)"></i>actuator / motor leads</span>
+  </div>
+  <p class="muted">Thick lines are fixed wiring (14 AWG on the 12&nbsp;V side, as in the wiring guide). Thin lines are Dupont jumpers to the perfboard. The mixer's PSU V− stays on its own: the relay contact isolates it from the ESP32 side.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Bus terminal</th><th>Fed from</th><th>Feeds</th></tr></thead>
+      <tbody>
+        <tr><td><span class="dot" style="background:var(--red)"></span><strong>+12 V bus</strong> (unswitched)</td><td>EcoFlow + through the 10 A fuse</td><td>E-stop input (spare screws for later 12 V loads)</td></tr>
+        <tr><td><span class="dot" style="background:var(--red)"></span><strong>SW bus</strong> (+12 V switched)</td><td>E-stop output</td><td>Relay NO on CH1, CH2, CH3, CH4, CH6</td></tr>
+        <tr><td><span class="dot" style="background:var(--gnd)"></span><strong>GND bus</strong> (single star point)</td><td>EcoFlow −</td><td>Relay NC on CH1 to CH4, valve −</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">Fuse: an inline blade or glass fuse holder, 10&nbsp;A, as close to the EcoFlow + as you can, so a short anywhere downstream blows the fuse instead of melting wire. The 5&nbsp;V side comes from the EcoFlow's USB-A port straight into the perfboard and stays there: it doesn't need to join the 12&nbsp;V GND bus, because the relay contacts isolate the 12&nbsp;V side and no signal crosses between them. The E-stop doesn't cut the USB, so the screen and ESP32 stay on and show STOPPED. The mixer's AC-DC supply never touches these buses.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Wire sizes</span>
+  <h2>Recommended wire for every run</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Run</th><th>Current</th><th>Wire</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td><strong>EcoFlow USB-A → perfboard +5V IN / GND IN</strong></td><td>up to ~1.5 A</td><td><strong>20 AWG (0.5 mm²) pair, 50 cm max</strong>; 22 AWG only if under 30 cm</td><td>Drop stays under 0.1 V. A thin phone cable (28 AWG power wires) drops ~0.6 V over 1 m and browns out the ESP32 and Nextion. Use a USB-A to bare-wire cable sold for power, or a USB-A breakout board with screw terminals</td></tr>
+        <tr><td>EcoFlow 12 V → fuse → +12 V bus → E-stop → SW bus</td><td>up to 10 A</td><td>14 AWG (2.0 mm²)</td><td>Carries both actuators at once if anything sticks</td></tr>
+        <tr><td>SW bus → relay NO, relay COM → actuator leads, NC → GND bus</td><td>~3 to 5 A per actuator at stall</td><td>14 AWG</td><td>Low drop keeps full force on the press</td></tr>
+        <tr><td>EcoFlow − → GND bus</td><td>up to 10 A</td><td>14 AWG</td><td>Same as the + side</td></tr>
+        <tr><td>SW bus → CH6 → valve, valve − → GND bus</td><td>~0.5 A</td><td>18 AWG (0.75 mm²)</td><td>Small load; 14 AWG also fine if you have it</td></tr>
+        <tr><td>Mixer PSU → CH5 → motor driver → motor</td><td>5 A</td><td>16 AWG (1.5 mm²) or 14 AWG</td><td>Motor current and start-up surge</td></tr>
+        <tr><td>Mains → mixer PSU</td><td>&lt; 1 A</td><td>3-core mains cord 0.75 mm² with an earthed plug</td><td>Proper mains cable only, terminal cover on</td></tr>
+        <tr><td>Perfboard 5V / GND rails</td><td>~1.5 A</td><td>20 to 22 AWG solid, bare on the solder side</td><td>Rail feeds every module</td></tr>
+        <tr><td>Perfboard signal wires</td><td>mA</td><td>22 to 24 AWG solid</td><td>Fits the 2.54 mm holes</td></tr>
+        <tr><td>Perfboard → modules</td><td>&lt; 0.5 A each</td><td>Female Dupont jumpers, 20 cm</td><td>Nextion 5V is the heaviest: use one short jumper, not two chained</td></tr>
+        <tr><td>Load cell → HX711</td><td>µA</td><td>The cell's own cable, keep it short</td><td>Don't extend it near 12 V or motor wires</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">Check after wiring: with the Nextion on and Wi-Fi running, the perfboard 5V pins should read 4.8&nbsp;V or more.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Checklist</span>
+  <h2>All components and where each one connects</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Component</th><th>Connects to</th><th>Guide</th></tr></thead>
+      <tbody>
+        <tr><td>EcoFlow RIVER 2 (12 V DC)</td><td>+ through the 10 A fuse to the +12 V bus; − to the GND bus</td><td>Wiring guide, Part 2</td></tr>
+        <tr><td>Inline fuse, 10 A</td><td>Between EcoFlow + and the +12 V bus</td><td>This page</td></tr>
+        <tr><td>Bus terminals ×3</td><td>+12 V unswitched, +12 V switched, GND (table above)</td><td>This page</td></tr>
+        <tr><td>E-stop (NC)</td><td>+12 V bus in, SW bus out: cuts the relay NO feed on CH1 to CH4 and CH6</td><td>Wiring guide, Part 2</td></tr>
+        <tr><td>EcoFlow USB-A 5 V output + USB-A to bare-wire cable (20 AWG, ≤ 50 cm)</td><td>VBUS to perfboard +5V IN, GND to GND IN. Replaces the test power module; no buck converter needed</td><td>This page</td></tr>
+        <tr><td>Universal PCB + ESP32 DevKit V1</td><td>Distributes 5V / 3V3 / GND, breaks out every signal</td><td>This page, layout below</td></tr>
+        <tr><td>8-ch relay board</td><td>Inputs from the perfboard; contacts to actuators, valve, mixer</td><td>Wiring guide, Parts 1 to 4</td></tr>
+        <tr><td>15 cm actuator (trapdoor)</td><td>CH1 COM and CH2 COM</td><td>Wiring guide, Part 2</td></tr>
+        <tr><td>40 cm actuator (press)</td><td>CH3 COM and CH4 COM; stops at the load limit</td><td>Wiring guide, Part 2</td></tr>
+        <tr><td>Solenoid valve + 1N4007</td><td>CH6 COM to valve +, valve − to GND, diode across the valve</td><td>Solenoid guide</td></tr>
+        <tr><td>AC-DC PSU (mixer)</td><td>Mains in; V+ to CH5 COM; V− to the motor driver V−</td><td>Wiring guide, Part 3</td></tr>
+        <tr><td>Motor driver + mixer motor</td><td>V+ from CH5 NO; M+ / M− to the motor</td><td>Wiring guide, Part 3</td></tr>
+        <tr><td>Nextion 7"</td><td>5V and GND strips; blue TX and yellow RX to the perfboard</td><td>This page</td></tr>
+        <tr><td>HX711 + S-type load cell</td><td>3V3 and GND strips, DT and SCK to the perfboard; cell on E+ / E− / A− / A+</td><td>Load cell guide</td></tr>
+        <tr><td>YF-S201 flow sensor</td><td>5V and GND strips, yellow to FLOW SIG (code off for now)</td><td>YF-S201 guide</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Layout</span>
+  <h2>Component side, seen from above</h2>
+  <p>Grid = 2.54&nbsp;mm holes. The board needs <strong>38 × 27 holes</strong> (about 10 × 7&nbsp;cm), so a 7 × 10&nbsp;cm board or bigger. <strong>When you flip it to solder, everything is mirrored left-right.</strong> Keep this picture next to you the right way up and check each joint against it.</p>
+  <div class="fig">
+    <svg viewBox="0 0 1110 640" role="img" aria-label="Perfboard layout: ESP32 in the middle on two female headers, signal breakout pins on the left and right edges, 5V, 3V3 and GND power pin strips along the bottom">
+      <defs>
+        <pattern id="holes" x="160" y="40" width="20" height="20" patternUnits="userSpaceOnUse">
+          <circle cx="10" cy="10" r="2.4" fill="var(--hole)"/>
+        </pattern>
+      </defs>
+      <!-- board -->
+      <rect x="160" y="40" width="760" height="540" rx="10" fill="var(--board)" stroke="var(--board-edge)" stroke-width="2"/>
+      <rect x="160" y="40" width="760" height="540" rx="10" fill="url(#holes)"/>
+
+      <!-- ESP32 module outline -->
+      <rect x="436" y="118" width="228" height="346" rx="8" fill="var(--esp)" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <rect x="480" y="96" width="140" height="34" rx="4" fill="none" stroke="var(--muted)" stroke-dasharray="3 3"/>
+      <text class="sub" x="550" y="117" text-anchor="middle">antenna end</text>
+      <rect x="524" y="448" width="52" height="30" rx="4" fill="none" stroke="var(--muted)" stroke-dasharray="3 3"/>
+      <text class="sub" x="550" y="496" text-anchor="middle">USB end</text>
+      <text class="title" x="550" y="270" text-anchor="middle">ESP32 DevKit V1</text>
+      <text class="sub" x="550" y="288" text-anchor="middle">30-pin, in two 15-pin</text>
+      <text class="sub" x="550" y="302" text-anchor="middle">female headers,</text>
+      <text class="sub" x="550" y="316" text-anchor="middle">rows 10 holes apart</text>
+
+      <!-- ESP32 header pins: left column x=450, right x=650, rows y=150..430 -->
+      <g>
+        <rect class="fpin" x="444" y="144" width="12" height="12"/><rect class="fpin" x="444" y="164" width="12" height="12"/><rect class="fpin" x="444" y="184" width="12" height="12"/><rect class="fpin" x="444" y="204" width="12" height="12"/><rect class="fpin" x="444" y="224" width="12" height="12"/>
+        <rect class="fpin" x="444" y="244" width="12" height="12"/><rect class="fpin" x="444" y="264" width="12" height="12"/><rect class="fpin" x="444" y="284" width="12" height="12"/><rect class="fpin" x="444" y="304" width="12" height="12"/><rect class="fpin" x="444" y="324" width="12" height="12"/>
+        <rect class="fpin" x="444" y="344" width="12" height="12"/><rect class="fpin" x="444" y="364" width="12" height="12"/><rect class="fpin" x="444" y="384" width="12" height="12"/><rect class="fpin" x="444" y="404" width="12" height="12"/><rect class="fpin" x="444" y="424" width="12" height="12"/>
+        <rect class="fpin" x="644" y="144" width="12" height="12"/><rect class="fpin" x="644" y="164" width="12" height="12"/><rect class="fpin" x="644" y="184" width="12" height="12"/><rect class="fpin" x="644" y="204" width="12" height="12"/><rect class="fpin" x="644" y="224" width="12" height="12"/>
+        <rect class="fpin" x="644" y="244" width="12" height="12"/><rect class="fpin" x="644" y="264" width="12" height="12"/><rect class="fpin" x="644" y="284" width="12" height="12"/><rect class="fpin" x="644" y="304" width="12" height="12"/><rect class="fpin" x="644" y="324" width="12" height="12"/>
+        <rect class="fpin" x="644" y="344" width="12" height="12"/><rect class="fpin" x="644" y="364" width="12" height="12"/><rect class="fpin" x="644" y="384" width="12" height="12"/><rect class="fpin" x="644" y="404" width="12" height="12"/><rect class="fpin" x="644" y="424" width="12" height="12"/>
+      </g>
+      <!-- ESP32 pin labels (inside the outline) -->
+      <g text-anchor="start">
+        <text class="pinl" x="462" y="154">EN</text><text class="pinl" x="462" y="174">VP</text><text class="pinl" x="462" y="194">VN</text>
+        <text class="pinu" x="462" y="214">D34</text><text class="pinl" x="462" y="234">D35</text>
+        <text class="pinu" x="462" y="254">D32</text><text class="pinu" x="462" y="274">D33</text><text class="pinu" x="462" y="294">D25</text>
+        <text class="pinu" x="462" y="314">D26</text><text class="pinu" x="462" y="334">D27</text>
+        <text class="pinl" x="462" y="354">D14 ✕</text><text class="pinl" x="462" y="374">D12 ✕</text><text class="pinl" x="462" y="394">D13</text>
+        <text class="pinu" x="462" y="414">GND</text><text class="pinu" x="462" y="434">VIN</text>
+      </g>
+      <g text-anchor="end">
+        <text class="pinu" x="638" y="154">D23</text><text class="pinl" x="638" y="174">D22</text><text class="pinl" x="638" y="194">TX0</text>
+        <text class="pinl" x="638" y="214">RX0</text><text class="pinl" x="638" y="234">D21</text>
+        <text class="pinu" x="638" y="254">D19</text><text class="pinu" x="638" y="274">D18</text><text class="pinl" x="638" y="294">D5 ✕</text>
+        <text class="pinu" x="638" y="314">TX2 (17)</text><text class="pinu" x="638" y="334">RX2 (16)</text>
+        <text class="pinl" x="638" y="354">D4</text><text class="pinl" x="638" y="374">D2 ✕</text><text class="pinl" x="638" y="394">D15 ✕</text>
+        <text class="pinu" x="638" y="414">GND</text><text class="pinu" x="638" y="434">3V3</text>
+      </g>
+
+      <!-- Power rails -->
+      <path class="rail" d="M190 510 H450" stroke="var(--w5)"/>
+      <path class="rail" d="M190 550 H890" stroke="var(--gnd)"/>
+      <path class="rail" d="M610 470 H890" stroke="var(--w33)"/>
+
+      <!-- Power wires from ESP -->
+      <path class="w" d="M450 430 V510" stroke="var(--w5)"/>
+      <path class="w" d="M450 410 H470 V550" stroke="var(--gnd)"/>
+      <path class="w" d="M650 430 V470" stroke="var(--w33)"/>
+
+      <!-- Left breakout signals -->
+      <path class="w" d="M450 210 H372" stroke="var(--flow)"/>
+      <rect x="292" y="200" width="80" height="20" rx="4" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="lblb" x="332" y="214" text-anchor="middle">R1 10k</text>
+      <path class="w" d="M292 210 H250" stroke="var(--flow)"/>
+      <path class="w" d="M450 250 H250" stroke="var(--sig)"/>
+      <path class="w" d="M450 270 H250" stroke="var(--sig)"/>
+      <path class="w" d="M450 290 H250" stroke="var(--sig)"/>
+      <path class="w" d="M450 310 H250" stroke="var(--sig)"/>
+      <path class="w" d="M450 330 H250" stroke="var(--sig)"/>
+
+      <!-- Right breakout signals -->
+      <path class="w" d="M650 150 H850" stroke="var(--sig)"/>
+      <path class="w" d="M650 250 H850" stroke="var(--hx)"/>
+      <path class="w" d="M650 270 H850" stroke="var(--hx)"/>
+      <path class="w" d="M650 310 H850" stroke="var(--rx)"/>
+      <path class="w" d="M650 330 H850" stroke="var(--tx)"/>
+
+      <!-- Male breakout pins -->
+      <g class="pin">
+        <rect x="244" y="204" width="12" height="12"/><rect x="244" y="244" width="12" height="12"/><rect x="244" y="264" width="12" height="12"/><rect x="244" y="284" width="12" height="12"/><rect x="244" y="304" width="12" height="12"/><rect x="244" y="324" width="12" height="12"/>
+        <rect x="844" y="144" width="12" height="12"/><rect x="844" y="244" width="12" height="12"/><rect x="844" y="264" width="12" height="12"/><rect x="844" y="304" width="12" height="12"/><rect x="844" y="324" width="12" height="12"/>
+      </g>
+      <!-- Power pin strips -->
+      <g class="pin">
+        <rect x="244" y="504" width="12" height="12"/><rect x="264" y="504" width="12" height="12"/><rect x="284" y="504" width="12" height="12"/><rect x="304" y="504" width="12" height="12"/><rect x="324" y="504" width="12" height="12"/><rect x="344" y="504" width="12" height="12"/><rect x="364" y="504" width="12" height="12"/><rect x="384" y="504" width="12" height="12"/>
+        <rect x="244" y="544" width="12" height="12"/><rect x="264" y="544" width="12" height="12"/><rect x="284" y="544" width="12" height="12"/><rect x="304" y="544" width="12" height="12"/><rect x="324" y="544" width="12" height="12"/><rect x="344" y="544" width="12" height="12"/><rect x="364" y="544" width="12" height="12"/><rect x="384" y="544" width="12" height="12"/>
+        <rect x="724" y="544" width="12" height="12"/><rect x="744" y="544" width="12" height="12"/><rect x="764" y="544" width="12" height="12"/><rect x="784" y="544" width="12" height="12"/><rect x="804" y="544" width="12" height="12"/><rect x="824" y="544" width="12" height="12"/><rect x="844" y="544" width="12" height="12"/><rect x="864" y="544" width="12" height="12"/>
+        <rect x="724" y="464" width="12" height="12"/><rect x="744" y="464" width="12" height="12"/><rect x="764" y="464" width="12" height="12"/><rect x="784" y="464" width="12" height="12"/><rect x="804" y="464" width="12" height="12"/><rect x="824" y="464" width="12" height="12"/><rect x="844" y="464" width="12" height="12"/><rect x="864" y="464" width="12" height="12"/>
+      </g>
+      <text class="lblb" x="244" y="498" fill="var(--w5)" style="fill:var(--w5)">5V pins</text>
+      <text class="lblb" x="244" y="574" style="fill:var(--gnd)">GND pins</text>
+      <text class="lblb" x="724" y="574" style="fill:var(--gnd)">GND pins</text>
+      <text class="lblb" x="724" y="458" style="fill:var(--w33)">3V3 pins</text>
+
+      <!-- Power input terminal and capacitor -->
+      <rect x="174" y="494" width="32" height="72" rx="4" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <circle cx="190" cy="510" r="7" fill="none" stroke="var(--ink)" stroke-width="1.5"/><line x1="185" y1="510" x2="195" y2="510" stroke="var(--ink)" stroke-width="1.5"/>
+      <circle cx="190" cy="550" r="7" fill="none" stroke="var(--ink)" stroke-width="1.5"/><line x1="185" y1="550" x2="195" y2="550" stroke="var(--ink)" stroke-width="1.5"/>
+      <rect x="220" y="516" width="20" height="28" rx="6" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="lblb" x="230" y="528" text-anchor="middle">+</text>
+      <text class="pinl" x="230" y="540" text-anchor="middle">C1</text>
+
+      <!-- Edge labels: left -->
+      <g text-anchor="end">
+        <text class="lblb" x="150" y="214" style="fill:var(--flow)">FLOW SIG</text>
+        <text class="lblb" x="150" y="254" style="fill:var(--sig)">RELAY IN6</text>
+        <text class="lblb" x="150" y="274" style="fill:var(--sig)">RELAY IN4</text>
+        <text class="lblb" x="150" y="294" style="fill:var(--sig)">RELAY IN1</text>
+        <text class="lblb" x="150" y="314" style="fill:var(--sig)">RELAY IN2</text>
+        <text class="lblb" x="150" y="334" style="fill:var(--sig)">RELAY IN3</text>
+        <text class="lblb" x="150" y="514" style="fill:var(--w5)">+5V IN</text>
+        <text class="sub" x="150" y="530">from EcoFlow USB-A</text>
+        <text class="lblb" x="150" y="554" style="fill:var(--gnd)">GND IN</text>
+      </g>
+      <!-- Edge labels: right -->
+      <g text-anchor="start">
+        <text class="lblb" x="930" y="154" style="fill:var(--sig)">RELAY IN5</text>
+        <text class="lblb" x="930" y="254" style="fill:var(--hx)">HX711 DT</text>
+        <text class="lblb" x="930" y="274" style="fill:var(--hx)">HX711 SCK</text>
+        <text class="lblb" x="930" y="314" style="fill:var(--rx)">NEXTION RX</text>
+        <text class="sub" x="930" y="328">yellow wire</text>
+        <text class="lblb" x="930" y="348" style="fill:var(--tx)">NEXTION TX</text>
+        <text class="sub" x="930" y="362">blue wire</text>
+      </g>
+      <line x1="856" y1="330" x2="928" y2="344" stroke="var(--tx)" stroke-width="1" stroke-dasharray="3 3"/>
+      <text class="sub" x="160" y="612">✕ = leave unconnected: D12, D14, D2, D5, D15 affect boot or pulse at power-up.</text>
+    </svg>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--w5)"></i>5 V</span>
+    <span><i style="background:var(--w33)"></i>3.3 V</span>
+    <span><i style="background:var(--gnd)"></i>GND</span>
+    <span><i style="background:var(--sig)"></i>relay inputs</span>
+    <span><i style="background:var(--hx)"></i>HX711</span>
+    <span><i style="background:var(--rx)"></i>ESP TX2 → Nextion RX</span>
+    <span><i style="background:var(--tx)"></i>Nextion TX → ESP RX2</span>
+    <span><i style="background:var(--flow)"></i>flow sensor</span>
+    <span>Thick bars = power rails (bare wire on the solder side, every pin on it joined). Small black squares = male header pins for Dupont jumpers.</span>
+  </div>
+  <p class="muted">Check your ESP32 before soldering the headers: most DOIT DevKit V1 boards have their pin rows 10 holes (25.4&nbsp;mm) apart, as drawn. Some clones are 9 holes. Plug the ESP32 into the two loose female headers first, push them into the board, and solder them where they fit.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Solder list</span>
+  <h2>Every connection on the board</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Net</th><th>From</th><th>To</th><th>Wire</th></tr></thead>
+      <tbody>
+        <tr><td><span class="dot" style="background:var(--w5)"></span>5V</td><td>Screw terminal +5V</td><td>5V rail (bottom left) → ESP32 <strong>VIN</strong></td><td>20 to 22 AWG, bare on the solder side</td></tr>
+        <tr><td><span class="dot" style="background:var(--gnd)"></span>GND</td><td>Screw terminal GND</td><td>GND rail (full width) → ESP32 <strong>GND</strong> (left column)</td><td>20 to 22 AWG</td></tr>
+        <tr><td><span class="dot" style="background:var(--w33)"></span>3V3</td><td>ESP32 <strong>3V3</strong></td><td>3V3 rail (bottom right)</td><td>22 to 24 AWG</td></tr>
+        <tr><td><span class="dot" style="background:var(--w5)"></span>C1</td><td>470 µF + leg on 5V rail</td><td>− leg (striped side) on GND rail</td><td>Next to the screw terminal</td></tr>
+        <tr><td><span class="dot" style="background:var(--sig)"></span>IN1</td><td>ESP32 D25</td><td>Left pin "RELAY IN1"</td><td rowspan="6">22 to 24 AWG, straight along the row</td></tr>
+        <tr><td><span class="dot" style="background:var(--sig)"></span>IN2</td><td>ESP32 D26</td><td>Left pin "RELAY IN2"</td></tr>
+        <tr><td><span class="dot" style="background:var(--sig)"></span>IN3</td><td>ESP32 D27</td><td>Left pin "RELAY IN3"</td></tr>
+        <tr><td><span class="dot" style="background:var(--sig)"></span>IN4</td><td>ESP32 D33</td><td>Left pin "RELAY IN4"</td></tr>
+        <tr><td><span class="dot" style="background:var(--sig)"></span>IN6</td><td>ESP32 D32</td><td>Left pin "RELAY IN6"</td></tr>
+        <tr><td><span class="dot" style="background:var(--sig)"></span>IN5</td><td>ESP32 D23</td><td>Right pin "RELAY IN5"</td></tr>
+        <tr><td><span class="dot" style="background:var(--hx)"></span>DT</td><td>ESP32 D19</td><td>Right pin "HX711 DT"</td><td rowspan="4">22 to 24 AWG</td></tr>
+        <tr><td><span class="dot" style="background:var(--hx)"></span>SCK</td><td>ESP32 D18</td><td>Right pin "HX711 SCK"</td></tr>
+        <tr><td><span class="dot" style="background:var(--rx)"></span>TX2</td><td>ESP32 TX2 (GPIO17)</td><td>Right pin "NEXTION RX"</td></tr>
+        <tr><td><span class="dot" style="background:var(--tx)"></span>RX2</td><td>ESP32 RX2 (GPIO16)</td><td>Right pin "NEXTION TX"</td></tr>
+        <tr><td><span class="dot" style="background:var(--flow)"></span>FLOW</td><td>ESP32 D34</td><td>R1 10k, then left pin "FLOW SIG"</td><td>R1 lies flat along the row</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Plug-in</span>
+  <h2>Dupont jumpers from the board to each module</h2>
+  <div class="grid2">
+    <div class="tbl"><table>
+      <thead><tr><th colspan="2">8-ch relay board (blue jumper removed)</th></tr></thead>
+      <tbody>
+        <tr><td>Relay GND</td><td>any GND pin</td></tr>
+        <tr><td>Relay IN1 to IN4, IN6</td><td>left "RELAY IN…" pins, same number</td></tr>
+        <tr><td>Relay IN5</td><td>right "RELAY IN5" pin</td></tr>
+        <tr><td>Relay VCC</td><td>any <strong>3V3</strong> pin</td></tr>
+        <tr><td>Relay JD-VCC</td><td>any <strong>5V</strong> pin</td></tr>
+        <tr><td>Relay IN7, IN8</td><td>leave empty</td></tr>
+      </tbody>
+    </table></div>
+    <div class="tbl"><table>
+      <thead><tr><th colspan="2">Nextion 7"</th></tr></thead>
+      <tbody>
+        <tr><td>Red (+5V)</td><td>any <strong>5V</strong> pin</td></tr>
+        <tr><td>Black (GND)</td><td>any GND pin</td></tr>
+        <tr><td>Blue (TX)</td><td>right "NEXTION TX"</td></tr>
+        <tr><td>Yellow (RX)</td><td>right "NEXTION RX"</td></tr>
+      </tbody>
+    </table></div>
+    <div class="tbl"><table>
+      <thead><tr><th colspan="2">HX711 (load cell on its E+/E−/A−/A+)</th></tr></thead>
+      <tbody>
+        <tr><td>VCC</td><td>any <strong>3V3</strong> pin</td></tr>
+        <tr><td>GND</td><td>any GND pin</td></tr>
+        <tr><td>DT</td><td>right "HX711 DT"</td></tr>
+        <tr><td>SCK</td><td>right "HX711 SCK"</td></tr>
+      </tbody>
+    </table></div>
+    <div class="tbl"><table>
+      <thead><tr><th colspan="2">YF-S201 flow sensor (code currently off)</th></tr></thead>
+      <tbody>
+        <tr><td>Red</td><td>any <strong>5V</strong> pin</td></tr>
+        <tr><td>Black</td><td>any GND pin</td></tr>
+        <tr><td>Yellow</td><td>left "FLOW SIG" (R1 is already on the board)</td></tr>
+      </tbody>
+    </table></div>
+    <div class="tbl"><table>
+      <thead><tr><th colspan="2">5 V supply: EcoFlow USB-A</th></tr></thead>
+      <tbody>
+        <tr><td>USB VBUS (red)</td><td>screw terminal <strong>+5V IN</strong></td></tr>
+        <tr><td>USB GND (black)</td><td>screw terminal <strong>GND IN</strong></td></tr>
+        <tr><td>Cable</td><td>USB-A to bare wire, 20 AWG, 50 cm max</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+  <p class="muted">Leave the laptop USB out of normal running. Plugging it in for flashing while the board is powered has worked on your rig all along: most DevKit V1 boards have a diode between USB and VIN. If yours is a clone without one, flash with the power module off.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Parts</span>
+  <h2>What you need</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Qty</th><th>Part</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">1</td><td>Universal PCB (perfboard), 2.54 mm pitch</td><td>7 × 10 cm or bigger (38 × 27 holes used)</td></tr>
+        <tr><td class="mono">2</td><td>15-pin female header, 2.54 mm</td><td>ESP32 socket, so it unplugs for replacement</td></tr>
+        <tr><td class="mono">~40</td><td>Male header pins, 2.54 mm (break-apart strip)</td><td>11 signal + 8 5V + 16 GND + 8 3V3</td></tr>
+        <tr><td class="mono">1</td><td>2-pin screw terminal, 5.08 mm</td><td>Power in</td></tr>
+        <tr><td class="mono">1</td><td>10 kΩ resistor, ¼ W</td><td>R1, flow signal</td></tr>
+        <tr><td class="mono">1</td><td>470 µF electrolytic capacitor, 10 V or more</td><td>C1, steadies 5 V when relays and Wi-Fi switch on</td></tr>
+        <tr><td class="mono">1 m</td><td>Solid hookup wire 22 AWG (+ some 20 AWG)</td><td>Thicker for the 5V and GND rails</td></tr>
+        <tr><td class="mono">~25</td><td>Female-female Dupont jumpers, 20 cm</td><td>Board to modules</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">Recommended extra: a 10 kΩ from each relay IN pin to VCC, soldered on the relay board's input header. It holds the relays off while the ESP32 pins float during flashing or reset, which is what was breaking the uploads.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Build</span>
+  <h2>Build and check order</h2>
+  <ol class="steps">
+    <li><h3>Fit the ESP32 headers</h3>
+      <ul><li>Push both female headers onto the ESP32's pins, then into the board at the spot shown, antenna toward the top edge.</li>
+      <li>Solder one corner pin of each, check it sits flat, then the rest. Unplug the ESP32 before soldering anything else.</li></ul></li>
+    <li><h3>Power: terminal, rails, C1</h3>
+      <ul><li>Solder the screw terminal, run the 5V, GND and 3V3 rails as bare wire on the solder side, then the power pin strips on top of them.</li>
+      <li>C1: the striped (−) side goes to GND.</li></ul></li>
+    <li><h3>ESP32 power pins</h3>
+      <ul><li>VIN to the 5V rail, left GND to the GND rail, 3V3 to the 3V3 rail.</li></ul></li>
+    <li><h3>Signals</h3>
+      <ul><li>One wire per row, from the ESP32 header pin straight to its labeled edge pin. R1 goes in the D34 row.</li></ul></li>
+    <li><h3>Meter check, ESP32 out</h3>
+      <ul><li>Ohms between 5V and GND, then 3V3 and GND: no short. (C1 makes the meter count up for a moment; that's fine.)</li>
+      <li>Beep test each signal: ESP32 header pin to its edge pin, and no beep to its neighbors.</li></ul>
+      <span class="pass">Pass: no shorts, every labeled pin beeps to the right ESP32 pin only.</span></li>
+    <li><h3>Power up, ESP32 still out</h3>
+      <ul><li>Connect the USB-A cable to the screw terminal and plug it into the EcoFlow.</li></ul>
+      <span class="pass">Pass: 5.0 V on the 5V pins and on the VIN socket hole. 3V3 pins read 0 V (the ESP32 makes the 3.3 V).</span></li>
+    <li><h3>ESP32 in, then modules</h3>
+      <ul><li>Power off, plug in the ESP32, power on: 3V3 pins now read 3.3 V.</li>
+      <li>Plug the modules in with the jumper tables above, one at a time, and run the bench test after each.</li></ul></li>
+  </ol>
+</section>
+</div>
+</body>
+</html>

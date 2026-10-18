@@ -77,6 +77,9 @@ If code, docs and the thesis disagree, the thesis is right. Fix the code or doc,
 ### Rule 5: Do Not Invent Numbers
 Targets the thesis leaves to calibration or measurement (force threshold, mixing time, battery endurance, production rate) stay marked as such until measured.
 
+### Rule 6: Never Delete the Final HMI Dashboards
+The Nextion dashboard (`NextionDashboard.*`, `NextionManager.*`, `mockups/nextion/`) and the React PWA (`operator-node/dashboard/`, `WebAssets.h`) are the final operator interfaces. Extend or fix them; never delete, rename or rewrite them wholesale. The full list is in [PROJECT_CONTEXT.md](file:///C:/Users/User/CODERIST/mor/automated-charcoal-briq/docs/PROJECT_CONTEXT.md) section 6.
+
 ---
 
 ## 4. Verification & Self-Check Checklist
