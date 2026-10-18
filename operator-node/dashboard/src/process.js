@@ -13,7 +13,7 @@ export const CONFIG = {
   POUR_OFF_MS:     3000,
   SHAKE_MS:        15000,
   LEVEL_MS:        30000,
-  PRESS_TARGET_N:  2000,
+  PRESS_TARGET_N:  2000,    // simulation only; real threshold comes from calibration (< 1,500 N actuator thrust)
   PRESS_HOLD_MS:   3000,
   PRESS_STROKE_MS: 18000,
 };

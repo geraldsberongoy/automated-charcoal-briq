@@ -55,6 +55,8 @@ namespace ProcessConfig {
   constexpr uint32_t POUR_OFF_MS       = 3000UL   / DIV;
   constexpr uint32_t SHAKE_MS          = 15000UL  / DIV;
   constexpr uint32_t LEVEL_MS          = 30000UL  / DIV;
+  // Simulation value only. The real threshold is set by load-cell calibration and
+  // must stay below the 1,500 N thrust of the 40 cm actuator (thesis).
   constexpr float    PRESS_TARGET_N    = 2000.0f;
   constexpr uint32_t PRESS_HOLD_MS     = 3000UL   / DIV;
   constexpr uint32_t PRESS_STROKE_MS   = 18000UL  / DIV;  // full 40 cm travel

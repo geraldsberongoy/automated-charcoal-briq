@@ -1,4 +1,4 @@
-// App.jsx — Upgraded React PWA Dashboard for the Semi-Automated Briquette Machine
+// App.jsx — React PWA Dashboard for the AUTOBRIQ fully automated briquette machine
 import { useState, useEffect, useRef } from 'react';
 
 import { useStats }  from './hooks/useStats';
