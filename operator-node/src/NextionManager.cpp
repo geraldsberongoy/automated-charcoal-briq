@@ -212,6 +212,7 @@ void NextionManager::_handleFrame(const uint8_t *data, size_t len) {
       break;
     case 0x24:
       Serial.println(F("[HMI ] ERR display serial buffer overflow"));
+      _restartPending = true;  // dropped commands would stay blank — redraw all
       break;
     default:
       Serial.printf("[HMI ] Frame 0x%02X (%u bytes)\r\n", data[0], (unsigned)len);

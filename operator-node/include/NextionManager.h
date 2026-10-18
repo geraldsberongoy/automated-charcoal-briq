@@ -36,7 +36,7 @@ namespace NextionConfig {
   // MAX_INFLIGHT unacked commands are outstanding, so we never overrun its
   // 1 KB input buffer while it is busy drawing.
   constexpr uint8_t  MAX_INFLIGHT   = 4;
-  constexpr uint32_t ACK_TIMEOUT_MS = 250UL;
+  constexpr uint32_t ACK_TIMEOUT_MS = 1000UL;  // a page load can take >250 ms
 
   // Keepalive: ping every PING_INTERVAL_MS, resync after LINK_TIMEOUT_MS silence
   constexpr uint32_t PING_INTERVAL_MS = 2000UL;
