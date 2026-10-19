@@ -254,7 +254,7 @@ svg .wlbl { font-size: 11px; fill: var(--muted); }
         <tr><td class="mono"><span class="dot" style="background:var(--tx)"></span>GPIO16</td><td>Nextion TX (blue)</td><td>Touch events into the ESP32</td></tr>
         <tr><td class="mono"><span class="dot" style="background:var(--rx)"></span>GPIO17</td><td>Nextion RX (yellow)</td><td>Screen drawing commands out</td></tr>
         <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO32</td><td>Relay IN6 <span class="pill new">water</span></td><td>LOW = solenoid valve opens (Part 4).</td></tr>
-        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO34</td><td>YF-S201 yellow, through one 10k resistor <span class="pill new">flow</span></td><td>One pulse per 1/450 L. Input-only pin, nothing else on it.</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO13</td><td>YF-S201 yellow, through one 10k resistor <span class="pill new">flow</span></td><td>One pulse per 1/450 L. Input-only pin, nothing else on it.</td></tr>
       </tbody>
     </table>
   </div>
@@ -447,9 +447,9 @@ svg .wlbl { font-size: 11px; fill: var(--muted); }
 <section>
   <span class="eyebrow">Part 4</span>
   <h2>Water: solenoid valve on relay 6, YF-S201 flow sensor</h2>
-  <p>Relay CH6 switches the solenoid from switched +12&nbsp;V, so the E-stop also shuts the water. The flow sensor runs on the 5&nbsp;V power module, and its signal reaches GPIO34 through one 10k resistor, which keeps the 5&nbsp;V pulse from pushing current into the 3.3&nbsp;V pin. In AUTO RUN, the valve closes at 1.0&nbsp;L (450 pulses per litre), or after 60&nbsp;s if the flow is too low.</p>
+  <p>Relay CH6 switches the solenoid from switched +12&nbsp;V, so the E-stop also shuts the water. The flow sensor runs on the 5&nbsp;V power module, and its signal reaches GPIO13 through one 10k resistor, which keeps the 5&nbsp;V pulse from pushing current into the 3.3&nbsp;V pin. In AUTO RUN, the valve closes at 1.0&nbsp;L (450 pulses per litre), or after 60&nbsp;s if the flow is too low.</p>
   <div class="fig">
-    <svg viewBox="0 0 920 360" role="img" aria-label="Relay 6 switching 12 volts to the solenoid valve with a flyback diode, and the flow sensor signal through a resistor divider into GPIO34">
+    <svg viewBox="0 0 920 360" role="img" aria-label="Relay 6 switching 12 volts to the solenoid valve with a flyback diode, and the flow sensor signal through a resistor divider into GPIO13">
       <!-- switched +12 -->
       <text class="wlbl" x="40" y="62">switched +12 V (after E-stop)</text>
       <path class="w w12" d="M40 80 H120"/>
@@ -493,7 +493,7 @@ svg .wlbl { font-size: 11px; fill: var(--muted); }
       <rect class="box" x="360" y="304" width="70" height="20" rx="3"/><text class="pin" x="395" y="318" text-anchor="middle">10k</text>
       <path class="w sig" d="M430 314 H620"/>
       <rect class="box" x="620" y="294" width="160" height="40" rx="6"/>
-      <text class="title" x="700" y="319" text-anchor="middle">ESP32 GPIO34</text>
+      <text class="title" x="700" y="319" text-anchor="middle">ESP32 GPIO13</text>
       <circle class="pd" cx="620" cy="314" r="4"/>
       <text class="wlbl" x="440" y="340">push yellow in firmly: loose = noise</text>
     </svg>
@@ -586,7 +586,7 @@ svg .wlbl { font-size: 11px; fill: var(--muted); }
         <tr><td>Nextion has no MIXER or AUTO RUN button</td><td>Old sketch on the ESP32. Flash the <code>test/actuator-bench-mixer</code> build.</td></tr>
         <tr><td>Upload fails: "The chip stopped responding"</td><td>Close any serial monitor on the port, replug USB, hold BOOT until "Connecting..." shows. A failed upload leaves the ESP32 boot-looping until a good one lands.</td></tr>
         <tr><td>Mixer runs as soon as the PSU is plugged in</td><td>PSU V+ is on CH5 NC instead of NO, or CH5 is bypassed.</td></tr>
-        <tr><td>Water runs but litres stay at 0.00</td><td>Sensor not on 5 V, yellow wire not reaching GPIO34, or the sensor is fitted backwards. If the yellow wire shows no pulses on a meter, add a 10k from yellow to +5 V.</td></tr>
+        <tr><td>Water runs but litres stay at 0.00</td><td>Sensor not on 5 V, yellow wire not reaching GPIO13, or the sensor is fitted backwards. If the yellow wire shows no pulses on a meter, add a 10k from yellow to +5 V.</td></tr>
         <tr><td>AUTO RUN says "time cap hit" on water</td><td>Flow too low to reach 1.0 L in 60 s: low water pressure, or the valve needs more pressure to open fully. Raise the cap or lower <code>WATER_TARGET_L</code>.</td></tr>
         <tr><td>ESP32 resets when the valve closes</td><td>Flyback diode missing or backwards across the solenoid coil.</td></tr>
         <tr><td>CH5 clicks but the mixer doesn't turn</td><td>Driver's V− not on PSU V−, driver enable or speed knob at zero, or a loose motor lead.</td></tr>

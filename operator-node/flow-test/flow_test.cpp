@@ -4,7 +4,7 @@
 // Build/flash with:  pio run -e flow-test -t upload
 // Serial Monitor at 115200. Not part of the main firmware.
 //
-// Wiring: sensor red -> 5 V, black -> GND, yellow -> 10k -> GPIO34
+// Wiring: sensor red -> 5 V, black -> GND, yellow -> 10k -> GPIO13
 //         (docs/guides/autobriq-flow-sensor-yfs201.html).
 //         Optional: valve relay IN6 on GPIO32 for the 'd' dose command.
 //
@@ -12,7 +12,7 @@
 //             repeat 2 or 3 times | a  average | s  save and use it
 // Commands:   z zero   m <L> record a run   a average   s save average
 //             u back to 450   d <L> dose with the valve   x stop valve
-//             r raw GPIO34 mV for 20 s   ? help
+//             r raw GPIO13 mV for 20 s   ? help
 //
 // Unlike actuator-test, pulses closer than MIN_GAP_US apart are dropped as
 // noise (the real sensor tops out near 230 Hz), and the count is reported
@@ -22,7 +22,7 @@
 #include <Arduino.h>
 #include <Preferences.h>
 
-constexpr int      FLOW_PIN      = 34;
+constexpr int      FLOW_PIN      = 13;
 constexpr int      VALVE_PIN     = 32;     // relay IN6, active LOW
 constexpr float    DEFAULT_PPL   = 450.0f; // datasheet pulses per litre
 constexpr uint32_t MIN_GAP_US    = 2000;   // 500 Hz ceiling, well above 230 Hz
@@ -108,7 +108,7 @@ void handle(String line) {
       Serial.printf("valve open, closing at %lu pulses (%.2f L at %.1f pulses/L). x stops\n", (unsigned long)dosePulses, arg, ppl);
       break;
     case 'x': valve(false); Serial.println("valve closed"); break;
-    case 'r': rawUntilMs = millis() + 20000; Serial.println("RAW GPIO34 for 20 s"); break;
+    case 'r': rawUntilMs = millis() + 20000; Serial.println("RAW GPIO13 for 20 s"); break;
     default:
       Serial.printf("z zero | m <L> record | a average | s save | u reset | d <L> dose | x stop | r raw   (now %.1f pulses/L)\n", ppl);
   }
@@ -121,7 +121,7 @@ void setup() {
   delay(500);
   prefs.begin("flow", false);
   ppl = prefs.getFloat("ppl", DEFAULT_PPL);
-  pinMode(FLOW_PIN, INPUT);               // no pull-up on GPIO34; sensor drives it
+  pinMode(FLOW_PIN, INPUT);               // no pull-up, same as it was on GPIO34
   attachInterrupt(digitalPinToInterrupt(FLOW_PIN), onPulse, FALLING);
   Serial.printf("\n===== flow calibration, now %.1f pulses/L. Type ? for commands =====\n", ppl);
 }
@@ -145,7 +145,7 @@ void loop() {
 
   if (millis() < rawUntilMs) {
     static uint32_t rawMs = 0;
-    if (millis() - rawMs >= 100) { rawMs = millis(); Serial.printf("RAW GPIO34 %4d mV\n", analogReadMilliVolts(FLOW_PIN)); }
+    if (millis() - rawMs >= 100) { rawMs = millis(); Serial.printf("RAW GPIO13 %4d mV\n", analogReadMilliVolts(FLOW_PIN)); }
     return;
   }
 

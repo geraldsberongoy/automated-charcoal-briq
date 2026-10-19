@@ -37,7 +37,7 @@ const Pin PINS[] = {
   {"NEXTION RX (TX2)", 17, true,  false},
   {"HX711 DT",         19, false, false},
   {"NEXTION TX (RX2)", 16, false, false},
-  {"FLOW SIG",         34, false, false},   // input-only, no internal pull
+  {"FLOW SIG",         13, false, false},
 };
 constexpr int N = sizeof(PINS) / sizeof(PINS[0]);
 

@@ -13,7 +13,7 @@
 //   IN4 GPIO33  40 cm RETRACT (home)   <- moved off GPIO14, it pulses at boot
 //   IN5 GPIO23  MIXER motor ON (relay in the PSU V+ line to the motor driver)
 //   IN6 GPIO32  WATER solenoid valve open
-//   YF-S201 flow sensor signal -> GPIO34 through a 10k series resistor, no
+//   YF-S201 flow sensor signal -> GPIO13 through a 10k series resistor, no
 //   pull-up (with one, the two halve the pulse and nothing counts)
 //   HX711 DT -> GPIO19, SCK -> GPIO18, VCC -> 3V3 (S-type load cell on E+/E-/A+/A-)
 //   Nextion TX -> GPIO16, Nextion RX -> GPIO17, 115200 baud (boots at 9600).
@@ -47,11 +47,11 @@ constexpr int WATER_RELAY = 5;
 
 // YF-S201: calibration from the README (gravimetric test). Re-check it by
 // filling a measuring jug: new = 450 * litres shown / litres in the jug.
-constexpr int   FLOW_PIN       = 34;     // input-only, interrupt, no boot role
+constexpr int   FLOW_PIN       = 13;     // moved from input-only GPIO34; interrupt, no boot role
 constexpr float PULSES_PER_L   = 450.0f;
 constexpr float WATER_TARGET_L = 1.0f;   // AUTO RUN water dose
 
-// Flow sensor off for now: GPIO34 kept counting with no flow. While off,
+// Flow sensor off for now: GPIO34 (the old flow pin) kept counting with no flow. While off,
 // nothing reads the pin and AUTO RUN's water step runs on time instead.
 constexpr bool     FLOW_ENABLED       = false;
 constexpr uint32_t WATER_NO_SENSOR_MS = 10000;
@@ -126,7 +126,7 @@ uint32_t startMs  = 0;
 
 volatile uint32_t flowPulses = 0;
 uint32_t pulseStart = 0;   // flowPulses when the current move began
-uint32_t rawUntilMs = 0;   // serial key r: raw GPIO34 voltage readout until then
+uint32_t rawUntilMs = 0;   // serial key r: raw flow-pin voltage readout until then
 
 // Plain counter: a 2 ms gap filter here zeroed real pulses on the rig.
 // ponytail: no noise filter, so a loose signal wire counts junk. Seat it.
@@ -385,7 +385,7 @@ void setup() {
 
   Serial.begin(115200);
   if (FLOW_ENABLED) {
-    pinMode(FLOW_PIN, INPUT);   // no pull-up on GPIO34; the sensor has its own
+    pinMode(FLOW_PIN, INPUT);   // no pull-up, same as it was on GPIO34
     attachInterrupt(digitalPinToInterrupt(FLOW_PIN), onFlowPulse, FALLING);
   }
 
@@ -473,7 +473,7 @@ void loop() {
     forceLine();
   }
 
-  // Serial key r: GPIO34 voltage 10x a second for 20 s, to see what the
+  // Serial key r: GPIO13 voltage 10x a second for 20 s, to see what the
   // sensor line does. analogRead takes the pin off the digital input, so
   // the interrupt is re-armed when the window ends.
   static uint32_t lastRawMs = 0;
@@ -482,7 +482,7 @@ void loop() {
     rawWasOn = true;
     if (millis() - lastRawMs >= 100) {
       lastRawMs = millis();
-      Serial.printf("RAW GPIO34 %4d mV\n", analogReadMilliVolts(FLOW_PIN));
+      Serial.printf("RAW GPIO13 %4d mV\n", analogReadMilliVolts(FLOW_PIN));
     }
   } else if (rawWasOn) {
     rawWasOn = false;

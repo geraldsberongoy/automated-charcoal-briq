@@ -80,14 +80,14 @@ svg .res { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5; }
 
 <div class="warn">
   <strong>Don't wire yellow straight to a 5 V pull-up into the ESP32 with no resistor</strong>
-  <p>The sensor's signal swings to 5&nbsp;V and the ESP32 pin is rated for 3.3&nbsp;V. The 10k in series keeps the current into the pin tiny, about 0.1&nbsp;mA, which is safe. Don't add a pull-up from GPIO34 to 3V3 with it: the two make a divider and no pulse ever counts.</p>
+  <p>The sensor's signal swings to 5&nbsp;V and the ESP32 pin is rated for 3.3&nbsp;V. The 10k in series keeps the current into the pin tiny, about 0.1&nbsp;mA, which is safe. Don't add a pull-up from GPIO13 to 3V3 with it: the two make a divider and no pulse ever counts.</p>
 </div>
 
 <section>
   <span class="eyebrow">Wiring</span>
   <h2>Three wires and one resistor</h2>
   <div class="fig">
-    <svg viewBox="0 0 860 400" role="img" aria-label="EcoFlow 12 volts into the 5 volt power module; module 5 volt output to ESP32 VIN and sensor red; module ground to ESP32 ground and sensor black; sensor yellow through a 10k resistor to GPIO34">
+    <svg viewBox="0 0 860 400" role="img" aria-label="EcoFlow 12 volts into the 5 volt power module; module 5 volt output to ESP32 VIN and sensor red; module ground to ESP32 ground and sensor black; sensor yellow through a 10k resistor to GPIO13">
       <!-- EcoFlow 12 V in -->
       <text class="wlbl" x="30" y="52">EcoFlow 12 V +</text>
       <text class="wlbl" x="30" y="96">EcoFlow 12 V −</text>
@@ -105,7 +105,7 @@ svg .res { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5; }
       <!-- ESP32 -->
       <rect class="box" x="660" y="20" width="180" height="340" rx="8"/>
       <text class="title" x="750" y="200" text-anchor="middle">ESP32</text>
-      <g class="pin"><text x="672" y="52">VIN</text><text x="672" y="116">GND</text><text x="672" y="276">GPIO34</text><text x="672" y="336">3V3</text></g>
+      <g class="pin"><text x="672" y="52">VIN</text><text x="672" y="116">GND</text><text x="672" y="276">GPIO13</text><text x="672" y="336">3V3</text></g>
       <g class="pd"><circle cx="660" cy="48" r="4"/><circle cx="660" cy="112" r="4"/><circle cx="660" cy="272" r="4"/><circle cx="660" cy="332" r="4"/></g>
 
       <!-- 5 V: module to ESP32 VIN, branch down to sensor red -->
@@ -132,7 +132,7 @@ svg .res { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5; }
       <path class="w sig" d="M460 272 H660"/>
 
       <text class="opt" x="300" y="360">no pull-up: push yellow in firmly, a loose</text>
-      <text class="opt" x="300" y="376">wire leaves GPIO34 floating and counts noise</text>
+      <text class="opt" x="300" y="376">wire leaves GPIO13 floating and counts noise</text>
 
       <text class="wlbl" x="400" y="204">5 V OUT to sensor red</text>
       <text class="wlbl" x="400" y="234">module GND to sensor black</text>
@@ -152,7 +152,7 @@ svg .res { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5; }
       <tbody>
         <tr><td><span class="dot" style="background:#dc2626"></span>Red</td><td>Power module 5V OUT</td><td>Same terminal that feeds ESP32 VIN. Not the ESP32's 3V3: the Hall sensor needs 4.5 V or more.</td></tr>
         <tr><td><span class="dot" style="background:#111"></span>Black</td><td>Power module GND</td><td>Same ground the ESP32 GND goes to.</td></tr>
-        <tr><td><span class="dot" style="background:#eab308"></span>Yellow</td><td>10k resistor, then GPIO34</td><td>One pulse per 1/450 L. GPIO34 is input-only and has no other job.</td></tr>
+        <tr><td><span class="dot" style="background:#eab308"></span>Yellow</td><td>10k resistor, then GPIO13</td><td>One pulse per 1/450 L. GPIO13 has no boot role and no other job.</td></tr>
       </tbody>
     </table>
   </div>
@@ -188,8 +188,8 @@ svg .res { fill: var(--panel); stroke: var(--ink); stroke-width: 1.5; }
       <thead><tr><th>You see</th><th>Meaning</th><th>Do</th></tr></thead>
       <tbody>
         <tr><td>Litres climb while you blow, stop when you stop</td><td>Sensor works</td><td>Done. Calibrate with water later (below).</td></tr>
-        <tr><td>FLOW stays at 0.00 L</td><td>No pulses reach GPIO34</td><td>Check 5 V on red, the 10k on yellow and the arrow direction. Push each jumper in firmly, and blow hard in short bursts.</td></tr>
-        <tr><td>Jumps by hundreds or thousands with nothing flowing, or when you touch the wires</td><td>GPIO34 floating: the yellow wire is loose or unplugged</td><td>Seat the wires firmly and keep yellow short. There is no noise filter in the firmware, so press EN to zero the count afterwards.</td></tr>
+        <tr><td>FLOW stays at 0.00 L</td><td>No pulses reach GPIO13</td><td>Check 5 V on red, the 10k on yellow and the arrow direction. Push each jumper in firmly, and blow hard in short bursts.</td></tr>
+        <tr><td>Jumps by hundreds or thousands with nothing flowing, or when you touch the wires</td><td>GPIO13 floating: the yellow wire is loose or unplugged</td><td>Seat the wires firmly and keep yellow short. There is no noise filter in the firmware, so press EN to zero the count afterwards.</td></tr>
         <tr><td>Blowing gives only 0.01 to 0.05 L</td><td>Normal: air is light and spins the rotor slowly</td><td>Nothing. Water gives the real reading.</td></tr>
       </tbody>
     </table>
