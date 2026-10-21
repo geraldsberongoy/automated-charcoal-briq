@@ -27,11 +27,11 @@ struct Pin {
 };
 
 const Pin PINS[] = {
-  {"RELAY IN1",        25, true,  true},
-  {"RELAY IN2",        26, true,  true},
-  {"RELAY IN3",        27, true,  true},
-  {"RELAY IN4",        33, true,  true},
-  {"RELAY IN5",        23, true,  true},
+  {"RELAY IN1",        14, true,  true},
+  {"RELAY IN2",        27, true,  true},
+  {"RELAY IN3",        26, true,  true},
+  {"RELAY IN4",        25, true,  true},
+  {"RELAY IN5",        33, true,  true},
   {"RELAY IN6",        32, true,  true},
   {"HX711 SCK",        18, true,  false},
   {"NEXTION RX (TX2)", 17, true,  false},

@@ -193,7 +193,7 @@ pio device monitor</pre>
     <li><h3>Calibrate with a known weight</h3>
       <ul><li>Unloaded, press <code>t</code>. Then put on a known weight, for example a 5 kg bag of rice, and note the <code>raw</code> number and the tare raw that <code>t</code> printed.</li></ul>
       <pre>LSB_PER_KG = |raw with weight − tare raw| ÷ weight in kg</pre>
-      <span class="muted">Put the result in <code>LSB_PER_KG</code> near the top of <code>actuator_test.cpp</code> and reflash. The README's 22,480 was measured at 5&nbsp;V; at 3.3&nbsp;V expect roughly two-thirds of that (about 14,800), so until you calibrate, readings show low.</span></li>
+      <span class="muted">Put the result in <code>LSB_PER_KG</code> near the top of <code>actuator_test.cpp</code> and reflash. The README's 22,480 was measured at 5&nbsp;V. On this rig at 3.3&nbsp;V a 2 kg weight gave 13,935 (now in the sketch); about two-thirds of the 5&nbsp;V figure, as expected.</span></li>
     <li><h3>Press stops at the load limit</h3>
       <ul><li>The 40 cm press stops by itself when LOAD reaches <code>PRESS_STOP_KG</code> (10 kg in the test build). In AUTO RUN that step ends and the run goes on to press HOME. HOME is never blocked.</li>
       <li>Tap <strong>40cm PRESS (R3)</strong> with the press head loaded against the cell and keep a hand on the E-stop.</li></ul>

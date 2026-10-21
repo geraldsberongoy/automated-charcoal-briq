@@ -7,12 +7,15 @@
 // relays of a pair at once, 100 ms dead time before any reversal.
 //
 // Wiring (8-ch active-LOW relay board, blue jumper removed):
-//   IN1 GPIO25  15 cm EXTEND  (close trapdoor)
-//   IN2 GPIO26  15 cm RETRACT (open trapdoor)
-//   IN3 GPIO27  40 cm EXTEND  (press)
-//   IN4 GPIO33  40 cm RETRACT (home)   <- moved off GPIO14, it pulses at boot
-//   IN5 GPIO23  MIXER motor ON (relay in the PSU V+ line to the motor driver)
+//   IN1 GPIO14  15 cm EXTEND  (close trapdoor)
+//   IN2 GPIO27  15 cm RETRACT (open trapdoor)
+//   IN3 GPIO26  40 cm EXTEND  (press)
+//   IN4 GPIO25  40 cm RETRACT (home)
+//   IN5 GPIO33  MIXER motor ON (relay in the PSU V+ line to the motor driver)
 //   IN6 GPIO32  WATER solenoid valve open
+//   (IN6..IN1 are six neighbours on the left header, top to bottom. GPIO14
+//   pulses at boot, so the 15 cm trapdoor relay (IN1) may click for a few ms
+//   at power-up)
 //   YF-S201 flow sensor signal -> GPIO13 through a 10k series resistor, no
 //   pull-up (with one, the two halve the pulse and nothing counts)
 //   HX711 DT -> GPIO19, SCK -> GPIO18, VCC -> 3V3 (S-type load cell on E+/E-/A+/A-)
@@ -42,7 +45,7 @@ constexpr uint32_t DEAD_TIME_MS   = 100;
 constexpr bool WEB_ENABLED = true;
 
 // Relays 1..6 (IN1..IN6)
-constexpr int RELAY[] = {25, 26, 27, 33, 23, 32};
+constexpr int RELAY[] = {14, 27, 26, 25, 33, 32};
 constexpr int WATER_RELAY = 5;
 
 // YF-S201: calibration from the README (gravimetric test). Re-check it by
@@ -56,12 +59,13 @@ constexpr float WATER_TARGET_L = 1.0f;   // AUTO RUN water dose
 constexpr bool     FLOW_ENABLED       = false;
 constexpr uint32_t WATER_NO_SENSOR_MS = 10000;
 
-// HX711 + S-type load cell. Scale from the README (22,480 counts/kg), which
-// was taken at 5 V excitation; here the HX711 runs on 3V3, so re-check it
-// with a known weight: new = (raw - tare) / kg on the scale.
+// HX711 + S-type load cell. The README's 22,480 counts/kg was taken at 5 V
+// excitation; the HX711 runs on 3V3 here. 13,935 = (33730 - 5860) / 2 kg, from
+// a measured 2 kg weight (tare raw ~33730, loaded raw ~5860). Re-check with a
+// 2nd weight: new = (raw - tare) / kg on the scale.
 constexpr int   HX_DT       = 19;
 constexpr int   HX_SCK      = 18;
-constexpr float LSB_PER_KG  = 22480.0f;
+constexpr float LSB_PER_KG  = 13935.0f;
 constexpr float PRESS_STOP_KG = 10.0f;   // press stops pushing at this load
 // Pressing read negative on the rig (signal pair reversed for how the cell
 // is mounted). -1 flips it; set back to 1 if white/green get swapped.

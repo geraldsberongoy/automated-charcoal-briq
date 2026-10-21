@@ -28,6 +28,7 @@ Outputs::Outputs() {
 void Outputs::begin() {
 #if OUTPUTS_LIVE
   for (int8_t pin : ALL_PINS) {
+    if (pin < 0) continue;        // not wired
     _write(pin, false);           // set the off level before enabling output
     pinMode(pin, OUTPUT);
   }
@@ -93,6 +94,7 @@ void Outputs::_apply(Output out, Drive drive) {
 
 void Outputs::_write(int8_t pin, bool on) {
 #if OUTPUTS_LIVE
+  if (pin < 0) return;
   const bool level = OutputPins::RELAY_ACTIVE_LOW ? !on : on;
   digitalWrite(pin, level ? HIGH : LOW);
 #else

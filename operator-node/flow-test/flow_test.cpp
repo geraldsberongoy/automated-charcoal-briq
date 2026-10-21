@@ -23,7 +23,7 @@
 #include <Preferences.h>
 
 constexpr int      FLOW_PIN      = 13;
-constexpr int      VALVE_PIN     = 32;     // relay IN6, active LOW
+constexpr int      VALVE_PIN     = 32;    // relay IN6, active LOW
 constexpr float    DEFAULT_PPL   = 450.0f; // datasheet pulses per litre
 constexpr uint32_t MIN_GAP_US    = 2000;   // 500 Hz ceiling, well above 230 Hz
 constexpr uint32_t DOSE_MAX_MS   = 90000;  // valve shuts after this, no matter what

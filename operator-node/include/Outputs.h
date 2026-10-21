@@ -39,16 +39,19 @@ namespace OutputPins {
   // Relay boards are usually active-LOW (IN pulled low = relay on)
   constexpr bool RELAY_ACTIVE_LOW = true;
 
-  // Avoids UART2 (16/17), strapping pins (0/2/12/15), flash (6-11),
-  // input-only pins (34-39) and GPIO14 (PWM glitch at boot).
-  constexpr int8_t SOLENOID    = 25;
-  constexpr int8_t MIXER_MOTOR = 26;
-  constexpr int8_t GATE_A      = 27;   // extend
-  constexpr int8_t GATE_B      = 13;   // retract
-  constexpr int8_t MIXER_ERM   = 32;
-  constexpr int8_t BOX_ERM     = 33;
-  constexpr int8_t PRESS_A     = 18;   // extend
-  constexpr int8_t PRESS_B     = 19;   // retract
+  // Same map as the bench rig (actuator-test, docs/guides/autobriq-perfboard-
+  // layout.html): IN1..IN6 on the left header, D14 to D32 bottom to top.
+  // GPIO14 pulses at boot, so IN1 (gate extend) may click once at power-up.
+  // 13 = flow sensor, 16/17 = Nextion, 18/19 = HX711, so none are used here.
+  // -1 = no relay wired (the ERM vibration motors are not on the rig yet).
+  constexpr int8_t GATE_A      = 14;   // IN1, extend
+  constexpr int8_t GATE_B      = 27;   // IN2, retract
+  constexpr int8_t PRESS_A     = 26;   // IN3, extend
+  constexpr int8_t PRESS_B     = 25;   // IN4, retract
+  constexpr int8_t MIXER_MOTOR = 33;   // IN5
+  constexpr int8_t SOLENOID    = 32;   // IN6
+  constexpr int8_t MIXER_ERM   = -1;
+  constexpr int8_t BOX_ERM     = -1;
 }
 
 class Outputs {
