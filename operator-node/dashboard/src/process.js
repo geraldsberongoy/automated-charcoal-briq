@@ -6,7 +6,7 @@
 export const CONFIG = {
   FULL_WATER_L:    3.0,     // volume at 100 % level
   WATER_LEVELS:    [100, 90, 80, 70, 60, 50, 40, 30],
-  MIX_MS:          30000,
+  MIX_MS:          180000,
   GATE_STROKE_MS:  21000,   // 15 cm at 7 mm/s
   POUR_PULSES:     6,
   POUR_ON_MS:      2000,
@@ -44,16 +44,6 @@ export const OUTPUTS = [
   { key: 'mixer_motor',    name: 'Mixer motor',    hw: '20V 5A relay' },
   { key: 'gate_actuator',  name: 'Gate actuator',  hw: '15 cm, dual relay' },
   { key: 'press_actuator', name: 'Press actuator', hw: '40 cm, dual relay' },
-];
-
-// Test mode buttons, same order as BatchProcess TEST moves
-export const TEST_MOVES = [
-  { i: 0, label: 'Gate close',  hw: '15 cm actuator, extend' },
-  { i: 1, label: 'Gate open',   hw: '15 cm actuator, retract' },
-  { i: 2, label: 'Press down',  hw: '40 cm actuator, extend (stops at the load limit)' },
-  { i: 3, label: 'Press home',  hw: '40 cm actuator, retract' },
-  { i: 4, label: 'Mixer',       hw: 'Mixer motor relay' },
-  { i: 5, label: 'Water valve', hw: 'Solenoid relay' },
 ];
 
 export const RUNNING_STEPS = new Set(RUN_STEPS.slice(0, 7).map(s => s.step));

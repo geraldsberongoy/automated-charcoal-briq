@@ -32,18 +32,10 @@ const STEP_OUTPUT = {
   'RESETTING':  ['press_actuator', 'RETRACT'],
 };
 
-// Test mode moves, same order as the firmware
-const TEST_OUT = [
-  ['gate_actuator', 'EXTEND'], ['gate_actuator', 'RETRACT'],
-  ['press_actuator', 'EXTEND'], ['press_actuator', 'RETRACT'],
-  ['mixer_motor', 'ON'], ['solenoid', 'ON'],
-];
-
 export function createMock(now) {
   const s = {
     step: 'SETUP PAPER', stoppedDuring: 'SETUP PAPER', waterPct: 100,
     flowL: 0, forceN: 0, peakForceN: 0,
-    testMove: -1,
     stepStart: now, batchStart: 0, batchMs: 0, holdStart: 0, resetPhase: 0,
     outputs: { ...ALL_OFF },
   };
@@ -54,7 +46,6 @@ function enter(s, step, now) {
   s.step = step;
   s.stepStart = now;
   s.holdStart = 0;
-  s.testMove = -1;
   s.outputs = { ...ALL_OFF };
   const out = STEP_OUTPUT[step];
   if (out) s.outputs[out[0]] = out[1];
@@ -71,20 +62,7 @@ export function applyCommand(s, action, payload, now) {
       }
       break;
     case 'NEXT':  if (s.step === 'SETUP PAPER') enter(s, 'SETUP CHARCOAL', now); break;
-    case 'BACK':  if (s.step === 'SETUP CHARCOAL' || s.step === 'TEST') enter(s, 'SETUP PAPER', now); break;
-    case 'TEST':  if (s.step === 'SETUP PAPER') enter(s, 'TEST', now); break;
-    case 'MOVE':
-      if (s.step === 'TEST' && TEST_OUT[payload?.i]) {
-        const same = s.testMove === payload.i;
-        s.outputs = { ...ALL_OFF };
-        s.testMove = -1;
-        if (!same) {
-          s.testMove = payload.i;
-          s.outputs[TEST_OUT[payload.i][0]] = TEST_OUT[payload.i][1];
-          s.stepStart = now;
-        }
-      }
-      break;
+    case 'BACK':  if (s.step === 'SETUP CHARCOAL') enter(s, 'SETUP PAPER', now); break;
     case 'START':
       if (s.step === 'SETUP CHARCOAL') {
         s.flowL = 0; s.forceN = 0; s.peakForceN = 0; s.batchStart = now; s.batchMs = 0;
@@ -94,7 +72,6 @@ export function applyCommand(s, action, payload, now) {
     case 'STOP':
     case 'TRIP_SAFETY':
       if (RUNNING.includes(s.step)) { s.stoppedDuring = s.step; enter(s, 'STOPPED', now); }
-      else if (s.step === 'TEST') { s.outputs = { ...ALL_OFF }; s.testMove = -1; }
       break;
     case 'RESET': if (s.step === 'STOPPED') enter(s, 'RESETTING', now); break;
     case 'DONE':
@@ -136,9 +113,6 @@ export function advance(s, now, dtS) {
     case 'RELEASE':
       s.forceN = Math.max(0, s.forceN - SIM_FORCE_NPS * 4 * dtS);
       if (elapsed >= C.PRESS_STROKE_MS) enter(s, 'UNLOAD', now);
-      break;
-    case 'TEST':
-      if (s.testMove >= 0 && elapsed >= 70000 / MOCK_SPEED) { s.outputs = { ...ALL_OFF }; s.testMove = -1; }
       break;
     case 'RESETTING':
       s.forceN = Math.max(0, s.forceN - SIM_FORCE_NPS * 4 * dtS);
@@ -188,7 +162,6 @@ export function toProcess(s, now) {
     pulse: s.step === 'POUR' ? Math.min(C.POUR_PULSES, Math.floor(elapsed / cycle) + 1) : 0,
     press_holding: s.step === 'PRESS' && s.holdStart !== 0,
     reset_phase: s.resetPhase,
-    test_move: s.testMove,
     batch_ms: (s.step === 'UNLOAD' ? s.batchMs
              : RUNNING.includes(s.step) ? now - s.batchStart : 0) * MOCK_SPEED,
   };

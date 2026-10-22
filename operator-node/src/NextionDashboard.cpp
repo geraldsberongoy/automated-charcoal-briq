@@ -156,7 +156,6 @@ void NextionDashboard::render(const BatchSnapshot &b, uint8_t clients, uint32_t 
       case Step::UNLOAD:         _drawUnload(b);        break;
       case Step::STOPPED:        _drawStopped(b);       break;
       case Step::RESETTING:      _drawResetting();      break;
-      case Step::TEST:           _drawTest();           break;
       default:                   _drawRunning(b);       break;
     }
   }
@@ -166,7 +165,6 @@ void NextionDashboard::render(const BatchSnapshot &b, uint8_t clients, uint32_t 
   switch (b.step) {
     case Step::SETUP_PAPER: _updateSetupPaper(b); break;
     case Step::RESETTING:   _updateResetting(b);  break;
-    case Step::TEST:        _updateTest(b);       break;
     case Step::SETUP_CHARCOAL:
     case Step::UNLOAD:
     case Step::STOPPED:     break;
@@ -316,9 +314,8 @@ void NextionDashboard::_drawSetupPaper(const BatchSnapshot &b) {
   _text({596, 68, 180, 24}, FONT_SMALL, C_ACCENT, C_SURFACE, LEFT, "WATER LEVEL");
 
   // Footer
-  _button({M, FOOT_Y, 170, FOOT_H}, C_TEXT1, C_SURFACE, "TEST MODE", Cmd::TEST);
-  _text({196, FOOT_Y, 280, FOOT_H}, FONT_SMALL, C_TEXT2, C_BG0, LEFT,
-        "Tap a level, then NEXT.");
+  _text({M, FOOT_Y, 450, FOOT_H}, FONT_SMALL, C_TEXT2, C_BG0, LEFT,
+        "Tap a level, then press NEXT when the paper is in.");
   _button({484, FOOT_Y, 300, FOOT_H}, C_BG0, C_ACCENT, "PAPER LOADED - NEXT >", Cmd::NEXT);
 
   // Level buttons register as hits; drawn by _updateSetupPaper()
@@ -594,41 +591,6 @@ void NextionDashboard::_drawUnload(const BatchSnapshot &b) {
   _text({M, FOOT_Y, 450, FOOT_H}, FONT_SMALL, C_TEXT2, C_BG0, LEFT,
         "Put the empty box back before the next batch.");
   _button({484, FOOT_Y, 300, FOOT_H}, C_BG0, C_ACCENT, "DONE - NEW BATCH", Cmd::DONE);
-}
-
-// ── Private: TEST mode ───────────────────────────────────────────────────────
-
-namespace {
-  const char *const TEST_LABELS[6] = {
-    "GATE CLOSE", "GATE OPEN", "PRESS DOWN", "PRESS HOME", "MIXER", "WATER VALVE"
-  };
-  constexpr uint16_t TEST_W = 376, TEST_H = 74;
-  uint16_t testX(uint8_t i) { return i % 2 ? 408 : 16; }
-  uint16_t testY(uint8_t i) { return 88 + (i / 2) * 82; }
-}
-
-void NextionDashboard::_drawTest() {
-  _text({M, 58, 500, 24}, FONT_SMALL, C_ACCENT, C_BG0, LEFT,
-        "TEST MODE - tap a button to run it, tap again to stop");
-  for (uint8_t i = 0; i < 6; ++i) {
-    if (_hitCount < HIT_MAX) _hits[_hitCount++] = {{testX(i), testY(i), TEST_W, TEST_H}, Cmd::MOVE, i};
-  }
-  _button({M, FOOT_Y, 150, FOOT_H}, C_TEXT1, C_SURFACE, "< EXIT", Cmd::BACK);
-  _frame({184, FOOT_Y, 600, FOOT_H}, C_DANGER);
-  _frame({185, FOOT_Y + 1, 598, FOOT_H - 2}, C_DANGER);
-  _button({187, FOOT_Y + 2, 594, FOOT_H - 4}, C_DANGER, C_BG0, "STOP ALL", Cmd::STOP);
-}
-
-void NextionDashboard::_updateTest(const BatchSnapshot &b) {
-  for (uint8_t i = 0; i < 6; ++i) {
-    const bool on = b.testMove == static_cast<int8_t>(i);
-    _field(F_LVL0 + i, {testX(i), testY(i), TEST_W, TEST_H}, FONT_SMALL,
-           on ? C_BG0 : C_TEXT0, on ? C_ACCENT : C_SURFACE, CENTER, TEST_LABELS[i]);
-  }
-  char buf[48];
-  snprintf(buf, sizeof(buf), "Load cell: %.0f N     %s", b.forceN,
-           b.testMove >= 0 ? TEST_LABELS[b.testMove] : "all relays off");
-  _field(F_BAR_L, {M, 342, 768, 28}, FONT_SMALL, C_TEXT1, C_BG0, LEFT, buf);
 }
 
 // ── Private: STOPPED / RESETTING ─────────────────────────────────────────────

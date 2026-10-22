@@ -5,10 +5,10 @@ import Badge    from './Badge';
 import EventLog from './EventLog';
 import {
   FiPlay, FiSquare, FiRotateCcw, FiArrowLeft, FiArrowRight, FiCheck,
-  FiDroplet, FiActivity, FiZap, FiClock, FiAlertTriangle, FiTool,
+  FiDroplet, FiActivity, FiZap, FiClock, FiAlertTriangle,
 } from 'react-icons/fi';
 import {
-  CONFIG, RUN_STEPS, STEP_TEXT, OUTPUTS, RUNNING_STEPS, TEST_MOVES, fmtMMSS, outputDisplay,
+  CONFIG, RUN_STEPS, STEP_TEXT, OUTPUTS, RUNNING_STEPS, fmtMMSS, outputDisplay,
 } from '../process';
 
 // ── Progress gauge for the running step (label, value, 0..1, colour) ─────────
@@ -81,39 +81,6 @@ function OperatorPanel({ p, sendCommand }) {
         <div className="btn-row">
           <button className="action-btn" onClick={() => sendCommand('NEXT')}>
             Paper loaded · Next <FiArrowRight />
-          </button>
-          <button className="action-btn ghost" onClick={() => sendCommand('TEST')}>
-            <FiTool /> Test mode
-          </button>
-        </div>
-      </>
-    );
-  }
-
-  if (p.step === 'TEST') {
-    return (
-      <>
-        <div className="prompt-title">Test mode</div>
-        <p className="prompt-desc">
-          Tap a button to run that relay or component, tap it again to stop. One at a time.
-          Each move stops by itself after 70 s, and the press stops at the load limit.
-        </p>
-        <div className="test-grid">
-          {TEST_MOVES.map(m => (
-            <button key={m.i}
-                    className={`test-btn ${p.test_move === m.i ? 'active' : ''}`}
-                    onClick={() => sendCommand('MOVE', { i: m.i })}>
-              <b>{m.label}</b><span>{m.hw}</span>
-            </button>
-          ))}
-        </div>
-        <p className="prompt-desc">Load cell: <b>{p.force_n} N</b></p>
-        <div className="btn-row">
-          <button className="action-btn danger" onClick={() => sendCommand('STOP')}>
-            <FiSquare /> Stop all
-          </button>
-          <button className="action-btn ghost" onClick={() => sendCommand('BACK')}>
-            <FiArrowLeft /> Exit test mode
           </button>
         </div>
       </>

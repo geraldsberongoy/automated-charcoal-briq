@@ -388,7 +388,6 @@ void NetworkManager::_handleWsEvent(AsyncWebSocket *server, AsyncWebSocketClient
 // ── Private: _handleWsCommand() ──────────────────────────────────────────────
 // Payload shape: {"action":"<ACTION>","payload":{...}}
 //   SET_WATER {"pct":80} | NEXT | BACK | START | STOP | RESET | DONE
-//   TEST | MOVE {"i":0..5}  (test mode: BACK leaves it, STOP switches all off)
 //   TRIP_SAFETY is accepted as an alias for STOP.
 // Commands are queued; the batch FSM applies them on the next loop tick and
 // the regular 1 s broadcast carries the result.
@@ -400,7 +399,6 @@ void NetworkManager::_handleWsCommand(const char *msg) {
     {"\"BACK\"", Cmd::BACK},           {"\"START\"", Cmd::START},
     {"\"STOP\"", Cmd::STOP},           {"\"TRIP_SAFETY\"", Cmd::STOP},
     {"\"RESET\"", Cmd::RESET},         {"\"DONE\"", Cmd::DONE},
-    {"\"TEST\"", Cmd::TEST},           {"\"MOVE\"", Cmd::MOVE},
   };
 
   for (const Entry &e : ACTIONS) {
@@ -409,12 +407,6 @@ void NetworkManager::_handleWsCommand(const char *msg) {
     uint8_t arg = 0;
     if (e.cmd == Cmd::SET_WATER) {
       const char *key   = strstr(msg, "\"pct\"");
-      const char *colon = key ? strchr(key, ':') : nullptr;
-      if (!colon) return;
-      arg = static_cast<uint8_t>(constrain(atoi(colon + 1), 0, 255));
-    }
-    if (e.cmd == Cmd::MOVE) {
-      const char *key   = strstr(msg, "\"i\"");
       const char *colon = key ? strchr(key, ':') : nullptr;
       if (!colon) return;
       arg = static_cast<uint8_t>(constrain(atoi(colon + 1), 0, 255));
@@ -465,7 +457,6 @@ void NetworkManager::_buildTelemetryJson(char *buf, size_t size) {
         "\"pulse\":%u,"
         "\"press_holding\":%s,"
         "\"reset_phase\":%u,"
-        "\"test_move\":%d,"
         "\"batch_ms\":%lu"
       "},"
       "\"outputs\":{"
@@ -497,7 +488,6 @@ void NetworkManager::_buildTelemetryJson(char *buf, size_t size) {
     (unsigned)b.pulse,
     b.pressHolding ? "true" : "false",
     (unsigned)b.resetPhase,
-    (int)b.testMove,
     (unsigned long)b.batchMs,
     drive(Output::SOLENOID), drive(Output::MIXER_MOTOR), drive(Output::GATE_ACT),
     drive(Output::PRESS_ACT)

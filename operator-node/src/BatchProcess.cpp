@@ -15,16 +15,6 @@ namespace {
     return s >= Step::WATER && s <= Step::RELEASE;
   }
 
-  struct TestMove { Output out; Drive drive; };
-  const TestMove TEST_MOVE_TABLE[TEST_MOVES] = {
-    {Output::GATE_ACT,    Drive::EXTEND},
-    {Output::GATE_ACT,    Drive::RETRACT},
-    {Output::PRESS_ACT,   Drive::EXTEND},
-    {Output::PRESS_ACT,   Drive::RETRACT},
-    {Output::MIXER_MOTOR, Drive::ON},
-    {Output::SOLENOID,    Drive::ON},
-  };
-
   float randUnit() {
     return static_cast<float>(esp_random()) / static_cast<float>(UINT32_MAX);
   }
@@ -44,7 +34,6 @@ const char *stepName(Step step) {
     case Step::UNLOAD:         return "UNLOAD";
     case Step::STOPPED:        return "STOPPED";
     case Step::RESETTING:      return "RESETTING";
-    case Step::TEST:           return "TEST";
   }
   return "?";
 }
@@ -67,7 +56,6 @@ BatchProcess::BatchProcess(Outputs &outputs)
     _lastTickMs(0),
     _holdStartMs(0),
     _resetPhase(0),
-    _testMove(-1),
     _pulseOn(false)
 {
   memset(&_snap, 0, sizeof(_snap));
@@ -147,7 +135,7 @@ void BatchProcess::_apply(const Message &m) {
       if (_step == Step::SETUP_PAPER) _enter(Step::SETUP_CHARCOAL);
       break;
     case Cmd::BACK:
-      if (_step == Step::SETUP_CHARCOAL || _step == Step::TEST) _enter(Step::SETUP_PAPER);
+      if (_step == Step::SETUP_CHARCOAL) _enter(Step::SETUP_PAPER);
       break;
     case Cmd::START:
       if (_step == Step::SETUP_CHARCOAL) {
@@ -163,29 +151,10 @@ void BatchProcess::_apply(const Message &m) {
       if (isRunning(_step)) {
         _stoppedDuring = _step;
         _enter(Step::STOPPED);
-      } else if (_step == Step::TEST) {
-        _out.allOff();
-        _testMove = -1;
       }
       break;
     case Cmd::RESET:
       if (_step == Step::STOPPED) _enter(Step::RESETTING);
-      break;
-    case Cmd::TEST:
-      if (_step == Step::SETUP_PAPER) _enter(Step::TEST);
-      break;
-    case Cmd::MOVE:
-      if (_step == Step::TEST && m.arg < TEST_MOVES) {
-        const bool same = _testMove == static_cast<int8_t>(m.arg);
-        _out.allOff();
-        _testMove = -1;
-        if (!same) {
-          vTaskDelay(pdMS_TO_TICKS(TEST_DEAD_MS));   // let the previous contact open
-          _out.driveOnly(TEST_MOVE_TABLE[m.arg].out, TEST_MOVE_TABLE[m.arg].drive);
-          _testMove    = static_cast<int8_t>(m.arg);
-          _stepStartMs = millis();
-        }
-      }
       break;
     case Cmd::DONE:
       if (_step == Step::UNLOAD) {
@@ -202,7 +171,6 @@ void BatchProcess::_enter(Step step) {
   _step        = step;
   _stepStartMs = millis();
   _holdStartMs = 0;
-  _testMove    = -1;
 
   Serial.printf("[PROC] -> %s\r\n", stepName(step));
 
@@ -289,19 +257,6 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
       if (elapsed >= PRESS_STROKE_MS) _enter(Step::UNLOAD);
       break;
 
-    case Step::TEST:
-      if (_testMove >= 0) {
-        if (elapsed >= TEST_TIMEOUT_MS) {
-          _out.allOff();
-          _testMove = -1;
-        } else if (_testMove == 2 && _load.ready() && _forceN >= PRESS_TARGET_N) {
-          Serial.println(F("[PROC] Test: press stopped at the load limit"));
-          _out.allOff();
-          _testMove = -1;
-        }
-      }
-      break;
-
     case Step::RESETTING:
       if (_resetPhase == 0 && elapsed >= PRESS_STROKE_MS) {
         _resetPhase = 1;
@@ -335,7 +290,6 @@ void BatchProcess::_publish(uint32_t now) {
   s.stepElapsedMs = now - _stepStartMs;
   s.pressHolding  = _step == Step::PRESS && _holdStartMs != 0;
   s.resetPhase    = _resetPhase;
-  s.testMove      = _testMove;
   s.pulseOn       = _pulseOn;
 
   const uint32_t cycle = POUR_ON_MS + POUR_OFF_MS;
