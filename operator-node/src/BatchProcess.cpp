@@ -256,9 +256,9 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
           _holdStartMs = now;
           _out.allOff();                          // actuator holds position unpowered
         } else if (elapsed >= PRESS_TIMEOUT_MS) {
-          Serial.println(F("[PROC] Press target not reached — stopping"));
-          _stoppedDuring = Step::PRESS;
-          _enter(Step::STOPPED);
+          // Not an emergency: the cycle goes on and the press retracts home
+          Serial.println(F("[PROC] Press target not reached in time, retracting"));
+          _enter(Step::RELEASE);
         }
       } else if (now - _holdStartMs >= PRESS_HOLD_MS) {
         _enter(Step::RELEASE);
