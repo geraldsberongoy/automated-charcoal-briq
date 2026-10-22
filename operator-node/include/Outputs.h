@@ -27,8 +27,6 @@ enum class Output : uint8_t {
   SOLENOID,      // water valve relay
   MIXER_MOTOR,   // 20V 5A mixer motor relay
   GATE_ACT,      // 15 cm gate actuator (dual relay)
-  MIXER_ERM,     // vibration motor on the mixing container
-  BOX_ERM,       // vibration motor on the compression box
   PRESS_ACT,     // 40 cm press actuator (dual relay)
   COUNT
 };
@@ -43,15 +41,12 @@ namespace OutputPins {
   // layout.html): IN1..IN6 on the left header, D14 to D32 bottom to top.
   // GPIO14 pulses at boot, so IN1 (gate extend) may click once at power-up.
   // 13 = flow sensor, 16/17 = Nextion, 18/19 = HX711, so none are used here.
-  // -1 = no relay wired (the ERM vibration motors are not on the rig yet).
   constexpr int8_t GATE_A      = 14;   // IN1, extend
   constexpr int8_t GATE_B      = 27;   // IN2, retract
   constexpr int8_t PRESS_A     = 26;   // IN3, extend
   constexpr int8_t PRESS_B     = 25;   // IN4, retract
   constexpr int8_t MIXER_MOTOR = 33;   // IN5
   constexpr int8_t SOLENOID    = 32;   // IN6
-  constexpr int8_t MIXER_ERM   = -1;
-  constexpr int8_t BOX_ERM     = -1;
 }
 
 class Outputs {

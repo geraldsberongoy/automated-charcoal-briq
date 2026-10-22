@@ -965,9 +965,9 @@ footer {
 /* ──────────────────────────────────────────────────────────────────────────── */
 
 /* 10-step progress: circles + short labels, no connectors */
-.wizard--10 { gap: 0.25rem; padding: 1rem; }
-.wizard--10 .wizard-step { flex-direction: column; gap: 0.35rem; text-align: center; }
-.wizard--10 .wizard-step__name { font-size: 0.72rem; }
+.wizard--8 { gap: 0.25rem; padding: 1rem; }
+.wizard--8 .wizard-step { flex-direction: column; gap: 0.35rem; text-align: center; }
+.wizard--8 .wizard-step__name { font-size: 0.72rem; }
 
 .btn-row { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
 
@@ -1048,12 +1048,12 @@ footer {
 .unload-stats b { font-family: var(--font-mono); font-size: 1.05rem; }
 
 @media (max-width: 600px) {
-  .wizard.wizard--10 {
+  .wizard.wizard--8 {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     align-items: start !important;
   }
-  .wizard--10 .wizard-step { margin-bottom: 0; justify-content: center !important; }
+  .wizard--8 .wizard-step { margin-bottom: 0; justify-content: center !important; }
   .level-grid   { grid-template-columns: repeat(2, minmax(64px, 1fr)); }
   .unload-stats { grid-template-columns: repeat(2, 1fr); }
 }

@@ -9,12 +9,10 @@
 //   2 MIX          mixer motor on (timed)
 //   3 OPEN_GATE    gate actuator retracts (full stroke)
 //   4 POUR         mixer motor pulses (N bursts)
-//   5 SHAKE        mixer-container vibrator on (timed)
-//   6 CLOSE_GATE   gate actuator extends (full stroke)
-//   7 LEVEL        compression-box vibrator on (timed)
-//   8 PRESS        press actuator extends until target force, then holds
-//   9 RELEASE      press actuator retracts (full stroke)
-//   10 UNLOAD      all off; operator removes the briquette, presses DONE
+//   5 CLOSE_GATE   gate actuator extends (full stroke)
+//   6 PRESS        press actuator extends until target force, then holds
+//   7 RELEASE      press actuator retracts (full stroke)
+//   8 UNLOAD       all off; operator removes the briquette, presses DONE
 //   STOPPED        STOP pressed: all off until RESET
 //   RESETTING      press retracts, then gate closes, then back to SETUP_PAPER
 //
@@ -53,8 +51,6 @@ namespace ProcessConfig {
   constexpr uint8_t  POUR_PULSES       = 6;
   constexpr uint32_t POUR_ON_MS        = 2000UL   / DIV;
   constexpr uint32_t POUR_OFF_MS       = 3000UL   / DIV;
-  constexpr uint32_t SHAKE_MS          = 15000UL  / DIV;
-  constexpr uint32_t LEVEL_MS          = 30000UL  / DIV;
   // Simulation value only. The real threshold is set by load-cell calibration and
   // must stay below the 1,500 N thrust of the 40 cm actuator (thesis).
   constexpr float    PRESS_TARGET_N    = 2000.0f;
@@ -75,7 +71,7 @@ namespace ProcessConfig {
 
 enum class Step : uint8_t {
   SETUP_PAPER, SETUP_CHARCOAL,
-  WATER, MIX, OPEN_GATE, POUR, SHAKE, CLOSE_GATE, LEVEL, PRESS, RELEASE, UNLOAD,
+  WATER, MIX, OPEN_GATE, POUR, CLOSE_GATE, PRESS, RELEASE, UNLOAD,
   STOPPED, RESETTING
 };
 
@@ -83,7 +79,7 @@ enum class Cmd : uint8_t { SET_WATER, NEXT, BACK, START, STOP, RESET, DONE };
 
 struct BatchSnapshot {
   Step     step;
-  uint8_t  runIndex;        // 1..10 for WATER..UNLOAD, 0 otherwise
+  uint8_t  runIndex;        // 1..8 for WATER..UNLOAD, 0 otherwise
   Step     stoppedDuring;   // valid in STOPPED
   uint8_t  waterPct;
   float    targetL;
@@ -99,8 +95,6 @@ struct BatchSnapshot {
   uint8_t  resetPhase;      // RESETTING: 0 = press retract, 1 = gate close
   uint32_t batchMs;         // WATER start → UNLOAD
   Drive    outputs[static_cast<uint8_t>(Output::COUNT)];
-  float    batteryV;
-  float    solarA;
 };
 
 /**

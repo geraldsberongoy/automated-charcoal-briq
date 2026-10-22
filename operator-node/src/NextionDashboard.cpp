@@ -41,7 +41,7 @@ namespace {
   constexpr uint16_t HEADER_H = 48;
 
   // Running screens
-  constexpr uint16_t STEP_Y = 56, STEP_H = 44, STEP_W = 73, STEP_GAP = 4;
+  constexpr uint16_t STEP_Y = 56, STEP_H = 44, STEP_W = 92, STEP_GAP = 4;
   constexpr uint16_t CARD_Y = 110, CARD_H = 290;
   constexpr uint16_t MAIN_X = M, MAIN_W = 498;
   constexpr uint16_t OUT_X = 522, OUT_W = 262;
@@ -64,34 +64,32 @@ namespace {
   enum : uint8_t {
     F_STATUS,
     F_METRIC, F_BAR_L, F_BAR_R,
-    F_OUT0,                 // F_OUT0..F_OUT0+5 outputs, +6 load cell
-    F_WATER_PCT = F_OUT0 + 7, F_WATER_L,
+    F_OUT0,                 // F_OUT0..F_OUT0+3 outputs, +4 load cell
+    F_WATER_PCT = F_OUT0 + 5, F_WATER_L,
     F_LVL0,                 // F_LVL0..F_LVL0+7 level buttons
     F_RESET_MSG = F_LVL0 + 8,
     F_COUNT
   };
   static_assert(F_COUNT <= 24, "raise NextionDashboard::FIELD_MAX");
 
-  const char *const STEP_LABELS[10] = {
-    "WATER", "MIX", "OPEN", "POUR", "SHAKE", "CLOSE", "LEVEL", "PRESS", "RELEASE", "UNLOAD"
+  const char *const STEP_LABELS[8] = {
+    "WATER", "MIX", "OPEN", "POUR", "CLOSE", "PRESS", "RELEASE", "UNLOAD"
   };
 
   struct StepText { const char *kicker; const char *title; const char *desc1; const char *desc2; const char *hint; };
   // Indexed by runIndex - 1 (WATER..RELEASE)
-  const StepText RUN_TEXT[9] = {
+  const StepText RUN_TEXT[7] = {
     {"WATER",      "Dispensing water",     "Solenoid valve open. Filling to the",    "selected level of the mixing container.", "Valve closes at the target volume."},
     {"MIX",        "Mixing",               "Mixer motor running through its",        "relay (20V, 5A).",                        "Motor stops when the timer ends."},
     {"OPEN GATE",  "Opening the gate",     "15 cm actuator retracting to open",      "the bottom of the mixing container.",     "Stops at the end of travel."},
     {"POUR",       "Pouring into the box", "Mixer motor spins in short bursts",      "to push the mixture through the gate.",   "Gate stays open. Motor rests between bursts."},
-    {"SHAKE",      "Shaking out the rest", "Vibration motor on the mixing",          "container knocks the rest loose.",        "Then the gate closes."},
     {"CLOSE GATE", "Closing the gate",     "15 cm actuator extending to close",      "the mixing container.",                   "Stops at the end of travel."},
-    {"LEVEL",      "Leveling the mixture", "Vibration motor on the compression",     "box spreads the mixture evenly.",         "Press starts when the timer ends."},
     {"PRESS",      "Compressing",          "40 cm actuator extending. Force from",   "the S-type load cell (HX711).",           "Holds at target force, then releases."},
     {"RELEASE",    "Releasing the press",  "40 cm actuator retracting so the",       "box can be removed.",                     "Box unlocks at the end of travel."},
   };
 
-  const char *const OUT_NAMES[6] = {
-    "Water valve", "Mixer motor", "Gate actuator", "Mixer vibrator", "Box vibrator", "Press actuator"
+  const char *const OUT_NAMES[4] = {
+    "Water valve", "Mixer motor", "Gate actuator", "Press actuator"
   };
 
   constexpr uint8_t LEVELS[8] = {100, 90, 80, 70, 60, 50, 40, 30};
@@ -270,8 +268,8 @@ void NextionDashboard::_updateStatus(const BatchSnapshot &b, uint8_t clients,
                                      uint32_t uptimeMs, bool danger) {
   const uint32_t s = uptimeMs / 1000UL;
   char buf[48];
-  snprintf(buf, sizeof(buf), "BAT %.1fV   PV %.1fA   WIFI %u   %02lu:%02lu:%02lu",
-           b.batteryV, b.solarA, (unsigned)clients,
+  snprintf(buf, sizeof(buf), "WIFI %u   %02lu:%02lu:%02lu",
+           (unsigned)clients,
            (unsigned long)(s / 3600UL), (unsigned long)((s / 60UL) % 60UL),
            (unsigned long)(s % 60UL));
   _field(F_STATUS, {330, 0, SCREEN_W - 330 - M, HEADER_H}, FONT_SMALL,
@@ -395,7 +393,7 @@ void NextionDashboard::_drawSetupCharcoal(const BatchSnapshot &b) {
 // ── Private: running steps ───────────────────────────────────────────────────
 
 void NextionDashboard::_drawStepper(uint8_t active) {
-  for (uint8_t i = 0; i < 10; ++i) {
+  for (uint8_t i = 0; i < 8; ++i) {
     const uint8_t n = i + 1;
     const uint16_t bg = n < active ? C_ACC_DIM : n == active ? C_ACCENT : C_SURFACE;
     const uint16_t fg = n <= active ? C_BG0 : C_TEXT2;
@@ -447,11 +445,8 @@ void NextionDashboard::_updateRunning(const BatchSnapshot &b) {
       snprintf(r, sizeof(r), "%d%%", (int)(constrain(frac, 0.0f, 1.0f) * 100));
       break;
     case Step::MIX:
-    case Step::SHAKE:
-    case Step::LEVEL:
       fmtMMSS(a, sizeof(a), b.stepDurationMs - min(b.stepElapsedMs, b.stepDurationMs));
-      if (b.step == Step::MIX) snprintf(metric, sizeof(metric), "%s left   %.1f A", a, b.mixerA);
-      else                     snprintf(metric, sizeof(metric), "%s left", a);
+      snprintf(metric, sizeof(metric), "%s left   %.1f A", a, b.mixerA);
       fmtMMSS(a, sizeof(a), b.stepElapsedMs);
       fmtMMSS(c, sizeof(c), b.stepDurationMs);
       snprintf(l, sizeof(l), "%s elapsed", a);
@@ -504,33 +499,31 @@ void NextionDashboard::_drawOutputsPanel(const BatchSnapshot &b) {
     case Step::POUR:       owner = 1; break;
     case Step::OPEN_GATE:
     case Step::CLOSE_GATE: owner = 2; break;
-    case Step::SHAKE:      owner = 3; break;
-    case Step::LEVEL:      owner = 4; break;
     case Step::PRESS:
-    case Step::RELEASE:    owner = 5; break;
+    case Step::RELEASE:    owner = 3; break;
     default: break;
   }
 
-  for (uint8_t i = 0; i < 7; ++i) {
-    const uint16_t y = i < 6 ? 144 + i * 34 : 360;
+  for (uint8_t i = 0; i < 5; ++i) {
+    const uint16_t y = i < 4 ? 144 + i * 44 : 360;
     _fill({OUT_X + 8, y, OUT_W - 16, 30}, C_BG2);
     if (i == owner) _frame({OUT_X + 7, static_cast<uint16_t>(y - 1), OUT_W - 14, 32}, C_ACCENT);
     _text({OUT_X + 16, y, 150, 30}, FONT_SMALL, i == owner ? C_TEXT0 : C_TEXT1, C_BG2, LEFT,
-          i < 6 ? OUT_NAMES[i] : "Load cell");
+          i < 4 ? OUT_NAMES[i] : "Load cell");
   }
   _line(OUT_X + 8, 352, OUT_X + OUT_W - 8, 352, C_BORDER);
 }
 
 void NextionDashboard::_updateOutputs(const BatchSnapshot &b) {
   // Gate position follows the step sequence (open between OPEN and CLOSE)
-  const bool gateOpen = b.step == Step::POUR || b.step == Step::SHAKE;
+  const bool gateOpen = b.step == Step::POUR;
 
-  for (uint8_t i = 0; i < 7; ++i) {
-    const uint16_t y = i < 6 ? 144 + i * 34 : 360;
+  for (uint8_t i = 0; i < 5; ++i) {
+    const uint16_t y = i < 4 ? 144 + i * 44 : 360;
     const char *label = "OFF";
     uint16_t bg = C_BORDER, fg = C_TEXT2;
 
-    if (i < 6) {
+    if (i < 4) {
       const Drive d = b.outputs[i];
       switch (i) {
         case 0: label = d == Drive::ON ? "OPEN" : "CLOSED"; break;
@@ -542,7 +535,7 @@ void NextionDashboard::_updateOutputs(const BatchSnapshot &b) {
           label = d == Drive::EXTEND ? "EXTENDING" : d == Drive::RETRACT ? "RETRACTING"
                 : gateOpen ? "OPEN" : "CLOSED";
           break;
-        case 5:
+        case 3:
           label = d == Drive::EXTEND ? "EXTENDING" : d == Drive::RETRACT ? "RETRACTING"
                 : b.pressHolding ? "HOLDING" : "RETRACTED";
           break;
@@ -551,7 +544,7 @@ void NextionDashboard::_updateOutputs(const BatchSnapshot &b) {
       if (d == Drive::EXTEND || d == Drive::RETRACT)            { bg = C_WARN;   fg = C_BG0; }
       else if (d == Drive::ON && b.step == Step::POUR && i == 1) { bg = C_INFO;   fg = C_BG0; }
       else if (d == Drive::ON)                                   { bg = C_ACCENT; fg = C_BG0; }
-      else if (b.pressHolding && i == 5)                         { bg = C_WARN;   fg = C_BG0; }
+      else if (b.pressHolding && i == 3)                         { bg = C_WARN;   fg = C_BG0; }
     } else {
       static char force[12];
       const bool active = b.step == Step::PRESS || b.step == Step::RELEASE;
@@ -568,9 +561,9 @@ void NextionDashboard::_updateOutputs(const BatchSnapshot &b) {
 // ── Private: UNLOAD ──────────────────────────────────────────────────────────
 
 void NextionDashboard::_drawUnload(const BatchSnapshot &b) {
-  _drawStepper(10);
+  _drawStepper(8);
   _fill({MAIN_X, CARD_Y, MAIN_W, CARD_H}, C_SURFACE);
-  _text({IN_X, 118, IN_W, 24}, FONT_SMALL, C_ACCENT, C_SURFACE, LEFT, "STEP 10 - UNLOAD");
+  _text({IN_X, 118, IN_W, 24}, FONT_SMALL, C_ACCENT, C_SURFACE, LEFT, "STEP 8 - UNLOAD");
   _text({IN_X, 142, IN_W, 48}, FONT_LARGE, C_TEXT0, C_SURFACE, LEFT, "Briquette ready");
   _text({IN_X, 192, IN_W, 22}, FONT_SMALL, C_TEXT1, C_SURFACE, LEFT, "All motors are off. Remove the press box and");
   _text({IN_X, 214, IN_W, 22}, FONT_SMALL, C_TEXT1, C_SURFACE, LEFT, "put the briquette in your drying container.");

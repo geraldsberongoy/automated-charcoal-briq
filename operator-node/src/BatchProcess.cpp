@@ -28,9 +28,7 @@ const char *stepName(Step step) {
     case Step::MIX:            return "MIX";
     case Step::OPEN_GATE:      return "OPEN GATE";
     case Step::POUR:           return "POUR";
-    case Step::SHAKE:          return "SHAKE";
     case Step::CLOSE_GATE:     return "CLOSE GATE";
-    case Step::LEVEL:          return "LEVEL";
     case Step::PRESS:          return "PRESS";
     case Step::RELEASE:        return "RELEASE";
     case Step::UNLOAD:         return "UNLOAD";
@@ -180,9 +178,7 @@ void BatchProcess::_enter(Step step) {
       _pulseOn = true;
       _out.driveOnly(Output::MIXER_MOTOR, Drive::ON);
       break;
-    case Step::SHAKE:      _out.driveOnly(Output::MIXER_ERM,   Drive::ON);      break;
     case Step::CLOSE_GATE: _out.driveOnly(Output::GATE_ACT,    Drive::EXTEND);  break;
-    case Step::LEVEL:      _out.driveOnly(Output::BOX_ERM,     Drive::ON);      break;
     case Step::PRESS:      _out.driveOnly(Output::PRESS_ACT,   Drive::EXTEND);  break;
     case Step::RELEASE:    _out.driveOnly(Output::PRESS_ACT,   Drive::RETRACT); break;
     case Step::RESETTING:
@@ -221,7 +217,7 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
     case Step::POUR: {
       const uint32_t cycle = POUR_ON_MS + POUR_OFF_MS;
       if (elapsed >= cycle * POUR_PULSES) {
-        _enter(Step::SHAKE);
+        _enter(Step::CLOSE_GATE);
         break;
       }
       const bool on = (elapsed % cycle) < POUR_ON_MS;
@@ -233,16 +229,8 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
       break;
     }
 
-    case Step::SHAKE:
-      if (elapsed >= SHAKE_MS) _enter(Step::CLOSE_GATE);
-      break;
-
     case Step::CLOSE_GATE:
-      if (elapsed >= GATE_STROKE_MS) _enter(Step::LEVEL);
-      break;
-
-    case Step::LEVEL:
-      if (elapsed >= LEVEL_MS) _enter(Step::PRESS);
+      if (elapsed >= GATE_STROKE_MS) _enter(Step::PRESS);
       break;
 
     case Step::PRESS:
@@ -313,8 +301,6 @@ void BatchProcess::_publish(uint32_t now) {
     case Step::OPEN_GATE:
     case Step::CLOSE_GATE: s.stepDurationMs = GATE_STROKE_MS; break;
     case Step::POUR:       s.stepDurationMs = cycle * POUR_PULSES; break;
-    case Step::SHAKE:      s.stepDurationMs = SHAKE_MS; break;
-    case Step::LEVEL:      s.stepDurationMs = LEVEL_MS; break;
     case Step::RELEASE:    s.stepDurationMs = PRESS_STROKE_MS; break;
     case Step::RESETTING:  s.stepDurationMs = _resetPhase == 0 ? PRESS_STROKE_MS : GATE_STROKE_MS; break;
     default:               s.stepDurationMs = 0; break;
@@ -326,11 +312,6 @@ void BatchProcess::_publish(uint32_t now) {
   for (uint8_t i = 0; i < static_cast<uint8_t>(Output::COUNT); ++i) {
     s.outputs[i] = _out.state(static_cast<Output>(i));
   }
-
-  // Simulated solar/battery telemetry for the header
-  const float t = now / 1000.0f;
-  s.batteryV = 12.9f + 0.3f * sinf(t / 60.0f);
-  s.solarA   = 1.5f + 0.5f * (0.5f + 0.5f * sinf(t / 7.0f));
 
   portENTER_CRITICAL(&_mux);
   _snap = s;

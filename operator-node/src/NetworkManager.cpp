@@ -463,13 +463,7 @@ void NetworkManager::_buildTelemetryJson(char *buf, size_t size) {
         "\"solenoid\":\"%s\","
         "\"mixer_motor\":\"%s\","
         "\"gate_actuator\":\"%s\","
-        "\"mixer_erm\":\"%s\","
-        "\"box_erm\":\"%s\","
         "\"press_actuator\":\"%s\""
-      "},"
-      "\"power\":{"
-        "\"battery_voltage_v\":%.1f,"
-        "\"solar_amperage_a\":%.1f"
       "}"
     "}",
     (unsigned long)millis(),
@@ -496,8 +490,7 @@ void NetworkManager::_buildTelemetryJson(char *buf, size_t size) {
     (unsigned)b.resetPhase,
     (unsigned long)b.batchMs,
     drive(Output::SOLENOID), drive(Output::MIXER_MOTOR), drive(Output::GATE_ACT),
-    drive(Output::MIXER_ERM), drive(Output::BOX_ERM), drive(Output::PRESS_ACT),
-    b.batteryV, b.solarA
+    drive(Output::PRESS_ACT)
   );
 }
 

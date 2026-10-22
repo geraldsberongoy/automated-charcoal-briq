@@ -10,7 +10,7 @@
 // Screens follow BatchSnapshot::step:
 //   SETUP_PAPER    paper prompt + water vial + 8 level buttons + NEXT
 //   SETUP_CHARCOAL setup summary + hopper prompt + BACK / START
-//   WATER..RELEASE 10-step bar, step card, outputs panel, STOP
+//   WATER..RELEASE 8-step bar, step card, outputs panel, STOP
 //   UNLOAD         batch summary + DONE
 //   STOPPED        red halt screen + RESET & RETRACT
 //   RESETTING      homing progress

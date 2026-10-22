@@ -11,22 +11,18 @@ export const CONFIG = {
   POUR_PULSES:     6,
   POUR_ON_MS:      2000,
   POUR_OFF_MS:     3000,
-  SHAKE_MS:        15000,
-  LEVEL_MS:        30000,
   PRESS_TARGET_N:  2000,    // simulation only; real threshold comes from calibration (< 1,500 N actuator thrust)
   PRESS_HOLD_MS:   3000,
   PRESS_STROKE_MS: 18000,
 };
 
-// The 10 numbered steps (run_index 1..10), in order
+// The 8 numbered steps (run_index 1..8), in order
 export const RUN_STEPS = [
   { step: 'WATER',      label: 'Water' },
   { step: 'MIX',        label: 'Mix' },
   { step: 'OPEN GATE',  label: 'Open' },
   { step: 'POUR',       label: 'Pour' },
-  { step: 'SHAKE',      label: 'Shake' },
   { step: 'CLOSE GATE', label: 'Close' },
-  { step: 'LEVEL',      label: 'Level' },
   { step: 'PRESS',      label: 'Press' },
   { step: 'RELEASE',    label: 'Release' },
   { step: 'UNLOAD',     label: 'Unload' },
@@ -37,9 +33,7 @@ export const STEP_TEXT = {
   'MIX':        { title: 'Mixing',                    desc: 'Mixer motor running through its relay (20V, 5A).' },
   'OPEN GATE':  { title: 'Opening the gate',          desc: '15 cm actuator retracting (dual relay) to open the bottom of the mixing container.' },
   'POUR':       { title: 'Pouring into the press box', desc: 'Mixer motor spins in short bursts to push the mixture out through the gate.' },
-  'SHAKE':      { title: 'Shaking out the rest',      desc: 'Vibration motor on the mixing container knocks the remaining mixture loose.' },
   'CLOSE GATE': { title: 'Closing the gate',          desc: '15 cm actuator extending to close the mixing container.' },
-  'LEVEL':      { title: 'Leveling the mixture',      desc: 'Vibration motor on the compression box spreads the mixture evenly.' },
   'PRESS':      { title: 'Compressing the briquette', desc: '40 cm actuator extending. Force read from the S-type load cell (HX711).' },
   'RELEASE':    { title: 'Releasing the press',       desc: '40 cm actuator retracting so the box can be removed.' },
 };
@@ -49,12 +43,10 @@ export const OUTPUTS = [
   { key: 'solenoid',       name: 'Water valve',    hw: 'Solenoid relay' },
   { key: 'mixer_motor',    name: 'Mixer motor',    hw: '20V 5A relay' },
   { key: 'gate_actuator',  name: 'Gate actuator',  hw: '15 cm, dual relay' },
-  { key: 'mixer_erm',      name: 'Mixer vibrator', hw: 'ERM on mixing container' },
-  { key: 'box_erm',        name: 'Box vibrator',   hw: 'ERM on compression box' },
   { key: 'press_actuator', name: 'Press actuator', hw: '40 cm, dual relay' },
 ];
 
-export const RUNNING_STEPS = new Set(RUN_STEPS.slice(0, 9).map(s => s.step));
+export const RUNNING_STEPS = new Set(RUN_STEPS.slice(0, 7).map(s => s.step));
 
 export function fmtMMSS(ms) {
   const s = Math.max(0, Math.floor((ms ?? 0) / 1000));
@@ -64,7 +56,7 @@ export function fmtMMSS(ms) {
 // Human label + colour variant for one output, same rules as the Nextion panel
 export function outputDisplay(key, drive, proc) {
   const moving = drive === 'EXTEND' || drive === 'RETRACT';
-  const gateOpen = proc?.step === 'POUR' || proc?.step === 'SHAKE';
+  const gateOpen = proc?.step === 'POUR';
 
   switch (key) {
     case 'solenoid':

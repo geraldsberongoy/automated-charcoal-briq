@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react';
 
 import { useStats }  from './hooks/useStats';
 import Navbar        from './components/Navbar';
-import KpiCard       from './components/KpiCard';
 import InfoPanel     from './components/InfoPanel';
 import HeapBar       from './components/HeapBar';
 import EventLog      from './components/EventLog';
@@ -11,10 +10,7 @@ import Badge         from './components/Badge';
 import BatchWorkspace from './components/BatchWorkspace';
 import {
   FiCpu,
-  FiBatteryCharging,
   FiDatabase,
-  FiSun,
-  FiZap,
   FiWifi,
   FiLayers,
   FiSettings,
@@ -58,7 +54,7 @@ const MOCK_RUNS = [
 export default function App() {
   const { stats, loading, error, lastUpdated, connectionType, sendCommand } = useStats();
   const [logEntries, setLogEntries] = useState(BOOT_LOG);
-  const [activeTab, setActiveTab] = useState('workspace'); // workspace, power, logs
+  const [activeTab, setActiveTab] = useState('workspace'); // workspace, system, logs
   const prevStatsRef = useRef(null);
 
   const [isAdmin, setIsAdmin] = useState(false);
@@ -211,10 +207,10 @@ export default function App() {
             <FiCpu /> <span className="tab-btn__text">Workspace</span>
           </button>
           <button
-            className={`tab-btn ${activeTab === 'power' ? 'active' : ''}`}
-            onClick={() => setActiveTab('power')}
+            className={`tab-btn ${activeTab === 'system' ? 'active' : ''}`}
+            onClick={() => setActiveTab('system')}
           >
-            <FiBatteryCharging /> <span className="tab-btn__text">System & Power</span>
+            <FiSettings /> <span className="tab-btn__text">System</span>
           </button>
           <button
             className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
@@ -234,69 +230,9 @@ export default function App() {
           />
         )}
 
-        {/* ── Tab 2: System & Power HUD ──────────────────────────────────── */}
-        {activeTab === 'power' && (
+        {/* ── Tab 2: System HUD ──────────────────────────────────────────── */}
+        {activeTab === 'system' && (
           <>
-            <p className="section-label">Solar Power infrastructure</p>
-            <div className="kpi-grid" role="region" aria-label="Power Telemetry">
-              <KpiCard
-                id="card-voltage"
-                icon={<FiBatteryCharging />}
-                label="Battery Voltage"
-                value={stats?.power?.battery_voltage_v ? `${stats.power.battery_voltage_v} V` : '—'}
-                unit="12V 30Ah LiFePO4 Pack"
-                variant="info"
-                loading={loading}
-              />
-              <KpiCard
-                id="card-solar"
-                icon={<FiSun />}
-                label="Solar Input Current"
-                value={stats?.power?.solar_amperage_a ? `${stats.power.solar_amperage_a} A` : '—'}
-                unit="100W Monocrystalline PV"
-                variant="accent"
-                loading={loading}
-              />
-              <KpiCard
-                id="card-battery-soc"
-                icon={<FiZap />}
-                label="State of Charge"
-                value={stats?.power?.battery_voltage_v ? `${Math.floor(((stats.power.battery_voltage_v - 11.5) / (14.2 - 11.5)) * 100)} %` : '—'}
-                unit="Charge Capacity"
-                variant={stats?.power?.battery_voltage_v > 12.8 ? 'accent' : 'warn'}
-                loading={loading}
-              />
-            </div>
-
-            {stats && (
-              <div style={{ marginBottom: '2rem' }}>
-                <p className="section-label">Battery Level Gauge</p>
-                <div style={{
-                  background: 'var(--clr-surface)',
-                  border: '1px solid var(--clr-border)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '1.25rem 1.5rem',
-                  boxShadow: 'var(--shadow-card)',
-                }}>
-                  <div className="gauge-wrap" style={{ margin: 0 }}>
-                    <div className="gauge-label" style={{ marginBottom: '0.5rem' }}>
-                      <span>LiFePO4 Energy Reservoir Status</span>
-                      <span>{Math.floor(((stats.power.battery_voltage_v - 11.5) / 2.7) * 100)}%</span>
-                    </div>
-                    <div className="gauge-track" style={{ height: '14px', borderRadius: '7px' }}>
-                      <div
-                        className="gauge-fill"
-                        style={{
-                          width: `${Math.min(100, Math.max(5, Math.floor(((stats.power.battery_voltage_v - 11.5) / 2.7) * 100)))}%`,
-                          background: 'linear-gradient(90deg, #10b981, var(--clr-accent))'
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Heap Memory Indicator */}
             {stats && (
               <div style={{ marginBottom: '2rem' }}>
