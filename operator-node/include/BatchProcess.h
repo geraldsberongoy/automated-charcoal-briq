@@ -48,7 +48,7 @@ namespace ProcessConfig {
   constexpr uint8_t  WATER_MAX_PCT     = 100;
   constexpr uint8_t  WATER_STEP_PCT    = 10;
 
-  constexpr uint32_t MIX_MS            = 180000UL / DIV;
+  constexpr uint32_t MIX_MS            = 30000UL  / DIV;
   constexpr uint32_t GATE_STROKE_MS    = 21000UL  / DIV;  // 15 cm at 7 mm/s
   constexpr uint8_t  POUR_PULSES       = 6;
   constexpr uint32_t POUR_ON_MS        = 2000UL   / DIV;
