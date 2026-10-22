@@ -116,11 +116,11 @@ export function advance(s, now, dtS) {
       break;
     case 'RESETTING':
       s.forceN = Math.max(0, s.forceN - SIM_FORCE_NPS * 4 * dtS);
-      if (s.resetPhase === 0 && elapsed >= C.PRESS_STROKE_MS) {
+      if (s.resetPhase === 0 && elapsed >= C.RESET_PHASE_MS) {
         s.resetPhase = 1;
         s.stepStart = now;
         s.outputs = { ...ALL_OFF, gate_actuator: 'EXTEND' };
-      } else if (s.resetPhase === 1 && elapsed >= C.GATE_STROKE_MS) {
+      } else if (s.resetPhase === 1 && elapsed >= C.RESET_PHASE_MS) {
         s.waterPct = 100;
         enter(s, 'SETUP PAPER', now);
       }
@@ -136,7 +136,7 @@ function durationOf(s) {
     case 'CLOSE GATE': return C.GATE_STROKE_MS;
     case 'POUR':       return (C.POUR_ON_MS + C.POUR_OFF_MS) * C.POUR_PULSES;
     case 'RELEASE':    return C.PRESS_STROKE_MS;
-    case 'RESETTING':  return s.resetPhase === 0 ? C.PRESS_STROKE_MS : C.GATE_STROKE_MS;
+    case 'RESETTING':  return C.RESET_PHASE_MS;
     default:           return 0;
   }
 }

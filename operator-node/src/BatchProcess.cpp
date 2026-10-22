@@ -202,7 +202,8 @@ void BatchProcess::_enter(Step step) {
 // ── Private: _advance() — timers and sensor thresholds ───────────────────────
 
 void BatchProcess::_advance(uint32_t now, float dtS) {
-  const uint32_t elapsed = now - _stepStartMs;
+  // a command applied this tick may have restarted the step after `now` was read
+  const uint32_t elapsed = now > _stepStartMs ? now - _stepStartMs : 0;
 
   switch (_step) {
     case Step::WATER:
@@ -258,11 +259,11 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
       break;
 
     case Step::RESETTING:
-      if (_resetPhase == 0 && elapsed >= PRESS_STROKE_MS) {
+      if (_resetPhase == 0 && elapsed >= RESET_PHASE_MS) {
         _resetPhase = 1;
         _stepStartMs = now;
         _out.driveOnly(Output::GATE_ACT, Drive::EXTEND);
-      } else if (_resetPhase == 1 && elapsed >= GATE_STROKE_MS) {
+      } else if (_resetPhase == 1 && elapsed >= RESET_PHASE_MS) {
         _waterPct = WATER_MAX_PCT;
         _enter(Step::SETUP_PAPER);
       }
@@ -287,7 +288,7 @@ void BatchProcess::_publish(uint32_t now) {
   s.forceN        = _forceN;
   s.peakForceN    = _peakForceN;
   s.mixerA        = _out.state(Output::MIXER_MOTOR) == Drive::ON ? 4.6f + 0.4f * randUnit() : 0.0f;
-  s.stepElapsedMs = now - _stepStartMs;
+  s.stepElapsedMs = now > _stepStartMs ? now - _stepStartMs : 0;
   s.pressHolding  = _step == Step::PRESS && _holdStartMs != 0;
   s.resetPhase    = _resetPhase;
   s.pulseOn       = _pulseOn;
@@ -301,7 +302,7 @@ void BatchProcess::_publish(uint32_t now) {
     case Step::CLOSE_GATE: s.stepDurationMs = GATE_STROKE_MS; break;
     case Step::POUR:       s.stepDurationMs = cycle * POUR_PULSES; break;
     case Step::RELEASE:    s.stepDurationMs = PRESS_STROKE_MS; break;
-    case Step::RESETTING:  s.stepDurationMs = _resetPhase == 0 ? PRESS_STROKE_MS : GATE_STROKE_MS; break;
+    case Step::RESETTING:  s.stepDurationMs = RESET_PHASE_MS; break;
     default:               s.stepDurationMs = 0; break;
   }
 

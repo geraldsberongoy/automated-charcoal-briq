@@ -13,6 +13,7 @@ export const CONFIG = {
   POUR_OFF_MS:     3000,
   PRESS_TARGET_N:  98,      // bench stop load (10 kg); final threshold comes from calibration (< 1,500 N actuator thrust)
   PRESS_HOLD_MS:   3000,
+  RESET_PHASE_MS:  5000,    // RESET & RETRACT: 5 s per phase
   PRESS_STROKE_MS: 57000,   // full 40 cm travel at 7 mm/s
 };
 

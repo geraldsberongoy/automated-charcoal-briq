@@ -58,6 +58,9 @@ namespace ProcessConfig {
   constexpr float    PRESS_TARGET_N    = 98.1f;
   constexpr uint32_t PRESS_HOLD_MS     = 3000UL   / DIV;
   constexpr uint32_t PRESS_STROKE_MS   = 57000UL  / DIV;  // full 40 cm travel at 7 mm/s
+  // RESET & RETRACT after a STOP: 5 s per phase, 10 s in all. Shorter than the
+  // full strokes, so a press stopped far down may not be fully home afterwards.
+  constexpr uint32_t RESET_PHASE_MS    = 5000UL   / DIV;
   constexpr uint32_t PRESS_TIMEOUT_MS  = 70000UL  / DIV;  // target never reached → stop
 
   // Water volume from valve-open time while the flow sensor is off (bench
