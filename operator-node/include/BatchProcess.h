@@ -8,7 +8,7 @@
 //   1 WATER        solenoid open until target volume
 //   2 MIX          mixer motor on (timed)
 //   3 OPEN_GATE    gate actuator retracts (full stroke)
-//   4 POUR         vibration (SIMULATED: no relay yet, mixer stays off), N bursts
+//   4 POUR         mixer motor pulses 1 s on / 1 s off (the vibration), N bursts
 //   5 CLOSE_GATE   gate actuator extends (full stroke)
 //   6 PRESS        press actuator extends until target force, then holds
 //   7 RELEASE      press actuator retracts (full stroke)
@@ -57,10 +57,11 @@ namespace ProcessConfig {
   // from load-cell calibration and must stay below the 1,500 N actuator thrust.
   constexpr float    PRESS_TARGET_N    = 98.1f;
   constexpr uint32_t PRESS_HOLD_MS     = 3000UL   / DIV;
-  constexpr uint32_t PRESS_STROKE_MS   = 15000UL  / DIV;  // demo: 10.5 cm of the 40 cm stroke at 7 mm/s
-  // RESET & RETRACT after a STOP: full strokes so both actuators really go home
-  constexpr uint32_t RESET_PRESS_MS    = 57000UL  / DIV;  // 40 cm at 7 mm/s
-  constexpr uint32_t RESET_GATE_MS     = 21000UL  / DIV;  // 15 cm at 7 mm/s
+  // Every retract (gate close, press release, RESET after a STOP) runs for as
+  // long as the actuator was extended, plus this margin, so it always ends home.
+  // The actuators' built-in end limits stop them if the estimate runs long.
+  constexpr float    RETRACT_FACTOR    = 1.2f;
+  constexpr uint32_t RETRACT_MARGIN_MS = 1500UL   / DIV;
   constexpr uint32_t PRESS_TIMEOUT_MS  = 30000UL  / DIV;  // target never reached → stop
 
   // Water volume from valve-open time while the flow sensor is off (bench
@@ -158,6 +159,9 @@ private:
   uint32_t _lastTickMs;
   uint32_t _holdStartMs;    // PRESS: 0 until target reached
   uint8_t  _resetPhase;
+  float    _pressPosMs;     // estimated extension: ms driven out minus ms driven back
+  float    _gatePosMs;      // same for the gate (retract = open)
+  uint32_t _dwellMs;        // CLOSE_GATE / RELEASE / RESETTING phase length
   bool     _pulseOn;
 
   BatchSnapshot _snap;      // published copy, guarded by _mux
@@ -166,6 +170,8 @@ private:
   void _enter(Step step);
   void _advance(uint32_t now, float dtS);
   void _publish(uint32_t now);
+  void _trackPosition(float dtMs);
+  static uint32_t _retractMs(float posMs);
 
   static void _taskEntry(void *self);
 };

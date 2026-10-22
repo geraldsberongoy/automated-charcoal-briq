@@ -13,9 +13,9 @@ export const CONFIG = {
   POUR_OFF_MS:     1000,
   PRESS_TARGET_N:  98,      // bench stop load (10 kg); final threshold comes from calibration (< 1,500 N actuator thrust)
   PRESS_HOLD_MS:   3000,
-  RESET_PRESS_MS:  57000,   // RESET & RETRACT: full strokes
-  RESET_GATE_MS:   21000,
-  PRESS_STROKE_MS: 15000,   // demo timing, shorter than the full 40 cm stroke
+  RETRACT_FACTOR:  1.2,     // retracts run as long as the extension, x1.2 + margin
+  RETRACT_MARGIN_MS: 1500,
+  PRESS_STROKE_MS: 15000,   // dev mock only: assumed press travel time
 };
 
 // The 8 numbered steps (run_index 1..8), in order
@@ -34,7 +34,7 @@ export const STEP_TEXT = {
   'WATER':      { title: 'Dispensing water',          desc: 'Solenoid valve open. Filling the mixing container to the selected level.' },
   'MIX':        { title: 'Mixing',                    desc: 'Mixer motor running through its relay (20V, 5A).' },
   'OPEN GATE':  { title: 'Opening the gate',          desc: '15 cm actuator retracting (dual relay) to open the bottom of the mixing container.' },
-  'POUR':       { title: 'Pouring into the press box', desc: 'Vibration shakes the mixture out through the open gate (simulated for now, the mixer stays off).' },
+  'POUR':       { title: 'Pouring into the press box', desc: 'Mixer motor spins in short bursts (1 s on, 1 s off) to push the mixture out through the gate.' },
   'CLOSE GATE': { title: 'Closing the gate',          desc: '15 cm actuator extending to close the mixing container.' },
   'PRESS':      { title: 'Compressing the briquette', desc: '40 cm actuator extending. Force read from the S-type load cell (HX711).' },
   'RELEASE':    { title: 'Releasing the press',       desc: '40 cm actuator retracting so the box can be removed.' },

@@ -27,7 +27,7 @@ function gaugeFor(p) {
     case 'RELEASE':
       return ['Actuator stroke', `${(p.step_elapsed_ms / 1000).toFixed(1)} s / ~${Math.ceil(p.step_duration_ms / 1000)} s`, timed];
     case 'POUR':
-      return [`Vibration bursts, simulated (${CONFIG.POUR_ON_MS / 1000} s on / ${CONFIG.POUR_OFF_MS / 1000} s off)`,
+      return [`Bursts (${CONFIG.POUR_ON_MS / 1000} s on / ${CONFIG.POUR_OFF_MS / 1000} s off)`,
               `${p.pulse} / ${CONFIG.POUR_PULSES}`, timed];
     case 'PRESS':
       return [`Load cell (target ${CONFIG.PRESS_TARGET_N} N)`,

@@ -56,6 +56,9 @@ BatchProcess::BatchProcess(Outputs &outputs)
     _lastTickMs(0),
     _holdStartMs(0),
     _resetPhase(0),
+    _pressPosMs(0.0f),
+    _gatePosMs(0.0f),
+    _dwellMs(0),
     _pulseOn(false)
 {
   memset(&_snap, 0, sizeof(_snap));
@@ -100,6 +103,7 @@ void BatchProcess::tick() {
   const float dtS = (now - _lastTickMs) / 1000.0f;
   _lastTickMs = now;
 
+  _trackPosition(dtS * 1000.0f);   // drives set last tick moved the actuators
   _load.poll();
   _forceN = _load.ready() ? max(0.0f, _load.newtons()) : 0.0f;
 
@@ -178,15 +182,22 @@ void BatchProcess::_enter(Step step) {
     case Step::WATER:      _out.driveOnly(Output::SOLENOID,    Drive::ON);      break;
     case Step::MIX:        _out.driveOnly(Output::MIXER_MOTOR, Drive::ON);      break;
     case Step::OPEN_GATE:  _out.driveOnly(Output::GATE_ACT,    Drive::RETRACT); break;
-    case Step::POUR:           // vibration is simulated: every relay off, mixer included
+    case Step::POUR:
       _pulseOn = true;
-      _out.allOff();
+      _out.driveOnly(Output::MIXER_MOTOR, Drive::ON);
       break;
-    case Step::CLOSE_GATE: _out.driveOnly(Output::GATE_ACT,    Drive::EXTEND);  break;
+    case Step::CLOSE_GATE:
+      _dwellMs = _retractMs(_gatePosMs);
+      _out.driveOnly(Output::GATE_ACT, Drive::EXTEND);
+      break;
     case Step::PRESS:      _out.driveOnly(Output::PRESS_ACT,   Drive::EXTEND);  break;
-    case Step::RELEASE:    _out.driveOnly(Output::PRESS_ACT,   Drive::RETRACT); break;
+    case Step::RELEASE:
+      _dwellMs = _retractMs(_pressPosMs);
+      _out.driveOnly(Output::PRESS_ACT, Drive::RETRACT);
+      break;
     case Step::RESETTING:
       _resetPhase = 0;
+      _dwellMs    = _retractMs(_pressPosMs);
       _out.driveOnly(Output::PRESS_ACT, Drive::RETRACT);
       break;
     case Step::UNLOAD:
@@ -226,12 +237,16 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
         break;
       }
       const bool on = (elapsed % cycle) < POUR_ON_MS;
-      _pulseOn = on;
+      if (on != _pulseOn) {
+        _pulseOn = on;
+        if (on) _out.driveOnly(Output::MIXER_MOTOR, Drive::ON);
+        else    _out.allOff();
+      }
       break;
     }
 
     case Step::CLOSE_GATE:
-      if (elapsed >= GATE_STROKE_MS) _enter(Step::PRESS);
+      if (elapsed >= _dwellMs) _enter(Step::PRESS);
       break;
 
     case Step::PRESS:
@@ -251,15 +266,16 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
       break;
 
     case Step::RELEASE:
-      if (elapsed >= PRESS_STROKE_MS) _enter(Step::UNLOAD);
+      if (elapsed >= _dwellMs) _enter(Step::UNLOAD);
       break;
 
     case Step::RESETTING:
-      if (_resetPhase == 0 && elapsed >= RESET_PRESS_MS) {
+      if (_resetPhase == 0 && elapsed >= _dwellMs) {
         _resetPhase = 1;
         _stepStartMs = now;
+        _dwellMs = _retractMs(_gatePosMs);
         _out.driveOnly(Output::GATE_ACT, Drive::EXTEND);
-      } else if (_resetPhase == 1 && elapsed >= RESET_GATE_MS) {
+      } else if (_resetPhase == 1 && elapsed >= _dwellMs) {
         _waterPct = WATER_MAX_PCT;
         _enter(Step::SETUP_PAPER);
       }
@@ -268,6 +284,21 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
     default:
       break;
   }
+}
+
+// ── Private: actuator position estimate ──────────────────────────────────────
+
+void BatchProcess::_trackPosition(float dtMs) {
+  const Drive p = _out.state(Output::PRESS_ACT);
+  const Drive g = _out.state(Output::GATE_ACT);
+  if (p == Drive::EXTEND)       _pressPosMs += dtMs;
+  else if (p == Drive::RETRACT) _pressPosMs = max(0.0f, _pressPosMs - dtMs);
+  if (g == Drive::RETRACT)      _gatePosMs += dtMs;      // retract = open
+  else if (g == Drive::EXTEND)  _gatePosMs = max(0.0f, _gatePosMs - dtMs);
+}
+
+uint32_t BatchProcess::_retractMs(float posMs) {
+  return static_cast<uint32_t>(posMs * RETRACT_FACTOR) + RETRACT_MARGIN_MS;
 }
 
 // ── Private: _publish() ──────────────────────────────────────────────────────
@@ -295,10 +326,10 @@ void BatchProcess::_publish(uint32_t now) {
   switch (_step) {
     case Step::MIX:        s.stepDurationMs = MIX_MS; break;
     case Step::OPEN_GATE:
-    case Step::CLOSE_GATE: s.stepDurationMs = GATE_STROKE_MS; break;
+    case Step::CLOSE_GATE: s.stepDurationMs = _dwellMs; break;
     case Step::POUR:       s.stepDurationMs = cycle * POUR_PULSES; break;
-    case Step::RELEASE:    s.stepDurationMs = PRESS_STROKE_MS; break;
-    case Step::RESETTING:  s.stepDurationMs = _resetPhase == 0 ? RESET_PRESS_MS : RESET_GATE_MS; break;
+    case Step::RELEASE:
+    case Step::RESETTING:  s.stepDurationMs = _dwellMs; break;
     default:               s.stepDurationMs = 0; break;
   }
 

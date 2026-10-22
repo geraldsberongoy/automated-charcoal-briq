@@ -25,6 +25,7 @@ const STEP_OUTPUT = {
   'WATER':      ['solenoid', 'ON'],
   'MIX':        ['mixer_motor', 'ON'],
   'OPEN GATE':  ['gate_actuator', 'RETRACT'],
+  'POUR':       ['mixer_motor', 'ON'],
   'CLOSE GATE': ['gate_actuator', 'EXTEND'],
   'PRESS':      ['press_actuator', 'EXTEND'],
   'RELEASE':    ['press_actuator', 'RETRACT'],
@@ -93,6 +94,7 @@ export function advance(s, now, dtS) {
     case 'OPEN GATE':  if (elapsed >= C.GATE_STROKE_MS) enter(s, 'POUR', now); break;
     case 'POUR':
       if (elapsed >= cycle * C.POUR_PULSES) enter(s, 'CLOSE GATE', now);
+      else s.outputs.mixer_motor = (elapsed % cycle) < C.POUR_ON_MS ? 'ON' : 'OFF';
       break;
     case 'CLOSE GATE': if (elapsed >= C.GATE_STROKE_MS) enter(s, 'PRESS', now); break;
     case 'PRESS':
@@ -114,11 +116,11 @@ export function advance(s, now, dtS) {
       break;
     case 'RESETTING':
       s.forceN = Math.max(0, s.forceN - SIM_FORCE_NPS * 4 * dtS);
-      if (s.resetPhase === 0 && elapsed >= C.RESET_PRESS_MS) {
+      if (s.resetPhase === 0 && elapsed >= C.PRESS_STROKE_MS) {
         s.resetPhase = 1;
         s.stepStart = now;
         s.outputs = { ...ALL_OFF, gate_actuator: 'EXTEND' };
-      } else if (s.resetPhase === 1 && elapsed >= C.RESET_GATE_MS) {
+      } else if (s.resetPhase === 1 && elapsed >= C.GATE_STROKE_MS) {
         s.waterPct = 100;
         enter(s, 'SETUP PAPER', now);
       }
@@ -134,7 +136,7 @@ function durationOf(s) {
     case 'CLOSE GATE': return C.GATE_STROKE_MS;
     case 'POUR':       return (C.POUR_ON_MS + C.POUR_OFF_MS) * C.POUR_PULSES;
     case 'RELEASE':    return C.PRESS_STROKE_MS;
-    case 'RESETTING':  return s.resetPhase === 0 ? C.RESET_PRESS_MS : C.RESET_GATE_MS;
+    case 'RESETTING':  return s.resetPhase === 0 ? C.PRESS_STROKE_MS : C.GATE_STROKE_MS;
     default:           return 0;
   }
 }
