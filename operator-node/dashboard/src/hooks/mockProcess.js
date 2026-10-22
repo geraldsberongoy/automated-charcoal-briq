@@ -9,7 +9,7 @@ const MOCK_SPEED = 10;
 const C = Object.fromEntries(Object.entries(CONFIG).map(([k, v]) =>
   [k, k.endsWith('_MS') ? v / MOCK_SPEED : v]));
 
-const SIM_FLOW_LPS  = 0.10  * MOCK_SPEED;   // valve time, same as the firmware
+const SIM_FLOW_LPS  = 0.30  * MOCK_SPEED;   // valve time, same as the firmware
 const SIM_FORCE_NPS = 15.0  * MOCK_SPEED;   // stands in for the load cell in dev mode
 
 const RUNNING = ['WATER', 'MIX', 'OPEN GATE', 'POUR', 'CLOSE GATE', 'PRESS', 'RELEASE'];

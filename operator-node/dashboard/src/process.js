@@ -6,15 +6,15 @@
 export const CONFIG = {
   FULL_WATER_L:    3.0,     // volume at 100 % level
   WATER_LEVELS:    [100, 90, 80, 70, 60, 50, 40, 30],
-  MIX_MS:          30000,
-  GATE_STROKE_MS:  21000,   // 15 cm at 7 mm/s
-  POUR_PULSES:     6,
-  POUR_ON_MS:      2000,
-  POUR_OFF_MS:     3000,
+  MIX_MS:          5000,
+  GATE_STROKE_MS:  8000,    // demo timing, shorter than the full 15 cm stroke
+  POUR_PULSES:     4,
+  POUR_ON_MS:      1000,
+  POUR_OFF_MS:     1000,
   PRESS_TARGET_N:  98,      // bench stop load (10 kg); final threshold comes from calibration (< 1,500 N actuator thrust)
   PRESS_HOLD_MS:   3000,
   RESET_PHASE_MS:  5000,    // RESET & RETRACT: 5 s per phase
-  PRESS_STROKE_MS: 57000,   // full 40 cm travel at 7 mm/s
+  PRESS_STROKE_MS: 15000,   // demo timing, shorter than the full 40 cm stroke
 };
 
 // The 8 numbered steps (run_index 1..8), in order

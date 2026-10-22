@@ -48,24 +48,24 @@ namespace ProcessConfig {
   constexpr uint8_t  WATER_MAX_PCT     = 100;
   constexpr uint8_t  WATER_STEP_PCT    = 10;
 
-  constexpr uint32_t MIX_MS            = 30000UL  / DIV;
-  constexpr uint32_t GATE_STROKE_MS    = 21000UL  / DIV;  // 15 cm at 7 mm/s
-  constexpr uint8_t  POUR_PULSES       = 6;
-  constexpr uint32_t POUR_ON_MS        = 2000UL   / DIV;
-  constexpr uint32_t POUR_OFF_MS       = 3000UL   / DIV;
+  constexpr uint32_t MIX_MS            = 5000UL   / DIV;
+  constexpr uint32_t GATE_STROKE_MS    = 8000UL   / DIV;  // demo: 5.6 cm of the 15 cm stroke at 7 mm/s
+  constexpr uint8_t  POUR_PULSES       = 4;
+  constexpr uint32_t POUR_ON_MS        = 1000UL   / DIV;
+  constexpr uint32_t POUR_OFF_MS       = 1000UL   / DIV;
   // Bench stop load (10 kg, same as actuator-test). The final threshold comes
   // from load-cell calibration and must stay below the 1,500 N actuator thrust.
   constexpr float    PRESS_TARGET_N    = 98.1f;
   constexpr uint32_t PRESS_HOLD_MS     = 3000UL   / DIV;
-  constexpr uint32_t PRESS_STROKE_MS   = 57000UL  / DIV;  // full 40 cm travel at 7 mm/s
+  constexpr uint32_t PRESS_STROKE_MS   = 15000UL  / DIV;  // demo: 10.5 cm of the 40 cm stroke at 7 mm/s
   // RESET & RETRACT after a STOP: 5 s per phase, 10 s in all. Shorter than the
   // full strokes, so a press stopped far down may not be fully home afterwards.
   constexpr uint32_t RESET_PHASE_MS    = 5000UL   / DIV;
-  constexpr uint32_t PRESS_TIMEOUT_MS  = 70000UL  / DIV;  // target never reached → stop
+  constexpr uint32_t PRESS_TIMEOUT_MS  = 30000UL  / DIV;  // target never reached → stop
 
   // Water volume from valve-open time while the flow sensor is off (bench
-  // dose: 10 s per litre). Replace with YF-S201 pulses once the signal is clean.
-  constexpr float    SIM_FLOW_LPS      = 0.10f  * DIV;
+  // demo dose: full level in 10 s). Replace with YF-S201 pulses once the signal is clean.
+  constexpr float    SIM_FLOW_LPS      = 0.30f  * DIV;
 
   // FSM task
   constexpr uint32_t TICK_MS           = 10;
