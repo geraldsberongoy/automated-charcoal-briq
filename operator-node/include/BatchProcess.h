@@ -15,6 +15,8 @@
 //   8 UNLOAD       all off; operator removes the briquette, presses DONE
 //   STOPPED        STOP pressed: all off until RESET
 //   RESETTING      press retracts, then gate closes, then back to SETUP_PAPER
+//   TEST           manual test mode (from SETUP_PAPER): each button runs one
+//                  relay or component until tapped again, STOP, or timeout
 //
 // Every step drives exactly one output through Outputs::driveOnly().
 //
@@ -48,7 +50,7 @@ namespace ProcessConfig {
   constexpr uint8_t  WATER_MAX_PCT     = 100;
   constexpr uint8_t  WATER_STEP_PCT    = 10;
 
-  constexpr uint32_t MIX_MS            = 180000UL / DIV;
+  constexpr uint32_t MIX_MS            = 30000UL  / DIV;
   constexpr uint32_t GATE_STROKE_MS    = 21000UL  / DIV;  // 15 cm at 7 mm/s
   constexpr uint8_t  POUR_PULSES       = 6;
   constexpr uint32_t POUR_ON_MS        = 2000UL   / DIV;
@@ -64,6 +66,11 @@ namespace ProcessConfig {
   // dose: 10 s per litre). Replace with YF-S201 pulses once the signal is clean.
   constexpr float    SIM_FLOW_LPS      = 0.10f  * DIV;
 
+  // Test mode
+  constexpr uint8_t  TEST_MOVES        = 6;
+  constexpr uint32_t TEST_TIMEOUT_MS   = 70000UL;   // any single move
+  constexpr uint32_t TEST_DEAD_MS      = 100;       // before a reversal
+
   // FSM task
   constexpr uint32_t TICK_MS           = 10;
   constexpr uint32_t TASK_STACK_WORDS  = 4096;
@@ -74,10 +81,14 @@ namespace ProcessConfig {
 enum class Step : uint8_t {
   SETUP_PAPER, SETUP_CHARCOAL,
   WATER, MIX, OPEN_GATE, POUR, CLOSE_GATE, PRESS, RELEASE, UNLOAD,
-  STOPPED, RESETTING
+  STOPPED, RESETTING,
+  TEST
 };
 
-enum class Cmd : uint8_t { SET_WATER, NEXT, BACK, START, STOP, RESET, DONE };
+// TEST enters test mode; MOVE runs test move `arg` (0..5) or stops it if it is
+// already running: 0 gate close, 1 gate open, 2 press down, 3 press home,
+// 4 mixer, 5 water valve.
+enum class Cmd : uint8_t { SET_WATER, NEXT, BACK, START, STOP, RESET, DONE, TEST, MOVE };
 
 struct BatchSnapshot {
   Step     step;
@@ -95,6 +106,7 @@ struct BatchSnapshot {
   bool     pulseOn;
   bool     pressHolding;    // PRESS: target reached, holding
   uint8_t  resetPhase;      // RESETTING: 0 = press retract, 1 = gate close
+  int8_t   testMove;        // TEST: running move 0..5, -1 = none
   uint32_t batchMs;         // WATER start → UNLOAD
   Drive    outputs[static_cast<uint8_t>(Output::COUNT)];
 };
@@ -155,6 +167,7 @@ private:
   uint32_t _lastTickMs;
   uint32_t _holdStartMs;    // PRESS: 0 until target reached
   uint8_t  _resetPhase;
+  int8_t   _testMove;
   bool     _pulseOn;
 
   BatchSnapshot _snap;      // published copy, guarded by _mux

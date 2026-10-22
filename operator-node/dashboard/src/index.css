@@ -1047,6 +1047,14 @@ footer {
 .unload-stats span { font-size: 0.68rem; color: var(--clr-text-2); text-transform: uppercase; letter-spacing: 0.05em; }
 .unload-stats b { font-family: var(--font-mono); font-size: 1.05rem; }
 
+.test-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0.75rem; margin: 1rem 0; }
+.test-btn { display: flex; flex-direction: column; gap: 0.25rem; align-items: flex-start; padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--clr-border); background: var(--clr-surface); color: var(--clr-text-0); cursor: pointer; text-align: left; font: inherit; }
+.test-btn b { font-size: 1.05rem; }
+.test-btn span { font-size: 0.75rem; color: var(--clr-text-2); }
+.test-btn:hover { border-color: var(--clr-accent); }
+.test-btn.active { background: var(--clr-accent); color: var(--clr-bg-0, #0a0c10); border-color: var(--clr-accent); }
+.test-btn.active span { color: inherit; }
+
 @media (max-width: 600px) {
   .wizard.wizard--8 {
     display: grid;

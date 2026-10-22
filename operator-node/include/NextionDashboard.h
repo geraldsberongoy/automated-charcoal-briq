@@ -14,6 +14,7 @@
 //   UNLOAD         batch summary + DONE
 //   STOPPED        red halt screen + RESET & RETRACT
 //   RESETTING      homing progress
+//   TEST           six relay/component buttons + STOP ALL + EXIT
 //
 // Full redraw only when the step changes; otherwise only changed fields are
 // re-sent (text cache + bar/vial fill cache).
@@ -106,6 +107,8 @@ private:
 
   void _drawUnload(const BatchSnapshot &b);
   void _drawStopped(const BatchSnapshot &b);
+  void _drawTest();
+  void _updateTest(const BatchSnapshot &b);
   void _drawResetting();
   void _updateResetting(const BatchSnapshot &b);
 };
