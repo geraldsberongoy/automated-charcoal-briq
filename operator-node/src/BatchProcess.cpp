@@ -178,9 +178,9 @@ void BatchProcess::_enter(Step step) {
     case Step::WATER:      _out.driveOnly(Output::SOLENOID,    Drive::ON);      break;
     case Step::MIX:        _out.driveOnly(Output::MIXER_MOTOR, Drive::ON);      break;
     case Step::OPEN_GATE:  _out.driveOnly(Output::GATE_ACT,    Drive::RETRACT); break;
-    case Step::POUR:
+    case Step::POUR:           // vibration is simulated: every relay off, mixer included
       _pulseOn = true;
-      _out.driveOnly(Output::MIXER_MOTOR, Drive::ON);
+      _out.allOff();
       break;
     case Step::CLOSE_GATE: _out.driveOnly(Output::GATE_ACT,    Drive::EXTEND);  break;
     case Step::PRESS:      _out.driveOnly(Output::PRESS_ACT,   Drive::EXTEND);  break;
@@ -226,11 +226,7 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
         break;
       }
       const bool on = (elapsed % cycle) < POUR_ON_MS;
-      if (on != _pulseOn) {
-        _pulseOn = on;
-        if (on) _out.driveOnly(Output::MIXER_MOTOR, Drive::ON);
-        else    _out.allOff();
-      }
+      _pulseOn = on;
       break;
     }
 
@@ -259,11 +255,11 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
       break;
 
     case Step::RESETTING:
-      if (_resetPhase == 0 && elapsed >= RESET_PHASE_MS) {
+      if (_resetPhase == 0 && elapsed >= RESET_PRESS_MS) {
         _resetPhase = 1;
         _stepStartMs = now;
         _out.driveOnly(Output::GATE_ACT, Drive::EXTEND);
-      } else if (_resetPhase == 1 && elapsed >= RESET_PHASE_MS) {
+      } else if (_resetPhase == 1 && elapsed >= RESET_GATE_MS) {
         _waterPct = WATER_MAX_PCT;
         _enter(Step::SETUP_PAPER);
       }
@@ -302,7 +298,7 @@ void BatchProcess::_publish(uint32_t now) {
     case Step::CLOSE_GATE: s.stepDurationMs = GATE_STROKE_MS; break;
     case Step::POUR:       s.stepDurationMs = cycle * POUR_PULSES; break;
     case Step::RELEASE:    s.stepDurationMs = PRESS_STROKE_MS; break;
-    case Step::RESETTING:  s.stepDurationMs = RESET_PHASE_MS; break;
+    case Step::RESETTING:  s.stepDurationMs = _resetPhase == 0 ? RESET_PRESS_MS : RESET_GATE_MS; break;
     default:               s.stepDurationMs = 0; break;
   }
 

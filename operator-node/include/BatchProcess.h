@@ -8,7 +8,7 @@
 //   1 WATER        solenoid open until target volume
 //   2 MIX          mixer motor on (timed)
 //   3 OPEN_GATE    gate actuator retracts (full stroke)
-//   4 POUR         mixer motor pulses (N bursts)
+//   4 POUR         vibration (SIMULATED: no relay yet, mixer stays off), N bursts
 //   5 CLOSE_GATE   gate actuator extends (full stroke)
 //   6 PRESS        press actuator extends until target force, then holds
 //   7 RELEASE      press actuator retracts (full stroke)
@@ -58,9 +58,9 @@ namespace ProcessConfig {
   constexpr float    PRESS_TARGET_N    = 98.1f;
   constexpr uint32_t PRESS_HOLD_MS     = 3000UL   / DIV;
   constexpr uint32_t PRESS_STROKE_MS   = 15000UL  / DIV;  // demo: 10.5 cm of the 40 cm stroke at 7 mm/s
-  // RESET & RETRACT after a STOP: 5 s per phase, 10 s in all. Shorter than the
-  // full strokes, so a press stopped far down may not be fully home afterwards.
-  constexpr uint32_t RESET_PHASE_MS    = 5000UL   / DIV;
+  // RESET & RETRACT after a STOP: full strokes so both actuators really go home
+  constexpr uint32_t RESET_PRESS_MS    = 57000UL  / DIV;  // 40 cm at 7 mm/s
+  constexpr uint32_t RESET_GATE_MS     = 21000UL  / DIV;  // 15 cm at 7 mm/s
   constexpr uint32_t PRESS_TIMEOUT_MS  = 30000UL  / DIV;  // target never reached → stop
 
   // Water volume from valve-open time while the flow sensor is off (bench

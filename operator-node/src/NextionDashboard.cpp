@@ -82,7 +82,7 @@ namespace {
     {"WATER",      "Dispensing water",     "Solenoid valve open. Filling to the",    "selected level of the mixing container.", "Valve closes at the target volume."},
     {"MIX",        "Mixing",               "Mixer motor running through its",        "relay (20V, 5A).",                        "Motor stops when the timer ends."},
     {"OPEN GATE",  "Opening the gate",     "15 cm actuator retracting to open",      "the bottom of the mixing container.",     "Stops at the end of travel."},
-    {"POUR",       "Pouring into the box", "Mixer motor spins in short bursts",      "to push the mixture through the gate.",   "Gate stays open. Motor rests between bursts."},
+    {"POUR",       "Pouring into the box", "Vibration shakes the mixture through",   "the open gate (simulated, no motor yet).", "Gate stays open. Mixer stays off."},
     {"CLOSE GATE", "Closing the gate",     "15 cm actuator extending to close",      "the mixing container.",                   "Stops at the end of travel."},
     {"PRESS",      "Compressing",          "40 cm actuator extending. Force from",   "the S-type load cell (HX711).",           "Holds at target force, then releases."},
     {"RELEASE",    "Releasing the press",  "40 cm actuator retracting so the",       "box can be removed.",                     "Box unlocks at the end of travel."},
@@ -463,7 +463,7 @@ void NextionDashboard::_updateRunning(const BatchSnapshot &b) {
       snprintf(metric, sizeof(metric), "%u / %u bursts", (unsigned)b.pulse, (unsigned)POUR_PULSES);
       snprintf(l, sizeof(l), "%lu s on / %lu s off",
                (unsigned long)(POUR_ON_MS * DIV / 1000), (unsigned long)(POUR_OFF_MS * DIV / 1000));
-      snprintf(r, sizeof(r), b.pulseOn ? "MOTOR ON" : "RESTING");
+      snprintf(r, sizeof(r), b.pulseOn ? "VIBRATING" : "RESTING");
       break;
     case Step::PRESS:
       snprintf(metric, sizeof(metric), "%.0f N / %.0f N", b.forceN, PRESS_TARGET_N);
@@ -495,8 +495,7 @@ void NextionDashboard::_drawOutputsPanel(const BatchSnapshot &b) {
   int8_t owner = -1;
   switch (b.step) {
     case Step::WATER:      owner = 0; break;
-    case Step::MIX:
-    case Step::POUR:       owner = 1; break;
+    case Step::MIX:        owner = 1; break;
     case Step::OPEN_GATE:
     case Step::CLOSE_GATE: owner = 2; break;
     case Step::PRESS:
