@@ -65,6 +65,7 @@ BatchProcess::BatchProcess(Outputs &outputs)
 
 void BatchProcess::begin() {
   _queue = xQueueCreate(QUEUE_LEN, sizeof(Message));
+  _load.begin();
   _lastTickMs = millis();
   _enter(Step::SETUP_PAPER);
   _publish(_lastTickMs);
@@ -98,6 +99,9 @@ void BatchProcess::tick() {
   const uint32_t now = millis();
   const float dtS = (now - _lastTickMs) / 1000.0f;
   _lastTickMs = now;
+
+  _load.poll();
+  _forceN = _load.ready() ? max(0.0f, _load.newtons()) : 0.0f;
 
   Message m;
   while (_queue && xQueueReceive(_queue, &m, 0) == pdTRUE) {
@@ -202,7 +206,7 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
 
   switch (_step) {
     case Step::WATER:
-      _flowL += SIM_FLOW_LPS * dtS;              // simulated: YF-S201 pulses
+      _flowL += SIM_FLOW_LPS * dtS;              // estimated from valve time (flow sensor off)
       if (_flowL >= FULL_WATER_L * _waterPct / 100.0f) _enter(Step::MIX);
       break;
 
@@ -234,12 +238,9 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
       break;
 
     case Step::PRESS:
+      _peakForceN = max(_peakForceN, _forceN);
       if (_holdStartMs == 0) {
-        _forceN += SIM_FORCE_NPS * dtS;          // simulated: S-type + HX711
-        _peakForceN = max(_peakForceN, _forceN);
-        if (_forceN >= PRESS_TARGET_N) {
-          _forceN = PRESS_TARGET_N + 10.0f * randUnit();
-          _peakForceN = max(_peakForceN, _forceN);
+        if (_load.ready() && _forceN >= PRESS_TARGET_N) {
           _holdStartMs = now;
           _out.allOff();                          // actuator holds position unpowered
         } else if (elapsed >= PRESS_TIMEOUT_MS) {
@@ -253,12 +254,10 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
       break;
 
     case Step::RELEASE:
-      _forceN = max(0.0f, _forceN - SIM_FORCE_NPS * 4.0f * dtS);
       if (elapsed >= PRESS_STROKE_MS) _enter(Step::UNLOAD);
       break;
 
     case Step::RESETTING:
-      _forceN = max(0.0f, _forceN - SIM_FORCE_NPS * 4.0f * dtS);
       if (_resetPhase == 0 && elapsed >= PRESS_STROKE_MS) {
         _resetPhase = 1;
         _stepStartMs = now;

@@ -11,16 +11,16 @@
 //   RETRACT = relay A off, relay B on
 //   OFF     = both off      (A and B are never on together)
 //
-// OUTPUTS_LIVE (build flag, default 0): while 0 the driver only records the
-// requested state and never touches GPIO, so the firmware can run against a
-// bench ESP32 with relays unplugged or wired differently. Set
-// -DOUTPUTS_LIVE=1 only after the pin map below matches the real wiring.
+// OUTPUTS_LIVE (build flag, default 1): the pin map below is the bench rig as
+// wired and tested with actuator-test. Build with -DOUTPUTS_LIVE=0 to run the
+// firmware against an ESP32 with the relays unplugged: the driver then only
+// records the requested state and never touches GPIO.
 // ============================================================================
 
 #include <Arduino.h>
 
 #ifndef OUTPUTS_LIVE
-  #define OUTPUTS_LIVE 0
+  #define OUTPUTS_LIVE 1
 #endif
 
 enum class Output : uint8_t {

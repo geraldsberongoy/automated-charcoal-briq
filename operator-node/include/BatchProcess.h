@@ -18,8 +18,9 @@
 //
 // Every step drives exactly one output through Outputs::driveOnly().
 //
-// Sensors are SIMULATED (flow meter, S-type load cell) until their drivers
-// exist — see the "simulated" comments in BatchProcess.cpp.
+// The S-type load cell (HX711) is read for real. The YF-S201 flow sensor is
+// off, so the water volume is estimated from valve-open time (see
+// SIM_FLOW_LPS), and the mixer current is a simulated value.
 //
 // Threading: tick() runs in its own FreeRTOS task (startTask(), every
 // TICK_MS, above loop() priority) so display I/O can never delay a valve
@@ -31,6 +32,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include "Outputs.h"
+#include "LoadCell.h"
 
 // Divide all durations (and multiply sim rates) for quick bench tests:
 //   -DPROCESS_TIME_DIVISOR=10
@@ -47,20 +49,20 @@ namespace ProcessConfig {
   constexpr uint8_t  WATER_STEP_PCT    = 10;
 
   constexpr uint32_t MIX_MS            = 180000UL / DIV;
-  constexpr uint32_t GATE_STROKE_MS    = 5000UL   / DIV;
+  constexpr uint32_t GATE_STROKE_MS    = 21000UL  / DIV;  // 15 cm at 7 mm/s
   constexpr uint8_t  POUR_PULSES       = 6;
   constexpr uint32_t POUR_ON_MS        = 2000UL   / DIV;
   constexpr uint32_t POUR_OFF_MS       = 3000UL   / DIV;
-  // Simulation value only. The real threshold is set by load-cell calibration and
-  // must stay below the 1,500 N thrust of the 40 cm actuator (thesis).
-  constexpr float    PRESS_TARGET_N    = 2000.0f;
+  // Bench stop load (10 kg, same as actuator-test). The final threshold comes
+  // from load-cell calibration and must stay below the 1,500 N actuator thrust.
+  constexpr float    PRESS_TARGET_N    = 98.1f;
   constexpr uint32_t PRESS_HOLD_MS     = 3000UL   / DIV;
-  constexpr uint32_t PRESS_STROKE_MS   = 18000UL  / DIV;  // full 40 cm travel
-  constexpr uint32_t PRESS_TIMEOUT_MS  = 25000UL  / DIV;  // target never reached → stop
+  constexpr uint32_t PRESS_STROKE_MS   = 57000UL  / DIV;  // full 40 cm travel at 7 mm/s
+  constexpr uint32_t PRESS_TIMEOUT_MS  = 70000UL  / DIV;  // target never reached → stop
 
-  // Simulated sensor rates
-  constexpr float    SIM_FLOW_LPS      = 0.25f  * DIV;
-  constexpr float    SIM_FORCE_NPS     = 150.0f * DIV;
+  // Water volume from valve-open time while the flow sensor is off (bench
+  // dose: 10 s per litre). Replace with YF-S201 pulses once the signal is clean.
+  constexpr float    SIM_FLOW_LPS      = 0.10f  * DIV;
 
   // FSM task
   constexpr uint32_t TICK_MS           = 10;
@@ -136,6 +138,7 @@ private:
   struct Message { Cmd cmd; uint8_t arg; };
 
   Outputs      &_out;
+  LoadCell      _load;
   QueueHandle_t _queue;
   mutable portMUX_TYPE _mux;
 
