@@ -9,15 +9,15 @@ const MOCK_SPEED = 10;
 const C = Object.fromEntries(Object.entries(CONFIG).map(([k, v]) =>
   [k, k.endsWith('_MS') ? v / MOCK_SPEED : v]));
 
-const SIM_FLOW_LPS  = 0.25  * MOCK_SPEED;
-const SIM_FORCE_NPS = 150.0 * MOCK_SPEED;
+const SIM_FLOW_LPS  = 0.30  * MOCK_SPEED;   // valve time, same as the firmware
+const SIM_FORCE_NPS = 15.0  * MOCK_SPEED;   // stands in for the load cell in dev mode
 
-const RUNNING = ['WATER', 'MIX', 'OPEN GATE', 'POUR', 'SHAKE', 'CLOSE GATE', 'LEVEL', 'PRESS', 'RELEASE'];
+const RUNNING = ['WATER', 'MIX', 'OPEN GATE', 'POUR', 'CLOSE GATE', 'PRESS', 'RELEASE'];
 const ORDER   = [...RUNNING, 'UNLOAD'];
 
 const ALL_OFF = {
   solenoid: 'OFF', mixer_motor: 'OFF', gate_actuator: 'OFF',
-  mixer_erm: 'OFF', box_erm: 'OFF', press_actuator: 'OFF',
+  press_actuator: 'OFF',
 };
 
 // The one output each step drives (everything else off)
@@ -26,9 +26,7 @@ const STEP_OUTPUT = {
   'MIX':        ['mixer_motor', 'ON'],
   'OPEN GATE':  ['gate_actuator', 'RETRACT'],
   'POUR':       ['mixer_motor', 'ON'],
-  'SHAKE':      ['mixer_erm', 'ON'],
   'CLOSE GATE': ['gate_actuator', 'EXTEND'],
-  'LEVEL':      ['box_erm', 'ON'],
   'PRESS':      ['press_actuator', 'EXTEND'],
   'RELEASE':    ['press_actuator', 'RETRACT'],
   'RESETTING':  ['press_actuator', 'RETRACT'],
@@ -95,12 +93,10 @@ export function advance(s, now, dtS) {
     case 'MIX':        if (elapsed >= C.MIX_MS) enter(s, 'OPEN GATE', now); break;
     case 'OPEN GATE':  if (elapsed >= C.GATE_STROKE_MS) enter(s, 'POUR', now); break;
     case 'POUR':
-      if (elapsed >= cycle * C.POUR_PULSES) enter(s, 'SHAKE', now);
+      if (elapsed >= cycle * C.POUR_PULSES) enter(s, 'CLOSE GATE', now);
       else s.outputs.mixer_motor = (elapsed % cycle) < C.POUR_ON_MS ? 'ON' : 'OFF';
       break;
-    case 'SHAKE':      if (elapsed >= C.SHAKE_MS) enter(s, 'CLOSE GATE', now); break;
-    case 'CLOSE GATE': if (elapsed >= C.GATE_STROKE_MS) enter(s, 'LEVEL', now); break;
-    case 'LEVEL':      if (elapsed >= C.LEVEL_MS) enter(s, 'PRESS', now); break;
+    case 'CLOSE GATE': if (elapsed >= C.GATE_STROKE_MS) enter(s, 'PRESS', now); break;
     case 'PRESS':
       if (!s.holdStart) {
         s.forceN += SIM_FORCE_NPS * dtS;
@@ -139,8 +135,6 @@ function durationOf(s) {
     case 'OPEN GATE':
     case 'CLOSE GATE': return C.GATE_STROKE_MS;
     case 'POUR':       return (C.POUR_ON_MS + C.POUR_OFF_MS) * C.POUR_PULSES;
-    case 'SHAKE':      return C.SHAKE_MS;
-    case 'LEVEL':      return C.LEVEL_MS;
     case 'RELEASE':    return C.PRESS_STROKE_MS;
     case 'RESETTING':  return s.resetPhase === 0 ? C.PRESS_STROKE_MS : C.GATE_STROKE_MS;
     default:           return 0;

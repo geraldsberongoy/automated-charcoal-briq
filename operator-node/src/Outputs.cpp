@@ -11,7 +11,6 @@ namespace {
   constexpr int8_t ALL_PINS[] = {
     OutputPins::SOLENOID, OutputPins::MIXER_MOTOR,
     OutputPins::GATE_A, OutputPins::GATE_B,
-    OutputPins::MIXER_ERM, OutputPins::BOX_ERM,
     OutputPins::PRESS_A, OutputPins::PRESS_B,
   };
 }
@@ -63,8 +62,6 @@ void Outputs::_apply(Output out, Drive drive) {
   switch (out) {
     case Output::SOLENOID:    _write(OutputPins::SOLENOID,    drive == Drive::ON); break;
     case Output::MIXER_MOTOR: _write(OutputPins::MIXER_MOTOR, drive == Drive::ON); break;
-    case Output::MIXER_ERM:   _write(OutputPins::MIXER_ERM,   drive == Drive::ON); break;
-    case Output::BOX_ERM:     _write(OutputPins::BOX_ERM,     drive == Drive::ON); break;
 
     case Output::GATE_ACT:
       // Release the opposing relay before engaging, so A and B never overlap

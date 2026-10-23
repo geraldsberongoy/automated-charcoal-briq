@@ -1,0 +1,319 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AUTOBRIQ Wiring Schematic</title><style>
+:root {
+  --bg: #f6f7f5; --panel: #ffffff; --ink: #1b2120; --muted: #5b6663; --line: #d5dbd8;
+  --accent: #0f766e;
+  --board: #e9dcb8; --board-edge: #b89a5a; --hole: #a8905c; --esp: rgba(27,33,32,0.07);
+  --sig: #2563eb; --w33: #0d9488; --hx: #9333ea; --tx: #0891b2; --rx: #b45309;
+  --flow: #ca8a04; --w5: #ea580c; --gnd: #3f4644; --red: #dc2626;
+  --warn-bg: #fff4e5; --warn-ink: #8a3b00;
+  --f-display: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #fff; color: var(--ink); font: 17px/1.55 var(--f-body); }
+.wrap { max-width: 1120px; margin: 0 auto; padding: 32px 16px 64px; }
+h1, h2, h3 { font-family: var(--f-display); line-height: 1.15; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(28px, 5vw, 42px); font-weight: 800; }
+h2 { font-size: 23px; }
+h3 { font-size: 18px; }
+p { margin: 0; max-width: 72ch; }
+code { font-family: var(--f-mono); font-size: 0.88em; }
+.eyebrow { font: 600 12px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
+.muted { color: var(--muted); }
+header { display: grid; gap: 12px; margin-bottom: 24px; }
+section { display: grid; gap: 14px; margin-top: 40px; }
+.warn { background: var(--warn-bg); color: var(--warn-ink); border-left: 4px solid var(--red); padding: 14px 16px; border-radius: 4px; display: grid; gap: 6px; }
+.warn strong { font-family: var(--f-display); }
+.fig { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; overflow-x: auto; }
+.fig svg { display: block; width: 100%; min-width: 900px; height: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 22px; height: 4px; border-radius: 2px; display: inline-block; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 15px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px/1.2 var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td.mono { font-family: var(--f-mono); font-size: 14px; white-space: nowrap; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+ol.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; counter-reset: s; }
+ol.steps > li { counter-increment: s; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px 14px 60px; position: relative; display: grid; gap: 6px; }
+ol.steps > li::before { content: counter(s); position: absolute; left: 16px; top: 14px; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--bg); font: 700 15px/30px var(--f-display); text-align: center; }
+ol.steps ul { margin: 0; padding-left: 20px; }
+.pass { font-weight: 600; color: var(--accent); }
+svg text { font-family: var(--f-mono); fill: var(--ink); }
+svg .lbl { font-size: 12px; }
+svg .lblb { font-size: 12px; font-weight: 600; }
+svg .pinl { font-size: 9.5px; fill: var(--muted); }
+svg .pinu { font-size: 9.5px; font-weight: 600; fill: var(--ink); }
+svg .title { font: 700 15px var(--f-display); fill: var(--ink); }
+svg .sub { font-size: 11px; fill: var(--muted); }
+svg .w { fill: none; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+svg .rail { fill: none; stroke-width: 7; stroke-linecap: round; opacity: 0.85; }
+svg .pin { fill: var(--ink); }
+svg .fpin { fill: var(--panel); stroke: var(--ink); stroke-width: 1.2; }
+
+svg .pinl{font-size:11px}svg .sub{font-size:12px}svg .lblb,svg .lbl{font-size:13px}svg .pinu{font-size:11px}svg .title{font-size:16px}
+.sheet{width:1600px;margin:16px auto;border:3px solid #1b2120;padding:6px;background:#fff;page-break-after:always}
+.inner{border:1px solid #1b2120;background:#fff}
+.inner>svg{display:block;width:100%;height:auto}.leg2 svg{width:60px;height:20px}
+.leg2{display:flex;flex-wrap:wrap;gap:6px 22px;padding:8px 14px;font-size:13px;border-top:1px solid #1b2120;color:#1b2120}
+.leg2 span{display:inline-flex;align-items:center;gap:6px}
+.leg2 i{width:24px;height:4px;border-radius:2px;display:inline-block}
+.note{padding:6px 14px;font-size:12px;border-top:1px solid #1b2120;max-width:none}
+.tb{display:grid;grid-template-columns:2.2fr 1fr 1fr 1fr;border-top:2px solid #1b2120;font-size:13px}
+.tb div{padding:6px 10px;border-right:1px solid #1b2120}.tb div:last-child{border-right:0}
+.tb b{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.tb .big{font-size:20px;font-weight:700}
+@media print{@page{size:A3 landscape;margin:8mm}.sheet{margin:0;width:100%}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
+<div class="sheet"><div class="inner"><svg viewBox="0 0 1930 1310" role="img" aria-label="Whole-system wiring diagram of the AUTOBRIQ control and power system">
+      <!-- ===== EcoFlow, E-stop, 12 V lines ===== -->
+      <rect x="30" y="50" width="190" height="110" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="46" y="80">EcoFlow RIVER 2</text>
+      <text class="sub" x="46" y="98">12 V DC port</text>
+      <text class="lblb" x="208" y="84" text-anchor="end">+</text><text class="lblb" x="208" y="134" text-anchor="end">−</text>
+      <circle class="pin" cx="220" cy="80" r="4"/><circle class="pin" cx="220" cy="130" r="4"/>
+
+      <rect x="300" y="58" width="140" height="44" rx="22" fill="var(--panel)" stroke="var(--red)" stroke-width="1.8"/>
+      <text class="title" x="370" y="80" text-anchor="middle">E-STOP</text>
+      <text class="sub" x="370" y="95" text-anchor="middle">NC contacts</text>
+      <path class="w" d="M220 80 H300" stroke="var(--red)"/>
+      <!-- inline fuse -->
+      <rect x="224" y="72" width="22" height="16" rx="3" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <line x1="228" y1="80" x2="242" y2="80" stroke="var(--ink)" stroke-width="1.2"/>
+      <text class="lblb" x="235" y="114" text-anchor="middle" style="fill:var(--red)">10 A fuse</text>
+      <!-- unswitched +12 V bus terminal -->
+      <rect x="252" y="70" width="18" height="20" rx="2" fill="var(--panel)" stroke="var(--red)" stroke-width="1.8"/>
+      <text class="pinl" x="261" y="66" text-anchor="middle">+12 bus</text>
+      <!-- switched 12 V bus -->
+      <path class="w" d="M440 80 H460 V190 H280 V790" stroke="var(--red)"/>
+      <text class="lblb" x="470" y="150" style="fill:var(--red)">switched +12 V</text>
+      <!-- 12 V ground -->
+      <path class="w" d="M220 130 H250 V850" stroke="var(--gnd)"/>
+      <circle class="pin" cx="250" cy="130" r="5"/>
+      <text class="lblb" x="150" y="186" style="fill:var(--gnd)">12 V GND</text>
+
+      <!-- ===== Bus terminal strips (drawn over the bus lines; dots = screws) ===== -->
+      <rect x="273" y="250" width="14" height="550" rx="3" fill="none" stroke="var(--red)" stroke-width="1.6" stroke-dasharray="5 3"/>
+      <text class="pinl" x="280" y="244" text-anchor="middle" style="fill:var(--red)">SW bus</text>
+      <rect x="243" y="300" width="14" height="560" rx="3" fill="none" stroke="var(--gnd)" stroke-width="1.6" stroke-dasharray="5 3"/>
+      <text class="pinl" x="250" y="878" text-anchor="middle" style="fill:var(--gnd)">GND bus</text>
+
+      <!-- ===== Relay board ===== -->
+      <rect x="300" y="230" width="220" height="640" rx="8" fill="var(--bg)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="410" y="226" text-anchor="middle">8-ch relay board</text>
+      <!-- channel blocks: CH1 240, CH2 345, CH3 450, CH4 555, CH6 765; CH5 on bottom edge -->
+      <g>
+        <rect x="306" y="240" width="120" height="95" rx="4" fill="var(--panel)" stroke="var(--line)"/>
+        <rect x="306" y="345" width="120" height="95" rx="4" fill="var(--panel)" stroke="var(--line)"/>
+        <rect x="306" y="450" width="120" height="95" rx="4" fill="var(--panel)" stroke="var(--line)"/>
+        <rect x="306" y="555" width="120" height="95" rx="4" fill="var(--panel)" stroke="var(--line)"/>
+        <rect x="306" y="660" width="120" height="95" rx="4" fill="var(--panel)" stroke="var(--line)"/>
+        <rect x="306" y="765" width="120" height="95" rx="4" fill="var(--panel)" stroke="var(--line)"/>
+      </g>
+      <g class="lblb">
+        <text x="360" y="262">CH1</text><text x="360" y="367">CH2</text><text x="360" y="472">CH3</text>
+        <text x="360" y="577">CH4</text><text x="360" y="682">CH5</text><text x="360" y="787">CH6</text>
+      </g>
+      <g class="pinl">
+        <text x="312" y="269">NO</text><text x="312" y="294">COM</text><text x="312" y="319">NC</text>
+        <text x="312" y="374">NO</text><text x="312" y="399">COM</text><text x="312" y="424">NC</text>
+        <text x="312" y="479">NO</text><text x="312" y="504">COM</text><text x="312" y="529">NC</text>
+        <text x="312" y="584">NO</text><text x="312" y="609">COM</text><text x="312" y="634">NC</text>
+        
+        <text x="312" y="694">NO</text><text x="312" y="719">COM</text><text x="312" y="744">NC</text>
+      </g>
+      <!-- terminals on left edge -->
+      <g class="pin">
+        <circle cx="300" cy="265" r="4"/><circle cx="300" cy="290" r="4"/><circle cx="300" cy="315" r="4"/>
+        <circle cx="300" cy="370" r="4"/><circle cx="300" cy="395" r="4"/><circle cx="300" cy="420" r="4"/>
+        <circle cx="300" cy="475" r="4"/><circle cx="300" cy="500" r="4"/><circle cx="300" cy="525" r="4"/>
+        <circle cx="300" cy="580" r="4"/><circle cx="300" cy="605" r="4"/><circle cx="300" cy="630" r="4"/>
+        <circle cx="300" cy="690" r="4"/><circle cx="300" cy="715" r="4"/><circle cx="300" cy="740" r="4"/>
+      </g>
+      <!-- NO to switched bus -->
+      <path class="w" d="M280 265 H300 M280 370 H300 M280 475 H300 M280 580 H300 M280 690 H300" stroke="var(--red)"/>
+      <g class="pin"><circle cx="280" cy="265" r="5"/><circle cx="280" cy="370" r="5"/><circle cx="280" cy="475" r="5"/><circle cx="280" cy="580" r="5"/><circle cx="280" cy="690" r="5"/></g>
+      <!-- NC to GND -->
+      <path class="w" d="M250 315 H300 M250 420 H300 M250 525 H300 M250 630 H300" stroke="var(--gnd)"/>
+      <g class="pin"><circle cx="250" cy="315" r="5"/><circle cx="250" cy="420" r="5"/><circle cx="250" cy="525" r="5"/><circle cx="250" cy="630" r="5"/></g>
+
+      <!-- ===== Actuators ===== -->
+      <rect x="40" y="250" width="160" height="180" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="120" y="330" text-anchor="middle">15 cm actuator</text>
+      <text class="sub" x="120" y="348" text-anchor="middle">trapdoor</text>
+      <text class="pinl" x="190" y="286" text-anchor="end">lead A</text><text class="pinl" x="190" y="391" text-anchor="end">lead B</text>
+      <path class="w" d="M200 290 H300 M200 395 H300" stroke="var(--ink)"/>
+      <circle class="pin" cx="200" cy="290" r="4"/><circle class="pin" cx="200" cy="395" r="4"/>
+
+      <rect x="40" y="460" width="160" height="180" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="120" y="540" text-anchor="middle">40 cm actuator</text>
+      <text class="sub" x="120" y="558" text-anchor="middle">press</text>
+      <text class="pinl" x="190" y="496" text-anchor="end">lead A</text><text class="pinl" x="190" y="601" text-anchor="end">lead B</text>
+      <path class="w" d="M200 500 H300 M200 605 H300" stroke="var(--ink)"/>
+      <circle class="pin" cx="200" cy="500" r="4"/><circle class="pin" cx="200" cy="605" r="4"/>
+
+      <!-- ===== Solenoid valve on CH6 ===== -->
+      <rect x="40" y="680" width="160" height="190" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="title" x="110" y="720" text-anchor="middle">Solenoid valve</text>
+      <text class="sub" x="110" y="738" text-anchor="middle">12 V DC, NC</text>
+      <text class="pinl" x="190" y="811" text-anchor="end">+</text><text class="pinl" x="190" y="846" text-anchor="end">−</text>
+      <circle class="pin" cx="200" cy="815" r="4"/><circle class="pin" cx="200" cy="850" r="4"/>
+      <path class="w" d="M200 815 L222 815 L222 715 L300 715" stroke="var(--red)"/>
+      <path class="w" d="M200 850 H250" stroke="var(--gnd)"/>
+      <circle class="pin" cx="250" cy="850" r="5"/>
+      <!-- diode inside valve box -->
+      <path d="M170 772 V788 M170 806 V815" stroke="var(--ink)" stroke-width="2" fill="none"/>
+      <line x1="160" y1="788" x2="180" y2="788" stroke="var(--ink)" stroke-width="3"/>
+      <polygon points="160,806 180,806 170,790" fill="var(--ink)"/>
+      <text class="sub" x="56" y="770">1N4007</text><text class="sub" x="56" y="784">stripe to +</text>
+      <path d="M170 772 V762 H200" stroke="var(--ink)" stroke-width="1.5" fill="none" stroke-dasharray="2 3"/>
+      <text class="sub" x="56" y="860">across + and −</text>
+
+      <circle class="pin" cx="330" cy="846" r="4"/><circle class="pin" cx="365" cy="846" r="4"/><circle class="pin" cx="400" cy="846" r="4"/><text class="pinl" x="330" y="836" text-anchor="middle">COM</text><text class="pinl" x="365" y="836" text-anchor="middle">NO</text><text class="pinl" x="400" y="836" text-anchor="middle">NC</text><path class="w" d="M280 790 L280 915 L330 915 L330 846" stroke="var(--red)" style="stroke-width:4"/><path class="w" d="M365 846 L365 1060 L490 1060 L490 1100" stroke="var(--red)" style="stroke-width:4"/><path class="w" d="M540 1100 L540 1030 L250 1030 L250 850" stroke="var(--gnd)" style="stroke-width:4"/><text class="sub" x="286" y="932" text-anchor="start">switched +12 V</text><text class="sub" x="448" y="1052" text-anchor="start">coil +</text><rect x="30" y="1100" width="140" height="130" rx="8" fill="var(--panel)" stroke="#7c3aed" stroke-width="1.5"/><text class="title" x="38" y="1128" text-anchor="start">EcoFlow</text><text class="title" x="38" y="1146" text-anchor="start">RIVER 2</text><text class="sub" x="38" y="1166" text-anchor="start">AC outlet 220 V</text><text class="pinl" x="162" y="1184" text-anchor="end">L</text><circle class="pin" cx="170" cy="1180" r="4"/><text class="pinl" x="162" y="1204" text-anchor="end">N</text><circle class="pin" cx="170" cy="1200" r="4"/><text class="pinl" x="162" y="1224" text-anchor="end">PE</text><circle class="pin" cx="170" cy="1220" r="4"/><rect x="220" y="1100" width="150" height="130" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/><text class="title" x="295" y="1160" text-anchor="middle">AC-DC PSU</text><text class="sub" x="295" y="1178" text-anchor="middle">220 V AC in</text><text class="sub" x="295" y="1194" text-anchor="middle">motor voltage out</text><text class="pinl" x="228" y="1184" text-anchor="start">L</text><circle class="pin" cx="220" cy="1180" r="4"/><path class="w" d="M170 1180 L220 1180" stroke="#7c3aed" style="stroke-width:3"/><text class="pinl" x="228" y="1204" text-anchor="start">N</text><circle class="pin" cx="220" cy="1200" r="4"/><path class="w" d="M170 1200 L220 1200" stroke="#7c3aed" style="stroke-width:3"/><text class="pinl" x="228" y="1224" text-anchor="start">PE</text><circle class="pin" cx="220" cy="1220" r="4"/><path class="w" d="M170 1220 L220 1220" stroke="#7c3aed" style="stroke-width:3"/><text class="pinl" x="362" y="1154" text-anchor="end">V+</text><text class="pinl" x="362" y="1214" text-anchor="end">V−</text><circle class="pin" cx="370" cy="1150" r="4"/><circle class="pin" cx="370" cy="1210" r="4"/><rect x="460" y="1100" width="190" height="130" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/><text class="title" x="555" y="1165" text-anchor="middle">Bosch-type</text><text class="title" x="555" y="1183" text-anchor="middle">automotive relay</text><text class="sub" x="555" y="1201" text-anchor="middle">30 A, 12 V coil</text><circle class="pin" cx="490" cy="1100" r="4"/><circle class="pin" cx="540" cy="1100" r="4"/><text class="pinl" x="490" y="1120" text-anchor="middle">86</text><text class="pinl" x="540" y="1120" text-anchor="middle">85</text><text class="pinl" x="490" y="1135" text-anchor="middle">coil +</text><text class="pinl" x="540" y="1135" text-anchor="middle">coil −</text><circle class="pin" cx="460" cy="1150" r="4"/><text class="pinl" x="470" y="1154" text-anchor="start">30</text><circle class="pin" cx="650" cy="1150" r="4"/><text class="pinl" x="640" y="1154" text-anchor="end">87</text><path class="w" d="M370 1150 L460 1150" stroke="var(--red)" style="stroke-width:5"/><path class="w" d="M650 1150 L700 1150" stroke="var(--red)" style="stroke-width:5"/><rect x="700" y="1100" width="160" height="130" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/><text class="title" x="780" y="1160" text-anchor="middle">Mixer motor</text><text class="sub" x="780" y="1178" text-anchor="middle">20 V · 5 A</text><circle class="pin" cx="700" cy="1150" r="4"/><circle class="pin" cx="700" cy="1210" r="4"/><text class="pinl" x="710" y="1154" text-anchor="start">M+</text><text class="pinl" x="710" y="1214" text-anchor="start">M−</text><path class="w" d="M370 1210 L370 1262 L680 1262 L680 1210 L700 1210" stroke="var(--gnd)" style="stroke-width:4"/><text class="sub" x="380" y="1278" text-anchor="start">PSU V− goes straight to the motor (separate ground, never to the ESP32 side)</text><text class="sub" x="30" y="1296" text-anchor="start">CH6 COM = switched +12 V, CH6 NO = relay coil +; coil − to the 12 V GND bus. The ESP32 drives CH6 through the relay board input.</text><rect x="514" y="294" width="12" height="12" class="pin"/><text class="pinl" x="508" y="304" text-anchor="end">GND</text><rect x="514" y="339" width="12" height="12" class="pin"/><text class="pinl" x="508" y="349" text-anchor="end">IN1</text><rect x="514" y="384" width="12" height="12" class="pin"/><text class="pinl" x="508" y="394" text-anchor="end">IN2</text><rect x="514" y="429" width="12" height="12" class="pin"/><text class="pinl" x="508" y="439" text-anchor="end">IN3</text><rect x="514" y="474" width="12" height="12" class="pin"/><text class="pinl" x="508" y="484" text-anchor="end">IN4</text><rect x="514" y="519" width="12" height="12" class="pin"/><text class="pinl" x="508" y="529" text-anchor="end">IN5</text><rect x="514" y="564" width="12" height="12" class="pin"/><text class="pinl" x="508" y="574" text-anchor="end">IN6</text><rect x="514" y="609" width="12" height="12" class="pin"/><text class="pinl" x="508" y="619" text-anchor="end">VCC</text><rect x="514" y="654" width="12" height="12" class="pin"/><text class="pinl" x="508" y="664" text-anchor="end">JD-VCC</text><rect x="780" y="230" width="530" height="510" rx="10" fill="var(--board)" stroke="var(--board-edge)" stroke-width="2"/><rect x="940" y="290" width="210" height="330" rx="6" fill="var(--esp)" stroke="var(--ink)" stroke-dasharray="6 4"/><text class="title" x="1045" y="440" text-anchor="middle">ESP32</text><text class="sub" x="1045" y="460" text-anchor="middle">on the perfboard</text><text class="sub" x="1045" y="474" text-anchor="middle">(layout on sheet 2)</text><text class="lblb" x="1045" y="252" text-anchor="middle">Universal PCB</text><rect x="774" y="339" width="12" height="12" class="pin"/><text class="pinu" x="792" y="349" text-anchor="start">IN1</text><rect x="774" y="384" width="12" height="12" class="pin"/><text class="pinu" x="792" y="394" text-anchor="start">IN2</text><rect x="774" y="429" width="12" height="12" class="pin"/><text class="pinu" x="792" y="439" text-anchor="start">IN3</text><rect x="774" y="474" width="12" height="12" class="pin"/><text class="pinu" x="792" y="484" text-anchor="start">IN4</text><rect x="774" y="519" width="12" height="12" class="pin"/><text class="pinu" x="792" y="529" text-anchor="start">IN5</text><rect x="774" y="564" width="12" height="12" class="pin"/><text class="pinu" x="792" y="574" text-anchor="start">IN6</text><rect x="1304" y="339" width="12" height="12" class="pin"/><text class="pinu" x="1298" y="349" text-anchor="end">HX SCK</text><rect x="1304" y="384" width="12" height="12" class="pin"/><text class="pinu" x="1298" y="394" text-anchor="end">HX DT</text><rect x="1304" y="564" width="12" height="12" class="pin"/><text class="pinu" x="1298" y="574" text-anchor="end">NX RX</text><rect x="1304" y="609" width="12" height="12" class="pin"/><text class="pinu" x="1298" y="619" text-anchor="end">NX TX</text><rect x="902" y="734" width="12" height="12" class="pin"/><text class="pinu" x="908" y="726" text-anchor="middle">5V</text><rect x="1172" y="734" width="12" height="12" class="pin"/><text class="pinu" x="1178" y="726" text-anchor="middle">5V</text><rect x="956" y="734" width="12" height="12" class="pin"/><text class="pinu" x="962" y="726" text-anchor="middle">5V</text><rect x="794" y="734" width="12" height="12" class="pin"/><text class="pinu" x="800" y="726" text-anchor="middle">GND</text><rect x="1118" y="734" width="12" height="12" class="pin"/><text class="pinu" x="1124" y="726" text-anchor="middle">GND</text><rect x="1226" y="734" width="12" height="12" class="pin"/><text class="pinu" x="1232" y="726" text-anchor="middle">GND</text><rect x="1010" y="734" width="12" height="12" class="pin"/><text class="pinu" x="1016" y="726" text-anchor="middle">GND</text><rect x="848" y="734" width="12" height="12" class="pin"/><text class="pinu" x="854" y="726" text-anchor="middle">3V3</text><rect x="1280" y="734" width="12" height="12" class="pin"/><text class="pinu" x="1286" y="726" text-anchor="middle">3V3</text><rect x="1064" y="734" width="12" height="12" class="pin"/><text class="pinu" x="1070" y="726" text-anchor="middle">FLOW</text><rect x="1175" y="226" width="80" height="34" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/><circle cx="1190" cy="243" r="6" fill="none" stroke="var(--ink)"/><circle cx="1240" cy="243" r="6" fill="none" stroke="var(--ink)"/><text class="pinl" x="1190" y="278" text-anchor="middle">+5V IN</text><text class="pinl" x="1240" y="278" text-anchor="middle">GND IN</text><rect x="1520" y="50" width="300" height="110" rx="8" fill="var(--panel)" stroke="var(--w5)" stroke-width="1.5" stroke-dasharray="6 4"/><text class="title" x="1670" y="82" text-anchor="middle">EcoFlow USB-A port</text><text class="sub" x="1670" y="100" text-anchor="middle">same RIVER 2 · 5 V, 2.4 A</text><text class="sub" x="1670" y="116" text-anchor="middle">output timeout: Never</text><text class="pinl" x="1600" y="150" text-anchor="middle">VBUS (red)</text><text class="pinl" x="1740" y="150" text-anchor="middle">GND (black)</text><circle class="pin" cx="1600" cy="160" r="4"/><circle class="pin" cx="1740" cy="160" r="4"/><rect x="1500" y="310" width="160" height="220" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/><text class="title" x="1580" y="332" text-anchor="middle">HX711</text><circle class="pin" cx="1500" cy="345" r="4"/><text class="pinl" x="1510" y="349" text-anchor="start">SCK</text><circle class="pin" cx="1500" cy="390" r="4"/><text class="pinl" x="1510" y="394" text-anchor="start">DT</text><circle class="pin" cx="1500" cy="435" r="4"/><text class="pinl" x="1510" y="439" text-anchor="start">VCC 3V3</text><circle class="pin" cx="1500" cy="480" r="4"/><text class="pinl" x="1510" y="484" text-anchor="start">GND</text><circle class="pin" cx="1660" cy="345" r="4"/><text class="pinl" x="1650" y="349" text-anchor="end">E+</text><circle class="pin" cx="1660" cy="390" r="4"/><text class="pinl" x="1650" y="394" text-anchor="end">E−</text><circle class="pin" cx="1660" cy="435" r="4"/><text class="pinl" x="1650" y="439" text-anchor="end">A−</text><circle class="pin" cx="1660" cy="480" r="4"/><text class="pinl" x="1650" y="484" text-anchor="end">A+</text><rect x="1720" y="310" width="180" height="220" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/><text class="title" x="1810" y="415" text-anchor="middle">S-type load cell</text><text class="sub" x="1810" y="433" text-anchor="middle">load through the end holes</text><path class="w" d="M1660 345 L1720 345" stroke="#dc2626" style="stroke-width:3"/><text class="pinl" x="1668" y="339" text-anchor="start">red</text><path class="w" d="M1660 390 L1720 390" stroke="var(--gnd)" style="stroke-width:3"/><text class="pinl" x="1668" y="384" text-anchor="start">black</text><path class="w" d="M1660 435 L1720 435" stroke="var(--muted)" style="stroke-width:3"/><text class="pinl" x="1668" y="429" text-anchor="start">white</text><path class="w" d="M1660 480 L1720 480" stroke="#16a34a" style="stroke-width:3"/><text class="pinl" x="1668" y="474" text-anchor="start">green</text><rect x="1500" y="540" width="220" height="200" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/><text class="title" x="1610" y="562" text-anchor="middle">Nextion 7"</text><circle class="pin" cx="1500" cy="570" r="4"/><text class="pinl" x="1510" y="574" text-anchor="start">yellow RX</text><circle class="pin" cx="1500" cy="615" r="4"/><text class="pinl" x="1510" y="619" text-anchor="start">blue TX</text><circle class="pin" cx="1500" cy="660" r="4"/><text class="pinl" x="1510" y="664" text-anchor="start">red 5V</text><circle class="pin" cx="1500" cy="705" r="4"/><text class="pinl" x="1510" y="709" text-anchor="start">black GND</text><rect x="1000" y="1110" width="200" height="140" rx="8" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/><text class="title" x="1100" y="1195" text-anchor="middle">YF-S201 flow</text><text class="sub" x="1100" y="1213" text-anchor="middle">code currently off</text><circle class="pin" cx="1040" cy="1110" r="4"/><text class="pinl" x="1040" y="1130" text-anchor="middle">5V</text><text class="pinl" x="1040" y="1144" text-anchor="middle">red</text><circle class="pin" cx="1100" cy="1110" r="4"/><text class="pinl" x="1100" y="1130" text-anchor="middle">GND</text><text class="pinl" x="1100" y="1144" text-anchor="middle">black</text><circle class="pin" cx="1160" cy="1110" r="4"/><text class="pinl" x="1160" y="1130" text-anchor="middle">SIG</text><text class="pinl" x="1160" y="1144" text-anchor="middle">yellow</text><path class="w" d="M520 345 L780 345" stroke="var(--sig)" style="stroke-width:3"/><path class="w" d="M520 390 L780 390" stroke="var(--sig)" style="stroke-width:3"/><path class="w" d="M520 435 L780 435" stroke="var(--sig)" style="stroke-width:3"/><path class="w" d="M520 480 L780 480" stroke="var(--sig)" style="stroke-width:3"/><path class="w" d="M520 525 L780 525" stroke="var(--sig)" style="stroke-width:3"/><path class="w" d="M520 570 L780 570" stroke="var(--sig)" style="stroke-width:3"/><path class="w" d="M1310 345 L1500 345" stroke="var(--hx)" style="stroke-width:3"/><path class="w" d="M1310 390 L1500 390" stroke="var(--hx)" style="stroke-width:3"/><path class="w" d="M1310 570 L1500 570" stroke="var(--rx)" style="stroke-width:3"/><path class="w" d="M1310 615 L1500 615" stroke="var(--tx)" style="stroke-width:3"/><path class="w" d="M520 660 L570 660 L570 1000 L908 1000 L908 740" stroke="var(--w5)" style="stroke-width:3"/><path class="w" d="M520 300 L650 300 L650 880 L800 880 L800 740" stroke="var(--gnd)" style="stroke-width:3"/><path class="w" d="M520 615 L610 615 L610 940 L854 940 L854 740" stroke="var(--w33)" style="stroke-width:3"/><path class="w" d="M1500 660 L1410 660 L1410 850 L1178 850 L1178 740" stroke="var(--w5)" style="stroke-width:3"/><path class="w" d="M1500 705 L1440 705 L1440 910 L1124 910 L1124 740" stroke="var(--gnd)" style="stroke-width:3"/><path class="w" d="M1500 480 L1380 480 L1380 820 L1232 820 L1232 740" stroke="var(--gnd)" style="stroke-width:3"/><path class="w" d="M1500 435 L1350 435 L1350 790 L1286 790 L1286 740" stroke="var(--w33)" style="stroke-width:3"/><path class="w" d="M1040 1110 L1040 1060 L962 1060 L962 740" stroke="var(--w5)" style="stroke-width:3"/><path class="w" d="M1100 1110 L1100 1030 L1016 1030 L1016 740" stroke="var(--gnd)" style="stroke-width:3"/><path class="w" d="M1160 1110 L1160 970 L1070 970 L1070 740" stroke="var(--flow)" style="stroke-width:3"/><path class="w" d="M1600 160 L1600 190 L1190 190 L1190 226" stroke="var(--w5)" style="stroke-width:3"/><path class="w" d="M1740 160 L1740 208 L1240 208 L1240 226" stroke="var(--gnd)" style="stroke-width:3"/><text class="lblb" x="1210" y="180" text-anchor="start">USB 5 V into the perfboard (20 AWG pair, 50 cm max)</text><g class="hops"><line x1="271.0" y1="315.0" x2="289.0" y2="315.0" stroke="#fff" stroke-width="7"/><line x1="280.0" y1="301.0" x2="280.0" y2="329.0" stroke="var(--red)" stroke-width="4" stroke-linecap="round"/><path d="M271.0 315.0 A9 9 0 0 1 289.0 315.0" fill="none" stroke="var(--gnd)" stroke-width="4" stroke-linecap="round"/><line x1="271.0" y1="420.0" x2="289.0" y2="420.0" stroke="#fff" stroke-width="7"/><line x1="280.0" y1="406.0" x2="280.0" y2="434.0" stroke="var(--red)" stroke-width="4" stroke-linecap="round"/><path d="M271.0 420.0 A9 9 0 0 1 289.0 420.0" fill="none" stroke="var(--gnd)" stroke-width="4" stroke-linecap="round"/><line x1="271.0" y1="525.0" x2="289.0" y2="525.0" stroke="#fff" stroke-width="7"/><line x1="280.0" y1="511.0" x2="280.0" y2="539.0" stroke="var(--red)" stroke-width="4" stroke-linecap="round"/><path d="M271.0 525.0 A9 9 0 0 1 289.0 525.0" fill="none" stroke="var(--gnd)" stroke-width="4" stroke-linecap="round"/><line x1="271.0" y1="630.0" x2="289.0" y2="630.0" stroke="#fff" stroke-width="7"/><line x1="280.0" y1="616.0" x2="280.0" y2="644.0" stroke="var(--red)" stroke-width="4" stroke-linecap="round"/><path d="M271.0 630.0 A9 9 0 0 1 289.0 630.0" fill="none" stroke="var(--gnd)" stroke-width="4" stroke-linecap="round"/><line x1="271.0" y1="290.0" x2="289.0" y2="290.0" stroke="#fff" stroke-width="7"/><line x1="280.0" y1="276.0" x2="280.0" y2="304.0" stroke="var(--red)" stroke-width="4" stroke-linecap="round"/><path d="M271.0 290.0 A9 9 0 0 1 289.0 290.0" fill="none" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/><line x1="271.0" y1="395.0" x2="289.0" y2="395.0" stroke="#fff" stroke-width="7"/><line x1="280.0" y1="381.0" x2="280.0" y2="409.0" stroke="var(--red)" stroke-width="4" stroke-linecap="round"/><path d="M271.0 395.0 A9 9 0 0 1 289.0 395.0" fill="none" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/><line x1="271.0" y1="500.0" x2="289.0" y2="500.0" stroke="#fff" stroke-width="7"/><line x1="280.0" y1="486.0" x2="280.0" y2="514.0" stroke="var(--red)" stroke-width="4" stroke-linecap="round"/><path d="M271.0 500.0 A9 9 0 0 1 289.0 500.0" fill="none" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/><line x1="271.0" y1="605.0" x2="289.0" y2="605.0" stroke="#fff" stroke-width="7"/><line x1="280.0" y1="591.0" x2="280.0" y2="619.0" stroke="var(--red)" stroke-width="4" stroke-linecap="round"/><path d="M271.0 605.0 A9 9 0 0 1 289.0 605.0" fill="none" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/><line x1="271.0" y1="715.0" x2="289.0" y2="715.0" stroke="#fff" stroke-width="7"/><line x1="280.0" y1="701.0" x2="280.0" y2="729.0" stroke="var(--red)" stroke-width="4" stroke-linecap="round"/><path d="M271.0 715.0 A9 9 0 0 1 289.0 715.0" fill="none" stroke="var(--red)" stroke-width="4" stroke-linecap="round"/><line x1="241.0" y1="290.0" x2="259.0" y2="290.0" stroke="#fff" stroke-width="7"/><line x1="250.0" y1="276.0" x2="250.0" y2="304.0" stroke="var(--gnd)" stroke-width="4" stroke-linecap="round"/><path d="M241.0 290.0 A9 9 0 0 1 259.0 290.0" fill="none" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/><line x1="241.0" y1="395.0" x2="259.0" y2="395.0" stroke="#fff" stroke-width="7"/><line x1="250.0" y1="381.0" x2="250.0" y2="409.0" stroke="var(--gnd)" stroke-width="4" stroke-linecap="round"/><path d="M241.0 395.0 A9 9 0 0 1 259.0 395.0" fill="none" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/><line x1="241.0" y1="500.0" x2="259.0" y2="500.0" stroke="#fff" stroke-width="7"/><line x1="250.0" y1="486.0" x2="250.0" y2="514.0" stroke="var(--gnd)" stroke-width="4" stroke-linecap="round"/><path d="M241.0 500.0 A9 9 0 0 1 259.0 500.0" fill="none" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/><line x1="241.0" y1="605.0" x2="259.0" y2="605.0" stroke="#fff" stroke-width="7"/><line x1="250.0" y1="591.0" x2="250.0" y2="619.0" stroke="var(--gnd)" stroke-width="4" stroke-linecap="round"/><path d="M241.0 605.0 A9 9 0 0 1 259.0 605.0" fill="none" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/><line x1="241.0" y1="715.0" x2="259.0" y2="715.0" stroke="#fff" stroke-width="7"/><line x1="250.0" y1="701.0" x2="250.0" y2="729.0" stroke="var(--gnd)" stroke-width="4" stroke-linecap="round"/><path d="M241.0 715.0 A9 9 0 0 1 259.0 715.0" fill="none" stroke="var(--red)" stroke-width="4" stroke-linecap="round"/><line x1="356.0" y1="1030.0" x2="374.0" y2="1030.0" stroke="#fff" stroke-width="7.0"/><line x1="365.0" y1="1016.0" x2="365.0" y2="1044.0" stroke="var(--red)" stroke-width="4.0" stroke-linecap="round"/><path d="M356.0 1030.0 A9 9 0 0 1 374.0 1030.0" fill="none" stroke="var(--gnd)" stroke-width="4.0" stroke-linecap="round"/><line x1="641.0" y1="345.0" x2="659.0" y2="345.0" stroke="#fff" stroke-width="6.0"/><line x1="650.0" y1="331.0" x2="650.0" y2="359.0" stroke="var(--gnd)" stroke-width="3.0" stroke-linecap="round"/><path d="M641.0 345.0 A9 9 0 0 1 659.0 345.0" fill="none" stroke="var(--sig)" stroke-width="3.0" stroke-linecap="round"/><line x1="641.0" y1="390.0" x2="659.0" y2="390.0" stroke="#fff" stroke-width="6.0"/><line x1="650.0" y1="376.0" x2="650.0" y2="404.0" stroke="var(--gnd)" stroke-width="3.0" stroke-linecap="round"/><path d="M641.0 390.0 A9 9 0 0 1 659.0 390.0" fill="none" stroke="var(--sig)" stroke-width="3.0" stroke-linecap="round"/><line x1="641.0" y1="435.0" x2="659.0" y2="435.0" stroke="#fff" stroke-width="6.0"/><line x1="650.0" y1="421.0" x2="650.0" y2="449.0" stroke="var(--gnd)" stroke-width="3.0" stroke-linecap="round"/><path d="M641.0 435.0 A9 9 0 0 1 659.0 435.0" fill="none" stroke="var(--sig)" stroke-width="3.0" stroke-linecap="round"/><line x1="641.0" y1="480.0" x2="659.0" y2="480.0" stroke="#fff" stroke-width="6.0"/><line x1="650.0" y1="466.0" x2="650.0" y2="494.0" stroke="var(--gnd)" stroke-width="3.0" stroke-linecap="round"/><path d="M641.0 480.0 A9 9 0 0 1 659.0 480.0" fill="none" stroke="var(--sig)" stroke-width="3.0" stroke-linecap="round"/><line x1="641.0" y1="525.0" x2="659.0" y2="525.0" stroke="#fff" stroke-width="6.0"/><line x1="650.0" y1="511.0" x2="650.0" y2="539.0" stroke="var(--gnd)" stroke-width="3.0" stroke-linecap="round"/><path d="M641.0 525.0 A9 9 0 0 1 659.0 525.0" fill="none" stroke="var(--sig)" stroke-width="3.0" stroke-linecap="round"/><line x1="641.0" y1="570.0" x2="659.0" y2="570.0" stroke="#fff" stroke-width="6.0"/><line x1="650.0" y1="556.0" x2="650.0" y2="584.0" stroke="var(--gnd)" stroke-width="3.0" stroke-linecap="round"/><path d="M641.0 570.0 A9 9 0 0 1 659.0 570.0" fill="none" stroke="var(--sig)" stroke-width="3.0" stroke-linecap="round"/><line x1="1371.0" y1="570.0" x2="1389.0" y2="570.0" stroke="#fff" stroke-width="6.0"/><line x1="1380.0" y1="556.0" x2="1380.0" y2="584.0" stroke="var(--gnd)" stroke-width="3.0" stroke-linecap="round"/><path d="M1371.0 570.0 A9 9 0 0 1 1389.0 570.0" fill="none" stroke="var(--rx)" stroke-width="3.0" stroke-linecap="round"/><line x1="1341.0" y1="570.0" x2="1359.0" y2="570.0" stroke="#fff" stroke-width="6.0"/><line x1="1350.0" y1="556.0" x2="1350.0" y2="584.0" stroke="var(--w33)" stroke-width="3.0" stroke-linecap="round"/><path d="M1341.0 570.0 A9 9 0 0 1 1359.0 570.0" fill="none" stroke="var(--rx)" stroke-width="3.0" stroke-linecap="round"/><line x1="1371.0" y1="615.0" x2="1389.0" y2="615.0" stroke="#fff" stroke-width="6.0"/><line x1="1380.0" y1="601.0" x2="1380.0" y2="629.0" stroke="var(--gnd)" stroke-width="3.0" stroke-linecap="round"/><path d="M1371.0 615.0 A9 9 0 0 1 1389.0 615.0" fill="none" stroke="var(--tx)" stroke-width="3.0" stroke-linecap="round"/><line x1="1341.0" y1="615.0" x2="1359.0" y2="615.0" stroke="#fff" stroke-width="6.0"/><line x1="1350.0" y1="601.0" x2="1350.0" y2="629.0" stroke="var(--w33)" stroke-width="3.0" stroke-linecap="round"/><path d="M1341.0 615.0 A9 9 0 0 1 1359.0 615.0" fill="none" stroke="var(--tx)" stroke-width="3.0" stroke-linecap="round"/></g></svg><div class="leg2">
+    <span><i style="background:var(--red)"></i>12 V (switched after the E-stop; faded = unswitched)</span>
+    <span><i style="background:var(--gnd)"></i>ground</span>
+    <span><i style="background:var(--w5)"></i>5 V</span>
+    <span><i style="background:var(--w33)"></i>3.3 V</span>
+    <span><i style="background:var(--sig)"></i>relay inputs</span>
+    <span><i style="background:var(--hx)"></i>HX711</span>
+    <span><i style="background:var(--tx)"></i>Nextion TX → ESP</span>
+    <span><i style="background:var(--rx)"></i>ESP → Nextion RX</span>
+    <span><i style="background:var(--flow)"></i>flow signal</span>
+    <span><i style="background:#7c3aed"></i>AC mains</span>
+    <span><i style="background:var(--ink)"></i>actuator / motor leads</span>
+  <span><svg viewBox="0 0 60 20" width="60" height="20"><line x1="0" y1="10" x2="60" y2="10" stroke="#1b2120" stroke-width="3"/><line x1="30" y1="0" x2="30" y2="20" stroke="#1b2120" stroke-width="3"/><circle cx="30" cy="10" r="5" fill="#1b2120"/></svg> connected (dot)</span><span><svg viewBox="0 0 60 20" width="60" height="20"><line x1="30" y1="0" x2="30" y2="20" stroke="#1b2120" stroke-width="3"/><line x1="0" y1="10" x2="21" y2="10" stroke="#1b2120" stroke-width="3"/><line x1="39" y1="10" x2="60" y2="10" stroke="#1b2120" stroke-width="3"/><path d="M21 10 A9 9 0 0 1 39 10" fill="none" stroke="#1b2120" stroke-width="3"/></svg> crossing, NOT connected (hop)</span></div>
+<div class="note">NOTE 1. A dot is a connection. A wire that hops over another with a small arc is not connected to it. NOTE 2. Low voltage only on the perfboard (5 V, 3.3 V, signals); the 12 V side and the mixer AC-DC supply stay on relay terminals. NOTE 3. Pin positions on the perfboard here are schematic: pins of one rail (5 V, GND, 3.3 V) are the same net, and the physical positions are on sheet 2. NOTE 4. Relay map follows the thesis: CH5 water valve, CH6 Bosch-type 30 A automotive relay for the mixer. The test-rig guides still use the bench map (CH5 mixer, CH6 water).</div>
+<div class="tb"><div><b>Project</b><span class="big">AUTOBRIQ</span><br>Automated charcoal briquette machine</div><div><b>Drawing</b>Whole-system wiring diagram</div><div><b>Sheet</b>1 of 2</div><div><b>Date</b>2026-10-22</div></div></div></div>
+<div class="sheet"><div class="inner"><svg viewBox="0 0 1110 640" role="img" aria-label="Perfboard layout: ESP32 in the middle on two female headers, signal breakout pins on the left and right edges, 5V, 3V3 and GND power pin strips along the bottom">
+      <defs>
+        <pattern id="holes" x="160" y="40" width="20" height="20" patternUnits="userSpaceOnUse">
+          <circle cx="10" cy="10" r="2.4" fill="var(--hole)"/>
+        </pattern>
+      </defs>
+      <!-- board -->
+      <rect x="160" y="40" width="760" height="540" rx="10" fill="var(--board)" stroke="var(--board-edge)" stroke-width="2"/>
+      <rect x="160" y="40" width="760" height="540" rx="10" fill="url(#holes)"/>
+
+      <!-- ESP32 module outline -->
+      <rect x="436" y="118" width="228" height="346" rx="8" fill="var(--esp)" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <rect x="480" y="96" width="140" height="34" rx="4" fill="none" stroke="var(--muted)" stroke-dasharray="3 3"/>
+      <text class="sub" x="550" y="117" text-anchor="middle">antenna end</text>
+      <rect x="524" y="448" width="52" height="30" rx="4" fill="none" stroke="var(--muted)" stroke-dasharray="3 3"/>
+      <text class="sub" x="550" y="496" text-anchor="middle">USB end</text>
+      <text class="title" x="550" y="270" text-anchor="middle">ESP32 DevKit V1</text>
+      <text class="sub" x="550" y="288" text-anchor="middle">30-pin, in two 15-pin</text>
+      <text class="sub" x="550" y="302" text-anchor="middle">female headers,</text>
+      <text class="sub" x="550" y="316" text-anchor="middle">rows 10 holes apart</text>
+
+      <!-- ESP32 header pins: left column x=450, right x=650, rows y=150..430 -->
+      <g>
+        <rect class="fpin" x="444" y="144" width="12" height="12"/><rect class="fpin" x="444" y="164" width="12" height="12"/><rect class="fpin" x="444" y="184" width="12" height="12"/><rect class="fpin" x="444" y="204" width="12" height="12"/><rect class="fpin" x="444" y="224" width="12" height="12"/>
+        <rect class="fpin" x="444" y="244" width="12" height="12"/><rect class="fpin" x="444" y="264" width="12" height="12"/><rect class="fpin" x="444" y="284" width="12" height="12"/><rect class="fpin" x="444" y="304" width="12" height="12"/><rect class="fpin" x="444" y="324" width="12" height="12"/>
+        <rect class="fpin" x="444" y="344" width="12" height="12"/><rect class="fpin" x="444" y="364" width="12" height="12"/><rect class="fpin" x="444" y="384" width="12" height="12"/><rect class="fpin" x="444" y="404" width="12" height="12"/><rect class="fpin" x="444" y="424" width="12" height="12"/>
+        <rect class="fpin" x="644" y="144" width="12" height="12"/><rect class="fpin" x="644" y="164" width="12" height="12"/><rect class="fpin" x="644" y="184" width="12" height="12"/><rect class="fpin" x="644" y="204" width="12" height="12"/><rect class="fpin" x="644" y="224" width="12" height="12"/>
+        <rect class="fpin" x="644" y="244" width="12" height="12"/><rect class="fpin" x="644" y="264" width="12" height="12"/><rect class="fpin" x="644" y="284" width="12" height="12"/><rect class="fpin" x="644" y="304" width="12" height="12"/><rect class="fpin" x="644" y="324" width="12" height="12"/>
+        <rect class="fpin" x="644" y="344" width="12" height="12"/><rect class="fpin" x="644" y="364" width="12" height="12"/><rect class="fpin" x="644" y="384" width="12" height="12"/><rect class="fpin" x="644" y="404" width="12" height="12"/><rect class="fpin" x="644" y="424" width="12" height="12"/>
+      </g>
+      <!-- ESP32 pin labels (inside the outline) -->
+      <g text-anchor="start">
+        <text class="pinl" x="462" y="154">EN</text><text class="pinl" x="462" y="174">VP</text><text class="pinl" x="462" y="194">VN</text>
+        <text class="pinl" x="462" y="214">D34</text><text class="pinl" x="462" y="234">D35</text>
+        <text class="pinu" x="462" y="254">D32</text><text class="pinu" x="462" y="274">D33</text><text class="pinu" x="462" y="294">D25</text>
+        <text class="pinu" x="462" y="314">D26</text><text class="pinu" x="462" y="334">D27</text>
+        <text class="pinu" x="462" y="354">D14</text><text class="pinl" x="462" y="374">D12 ✕</text><text class="pinu" x="462" y="394">D13</text>
+        <text class="pinu" x="462" y="414">GND</text><text class="pinu" x="462" y="434">VIN</text>
+      </g>
+      <g text-anchor="end">
+        <text class="pinu" x="638" y="154">D23</text><text class="pinl" x="638" y="174">D22</text><text class="pinl" x="638" y="194">TX0</text>
+        <text class="pinl" x="638" y="214">RX0</text><text class="pinl" x="638" y="234">D21</text>
+        <text class="pinu" x="638" y="254">D19</text><text class="pinu" x="638" y="274">D18</text><text class="pinl" x="638" y="294">D5 ✕</text>
+        <text class="pinu" x="638" y="314">TX2 (17)</text><text class="pinu" x="638" y="334">RX2 (16)</text>
+        <text class="pinl" x="638" y="354">D4</text><text class="pinl" x="638" y="374">D2 ✕</text><text class="pinl" x="638" y="394">D15 ✕</text>
+        <text class="pinu" x="638" y="414">GND</text><text class="pinu" x="638" y="434">3V3</text>
+      </g>
+
+      <!-- Power rails -->
+      <path class="rail" d="M190 510 H450" stroke="var(--w5)"/>
+      <path class="rail" d="M190 550 H890" stroke="var(--gnd)"/>
+      <path class="rail" d="M610 470 H890" stroke="var(--w33)"/>
+
+      <!-- Power wires from ESP -->
+      <path class="w" d="M450 430 V510" stroke="var(--w5)"/>
+      <path class="w" d="M450 410 H470 V550" stroke="var(--gnd)"/>
+      <path class="w" d="M650 430 V470" stroke="var(--w33)"/>
+
+      <!-- Left breakout signals -->
+      <path class="w" d="M450 394 H372" stroke="var(--flow)"/>
+      <rect x="292" y="384" width="80" height="20" rx="4" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="lblb" x="332" y="398" text-anchor="middle">R1 10k</text>
+      <path class="w" d="M292 394 H250" stroke="var(--flow)"/>
+      <path class="w" d="M450 250 H250" stroke="var(--sig)"/>
+      <path class="w" d="M450 270 H250" stroke="var(--sig)"/>
+      <path class="w" d="M450 290 H250" stroke="var(--sig)"/>
+      <path class="w" d="M450 310 H250" stroke="var(--sig)"/>
+      <path class="w" d="M450 330 H250" stroke="var(--sig)"/>
+      <path class="w" d="M450 350 H250" stroke="var(--sig)"/>
+
+      <!-- Right breakout signals -->
+      
+      <path class="w" d="M650 250 H850" stroke="var(--hx)"/>
+      <path class="w" d="M650 270 H850" stroke="var(--hx)"/>
+      <path class="w" d="M650 310 H850" stroke="var(--rx)"/>
+      <path class="w" d="M650 330 H850" stroke="var(--tx)"/>
+
+      <!-- Male breakout pins -->
+      <g class="pin">
+        <rect x="244" y="388" width="12" height="12"/><rect x="244" y="244" width="12" height="12"/><rect x="244" y="264" width="12" height="12"/><rect x="244" y="284" width="12" height="12"/><rect x="244" y="304" width="12" height="12"/><rect x="244" y="324" width="12" height="12"/><rect x="244" y="344" width="12" height="12"/>
+        <rect x="844" y="244" width="12" height="12"/><rect x="844" y="264" width="12" height="12"/><rect x="844" y="304" width="12" height="12"/><rect x="844" y="324" width="12" height="12"/>
+      </g>
+      <!-- Power pin strips -->
+      <g class="pin">
+        <rect x="244" y="504" width="12" height="12"/><rect x="264" y="504" width="12" height="12"/><rect x="284" y="504" width="12" height="12"/><rect x="304" y="504" width="12" height="12"/><rect x="324" y="504" width="12" height="12"/><rect x="344" y="504" width="12" height="12"/><rect x="364" y="504" width="12" height="12"/><rect x="384" y="504" width="12" height="12"/>
+        <rect x="244" y="544" width="12" height="12"/><rect x="264" y="544" width="12" height="12"/><rect x="284" y="544" width="12" height="12"/><rect x="304" y="544" width="12" height="12"/><rect x="324" y="544" width="12" height="12"/><rect x="344" y="544" width="12" height="12"/><rect x="364" y="544" width="12" height="12"/><rect x="384" y="544" width="12" height="12"/>
+        <rect x="724" y="544" width="12" height="12"/><rect x="744" y="544" width="12" height="12"/><rect x="764" y="544" width="12" height="12"/><rect x="784" y="544" width="12" height="12"/><rect x="804" y="544" width="12" height="12"/><rect x="824" y="544" width="12" height="12"/><rect x="844" y="544" width="12" height="12"/><rect x="864" y="544" width="12" height="12"/>
+        <rect x="724" y="464" width="12" height="12"/><rect x="744" y="464" width="12" height="12"/><rect x="764" y="464" width="12" height="12"/><rect x="784" y="464" width="12" height="12"/><rect x="804" y="464" width="12" height="12"/><rect x="824" y="464" width="12" height="12"/><rect x="844" y="464" width="12" height="12"/><rect x="864" y="464" width="12" height="12"/>
+      </g>
+      <text class="lblb" x="244" y="498" fill="var(--w5)" style="fill:var(--w5)">5V pins</text>
+      <text class="lblb" x="244" y="574" style="fill:var(--gnd)">GND pins</text>
+      <text class="lblb" x="724" y="574" style="fill:var(--gnd)">GND pins</text>
+      <text class="lblb" x="724" y="458" style="fill:var(--w33)">3V3 pins</text>
+
+      <!-- Power input terminal and capacitor -->
+      <rect x="174" y="494" width="32" height="72" rx="4" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <circle cx="190" cy="510" r="7" fill="none" stroke="var(--ink)" stroke-width="1.5"/><line x1="185" y1="510" x2="195" y2="510" stroke="var(--ink)" stroke-width="1.5"/>
+      <circle cx="190" cy="550" r="7" fill="none" stroke="var(--ink)" stroke-width="1.5"/><line x1="185" y1="550" x2="195" y2="550" stroke="var(--ink)" stroke-width="1.5"/>
+      <rect x="220" y="516" width="20" height="28" rx="6" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="lblb" x="230" y="528" text-anchor="middle">+</text>
+      <text class="pinl" x="230" y="540" text-anchor="middle">C1</text>
+
+      <!-- Edge labels: left -->
+      <g text-anchor="end">
+        <text class="lblb" x="150" y="398" style="fill:var(--flow)">FLOW SIG</text>
+        <text class="lblb" x="150" y="254" style="fill:var(--sig)">RELAY IN6</text>
+        <text class="lblb" x="150" y="274" style="fill:var(--sig)">RELAY IN5</text>
+        <text class="lblb" x="150" y="294" style="fill:var(--sig)">RELAY IN4</text>
+        <text class="lblb" x="150" y="314" style="fill:var(--sig)">RELAY IN3</text>
+        <text class="lblb" x="150" y="334" style="fill:var(--sig)">RELAY IN2</text>
+        <text class="lblb" x="150" y="354" style="fill:var(--sig)">RELAY IN1</text>
+        <text class="lblb" x="150" y="514" style="fill:var(--w5)">+5V IN</text>
+        <text class="sub" x="150" y="530">from EcoFlow USB-A</text>
+        <text class="lblb" x="150" y="554" style="fill:var(--gnd)">GND IN</text>
+      </g>
+      <!-- Edge labels: right -->
+      <g text-anchor="start">
+        
+        <text class="lblb" x="930" y="254" style="fill:var(--hx)">HX711 SCK</text>
+        <text class="lblb" x="930" y="274" style="fill:var(--hx)">HX711 DT</text>
+        <text class="lblb" x="930" y="314" style="fill:var(--rx)">NEXTION RX</text>
+        <text class="sub" x="930" y="328">yellow wire</text>
+        <text class="lblb" x="930" y="348" style="fill:var(--tx)">NEXTION TX</text>
+        <text class="sub" x="930" y="362">blue wire</text>
+      </g>
+      <line x1="856" y1="330" x2="928" y2="344" stroke="var(--tx)" stroke-width="1" stroke-dasharray="3 3"/>
+      <text class="sub" x="160" y="612">✕ = leave unconnected: D12, D2, D5, D15 affect boot or pulse at power-up. D14 is used for IN1: it pulses for a few ms at power-up, so the trapdoor-close relay may click once as the ESP32 starts.</text>
+    <g class="hops"></g></svg><div class="note">NOTE. Grid = 2.54 mm holes. Board 38 x 27 holes. X = leave unconnected: D12, D2, D5. Component side shown; the solder side is mirrored. Arc = hop, not connected.</div><div class="tb"><div><b>Project</b><span class="big">AUTOBRIQ</span><br>Automated charcoal briquette machine</div><div><b>Drawing</b>Perfboard layout, component side</div><div><b>Sheet</b>2 of 2</div><div><b>Date</b>2026-10-22</div></div></div></div>
+</body></html>

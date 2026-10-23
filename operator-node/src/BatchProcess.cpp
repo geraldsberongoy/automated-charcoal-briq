@@ -28,9 +28,7 @@ const char *stepName(Step step) {
     case Step::MIX:            return "MIX";
     case Step::OPEN_GATE:      return "OPEN GATE";
     case Step::POUR:           return "POUR";
-    case Step::SHAKE:          return "SHAKE";
     case Step::CLOSE_GATE:     return "CLOSE GATE";
-    case Step::LEVEL:          return "LEVEL";
     case Step::PRESS:          return "PRESS";
     case Step::RELEASE:        return "RELEASE";
     case Step::UNLOAD:         return "UNLOAD";
@@ -58,6 +56,9 @@ BatchProcess::BatchProcess(Outputs &outputs)
     _lastTickMs(0),
     _holdStartMs(0),
     _resetPhase(0),
+    _pressPosMs(0.0f),
+    _gatePosMs(0.0f),
+    _dwellMs(0),
     _pulseOn(false)
 {
   memset(&_snap, 0, sizeof(_snap));
@@ -67,6 +68,7 @@ BatchProcess::BatchProcess(Outputs &outputs)
 
 void BatchProcess::begin() {
   _queue = xQueueCreate(QUEUE_LEN, sizeof(Message));
+  _load.begin();
   _lastTickMs = millis();
   _enter(Step::SETUP_PAPER);
   _publish(_lastTickMs);
@@ -100,6 +102,10 @@ void BatchProcess::tick() {
   const uint32_t now = millis();
   const float dtS = (now - _lastTickMs) / 1000.0f;
   _lastTickMs = now;
+
+  _trackPosition(dtS * 1000.0f);   // drives set last tick moved the actuators
+  _load.poll();
+  _forceN = _load.ready() ? max(0.0f, _load.newtons()) : 0.0f;
 
   Message m;
   while (_queue && xQueueReceive(_queue, &m, 0) == pdTRUE) {
@@ -180,13 +186,18 @@ void BatchProcess::_enter(Step step) {
       _pulseOn = true;
       _out.driveOnly(Output::MIXER_MOTOR, Drive::ON);
       break;
-    case Step::SHAKE:      _out.driveOnly(Output::MIXER_ERM,   Drive::ON);      break;
-    case Step::CLOSE_GATE: _out.driveOnly(Output::GATE_ACT,    Drive::EXTEND);  break;
-    case Step::LEVEL:      _out.driveOnly(Output::BOX_ERM,     Drive::ON);      break;
+    case Step::CLOSE_GATE:
+      _dwellMs = _retractMs(_gatePosMs);
+      _out.driveOnly(Output::GATE_ACT, Drive::EXTEND);
+      break;
     case Step::PRESS:      _out.driveOnly(Output::PRESS_ACT,   Drive::EXTEND);  break;
-    case Step::RELEASE:    _out.driveOnly(Output::PRESS_ACT,   Drive::RETRACT); break;
+    case Step::RELEASE:
+      _dwellMs = _retractMs(_pressPosMs);
+      _out.driveOnly(Output::PRESS_ACT, Drive::RETRACT);
+      break;
     case Step::RESETTING:
       _resetPhase = 0;
+      _dwellMs    = _retractMs(_pressPosMs);
       _out.driveOnly(Output::PRESS_ACT, Drive::RETRACT);
       break;
     case Step::UNLOAD:
@@ -202,11 +213,12 @@ void BatchProcess::_enter(Step step) {
 // ── Private: _advance() — timers and sensor thresholds ───────────────────────
 
 void BatchProcess::_advance(uint32_t now, float dtS) {
-  const uint32_t elapsed = now - _stepStartMs;
+  // a command applied this tick may have restarted the step after `now` was read
+  const uint32_t elapsed = now > _stepStartMs ? now - _stepStartMs : 0;
 
   switch (_step) {
     case Step::WATER:
-      _flowL += SIM_FLOW_LPS * dtS;              // simulated: YF-S201 pulses
+      _flowL += SIM_FLOW_LPS * dtS;              // estimated from valve time (flow sensor off)
       if (_flowL >= FULL_WATER_L * _waterPct / 100.0f) _enter(Step::MIX);
       break;
 
@@ -221,7 +233,7 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
     case Step::POUR: {
       const uint32_t cycle = POUR_ON_MS + POUR_OFF_MS;
       if (elapsed >= cycle * POUR_PULSES) {
-        _enter(Step::SHAKE);
+        _enter(Step::CLOSE_GATE);
         break;
       }
       const bool on = (elapsed % cycle) < POUR_ON_MS;
@@ -233,31 +245,20 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
       break;
     }
 
-    case Step::SHAKE:
-      if (elapsed >= SHAKE_MS) _enter(Step::CLOSE_GATE);
-      break;
-
     case Step::CLOSE_GATE:
-      if (elapsed >= GATE_STROKE_MS) _enter(Step::LEVEL);
-      break;
-
-    case Step::LEVEL:
-      if (elapsed >= LEVEL_MS) _enter(Step::PRESS);
+      if (elapsed >= _dwellMs) _enter(Step::PRESS);
       break;
 
     case Step::PRESS:
+      _peakForceN = max(_peakForceN, _forceN);
       if (_holdStartMs == 0) {
-        _forceN += SIM_FORCE_NPS * dtS;          // simulated: S-type + HX711
-        _peakForceN = max(_peakForceN, _forceN);
-        if (_forceN >= PRESS_TARGET_N) {
-          _forceN = PRESS_TARGET_N + 10.0f * randUnit();
-          _peakForceN = max(_peakForceN, _forceN);
+        if (_load.ready() && _forceN >= PRESS_TARGET_N) {
           _holdStartMs = now;
           _out.allOff();                          // actuator holds position unpowered
         } else if (elapsed >= PRESS_TIMEOUT_MS) {
-          Serial.println(F("[PROC] Press target not reached — stopping"));
-          _stoppedDuring = Step::PRESS;
-          _enter(Step::STOPPED);
+          // Not an emergency: the cycle goes on and the press retracts home
+          Serial.println(F("[PROC] Press target not reached in time, retracting"));
+          _enter(Step::RELEASE);
         }
       } else if (now - _holdStartMs >= PRESS_HOLD_MS) {
         _enter(Step::RELEASE);
@@ -265,17 +266,16 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
       break;
 
     case Step::RELEASE:
-      _forceN = max(0.0f, _forceN - SIM_FORCE_NPS * 4.0f * dtS);
-      if (elapsed >= PRESS_STROKE_MS) _enter(Step::UNLOAD);
+      if (elapsed >= _dwellMs) _enter(Step::UNLOAD);
       break;
 
     case Step::RESETTING:
-      _forceN = max(0.0f, _forceN - SIM_FORCE_NPS * 4.0f * dtS);
-      if (_resetPhase == 0 && elapsed >= PRESS_STROKE_MS) {
+      if (_resetPhase == 0 && elapsed >= _dwellMs) {
         _resetPhase = 1;
         _stepStartMs = now;
+        _dwellMs = _retractMs(_gatePosMs);
         _out.driveOnly(Output::GATE_ACT, Drive::EXTEND);
-      } else if (_resetPhase == 1 && elapsed >= GATE_STROKE_MS) {
+      } else if (_resetPhase == 1 && elapsed >= _dwellMs) {
         _waterPct = WATER_MAX_PCT;
         _enter(Step::SETUP_PAPER);
       }
@@ -284,6 +284,21 @@ void BatchProcess::_advance(uint32_t now, float dtS) {
     default:
       break;
   }
+}
+
+// ── Private: actuator position estimate ──────────────────────────────────────
+
+void BatchProcess::_trackPosition(float dtMs) {
+  const Drive p = _out.state(Output::PRESS_ACT);
+  const Drive g = _out.state(Output::GATE_ACT);
+  if (p == Drive::EXTEND)       _pressPosMs += dtMs;
+  else if (p == Drive::RETRACT) _pressPosMs = max(0.0f, _pressPosMs - dtMs);
+  if (g == Drive::RETRACT)      _gatePosMs += dtMs;      // retract = open
+  else if (g == Drive::EXTEND)  _gatePosMs = max(0.0f, _gatePosMs - dtMs);
+}
+
+uint32_t BatchProcess::_retractMs(float posMs) {
+  return static_cast<uint32_t>(posMs * RETRACT_FACTOR) + RETRACT_MARGIN_MS;
 }
 
 // ── Private: _publish() ──────────────────────────────────────────────────────
@@ -300,7 +315,7 @@ void BatchProcess::_publish(uint32_t now) {
   s.forceN        = _forceN;
   s.peakForceN    = _peakForceN;
   s.mixerA        = _out.state(Output::MIXER_MOTOR) == Drive::ON ? 4.6f + 0.4f * randUnit() : 0.0f;
-  s.stepElapsedMs = now - _stepStartMs;
+  s.stepElapsedMs = now > _stepStartMs ? now - _stepStartMs : 0;
   s.pressHolding  = _step == Step::PRESS && _holdStartMs != 0;
   s.resetPhase    = _resetPhase;
   s.pulseOn       = _pulseOn;
@@ -311,12 +326,10 @@ void BatchProcess::_publish(uint32_t now) {
   switch (_step) {
     case Step::MIX:        s.stepDurationMs = MIX_MS; break;
     case Step::OPEN_GATE:
-    case Step::CLOSE_GATE: s.stepDurationMs = GATE_STROKE_MS; break;
+    case Step::CLOSE_GATE: s.stepDurationMs = _dwellMs; break;
     case Step::POUR:       s.stepDurationMs = cycle * POUR_PULSES; break;
-    case Step::SHAKE:      s.stepDurationMs = SHAKE_MS; break;
-    case Step::LEVEL:      s.stepDurationMs = LEVEL_MS; break;
-    case Step::RELEASE:    s.stepDurationMs = PRESS_STROKE_MS; break;
-    case Step::RESETTING:  s.stepDurationMs = _resetPhase == 0 ? PRESS_STROKE_MS : GATE_STROKE_MS; break;
+    case Step::RELEASE:
+    case Step::RESETTING:  s.stepDurationMs = _dwellMs; break;
     default:               s.stepDurationMs = 0; break;
   }
 
@@ -326,11 +339,6 @@ void BatchProcess::_publish(uint32_t now) {
   for (uint8_t i = 0; i < static_cast<uint8_t>(Output::COUNT); ++i) {
     s.outputs[i] = _out.state(static_cast<Output>(i));
   }
-
-  // Simulated solar/battery telemetry for the header
-  const float t = now / 1000.0f;
-  s.batteryV = 12.9f + 0.3f * sinf(t / 60.0f);
-  s.solarA   = 1.5f + 0.5f * (0.5f + 0.5f * sinf(t / 7.0f));
 
   portENTER_CRITICAL(&_mux);
   _snap = s;

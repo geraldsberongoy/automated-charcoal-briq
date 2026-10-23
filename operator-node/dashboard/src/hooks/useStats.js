@@ -26,10 +26,6 @@ function buildMockStats(machine, bootTs, now) {
     dns_intercepts: Math.floor(uptimeMs / 3000),
     process: toProcess(machine, now),
     outputs: { ...machine.outputs },
-    power: {
-      battery_voltage_v: +(12.9 + 0.3 * Math.sin(uptimeMs / 60000)).toFixed(1),
-      solar_amperage_a: +(1.5 + 0.5 * (0.5 + 0.5 * Math.sin(uptimeMs / 7000))).toFixed(1),
-    },
   };
 }
 

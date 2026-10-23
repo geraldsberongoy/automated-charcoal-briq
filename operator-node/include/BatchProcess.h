@@ -8,20 +8,19 @@
 //   1 WATER        solenoid open until target volume
 //   2 MIX          mixer motor on (timed)
 //   3 OPEN_GATE    gate actuator retracts (full stroke)
-//   4 POUR         mixer motor pulses (N bursts)
-//   5 SHAKE        mixer-container vibrator on (timed)
-//   6 CLOSE_GATE   gate actuator extends (full stroke)
-//   7 LEVEL        compression-box vibrator on (timed)
-//   8 PRESS        press actuator extends until target force, then holds
-//   9 RELEASE      press actuator retracts (full stroke)
-//   10 UNLOAD      all off; operator removes the briquette, presses DONE
+//   4 POUR         mixer motor pulses 1 s on / 1 s off (the vibration), N bursts
+//   5 CLOSE_GATE   gate actuator extends (full stroke)
+//   6 PRESS        press actuator extends until target force, then holds
+//   7 RELEASE      press actuator retracts (full stroke)
+//   8 UNLOAD       all off; operator removes the briquette, presses DONE
 //   STOPPED        STOP pressed: all off until RESET
 //   RESETTING      press retracts, then gate closes, then back to SETUP_PAPER
 //
 // Every step drives exactly one output through Outputs::driveOnly().
 //
-// Sensors are SIMULATED (flow meter, S-type load cell) until their drivers
-// exist — see the "simulated" comments in BatchProcess.cpp.
+// The S-type load cell (HX711) is read for real. The YF-S201 flow sensor is
+// off, so the water volume is estimated from valve-open time (see
+// SIM_FLOW_LPS), and the mixer current is a simulated value.
 //
 // Threading: tick() runs in its own FreeRTOS task (startTask(), every
 // TICK_MS, above loop() priority) so display I/O can never delay a valve
@@ -33,6 +32,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include "Outputs.h"
+#include "LoadCell.h"
 
 // Divide all durations (and multiply sim rates) for quick bench tests:
 //   -DPROCESS_TIME_DIVISOR=10
@@ -48,23 +48,25 @@ namespace ProcessConfig {
   constexpr uint8_t  WATER_MAX_PCT     = 100;
   constexpr uint8_t  WATER_STEP_PCT    = 10;
 
-  constexpr uint32_t MIX_MS            = 180000UL / DIV;
-  constexpr uint32_t GATE_STROKE_MS    = 5000UL   / DIV;
-  constexpr uint8_t  POUR_PULSES       = 6;
-  constexpr uint32_t POUR_ON_MS        = 2000UL   / DIV;
-  constexpr uint32_t POUR_OFF_MS       = 3000UL   / DIV;
-  constexpr uint32_t SHAKE_MS          = 15000UL  / DIV;
-  constexpr uint32_t LEVEL_MS          = 30000UL  / DIV;
-  // Simulation value only. The real threshold is set by load-cell calibration and
-  // must stay below the 1,500 N thrust of the 40 cm actuator (thesis).
-  constexpr float    PRESS_TARGET_N    = 2000.0f;
+  constexpr uint32_t MIX_MS            = 5000UL   / DIV;
+  constexpr uint32_t GATE_STROKE_MS    = 8000UL   / DIV;  // demo: 5.6 cm of the 15 cm stroke at 7 mm/s
+  constexpr uint8_t  POUR_PULSES       = 4;
+  constexpr uint32_t POUR_ON_MS        = 1000UL   / DIV;
+  constexpr uint32_t POUR_OFF_MS       = 1000UL   / DIV;
+  // Bench stop load (10 kg, same as actuator-test). The final threshold comes
+  // from load-cell calibration and must stay below the 1,500 N actuator thrust.
+  constexpr float    PRESS_TARGET_N    = 98.1f;
   constexpr uint32_t PRESS_HOLD_MS     = 3000UL   / DIV;
-  constexpr uint32_t PRESS_STROKE_MS   = 18000UL  / DIV;  // full 40 cm travel
-  constexpr uint32_t PRESS_TIMEOUT_MS  = 25000UL  / DIV;  // target never reached → stop
+  // Every retract (gate close, press release, RESET after a STOP) runs for as
+  // long as the actuator was extended, plus this margin, so it always ends home.
+  // The actuators' built-in end limits stop them if the estimate runs long.
+  constexpr float    RETRACT_FACTOR    = 1.2f;
+  constexpr uint32_t RETRACT_MARGIN_MS = 1500UL   / DIV;
+  constexpr uint32_t PRESS_TIMEOUT_MS  = 30000UL  / DIV;  // target never reached → stop
 
-  // Simulated sensor rates
-  constexpr float    SIM_FLOW_LPS      = 0.25f  * DIV;
-  constexpr float    SIM_FORCE_NPS     = 150.0f * DIV;
+  // Water volume from valve-open time while the flow sensor is off (bench
+  // demo dose: full level in 10 s). Replace with YF-S201 pulses once the signal is clean.
+  constexpr float    SIM_FLOW_LPS      = 0.30f  * DIV;
 
   // FSM task
   constexpr uint32_t TICK_MS           = 10;
@@ -75,7 +77,7 @@ namespace ProcessConfig {
 
 enum class Step : uint8_t {
   SETUP_PAPER, SETUP_CHARCOAL,
-  WATER, MIX, OPEN_GATE, POUR, SHAKE, CLOSE_GATE, LEVEL, PRESS, RELEASE, UNLOAD,
+  WATER, MIX, OPEN_GATE, POUR, CLOSE_GATE, PRESS, RELEASE, UNLOAD,
   STOPPED, RESETTING
 };
 
@@ -83,7 +85,7 @@ enum class Cmd : uint8_t { SET_WATER, NEXT, BACK, START, STOP, RESET, DONE };
 
 struct BatchSnapshot {
   Step     step;
-  uint8_t  runIndex;        // 1..10 for WATER..UNLOAD, 0 otherwise
+  uint8_t  runIndex;        // 1..8 for WATER..UNLOAD, 0 otherwise
   Step     stoppedDuring;   // valid in STOPPED
   uint8_t  waterPct;
   float    targetL;
@@ -99,8 +101,6 @@ struct BatchSnapshot {
   uint8_t  resetPhase;      // RESETTING: 0 = press retract, 1 = gate close
   uint32_t batchMs;         // WATER start → UNLOAD
   Drive    outputs[static_cast<uint8_t>(Output::COUNT)];
-  float    batteryV;
-  float    solarA;
 };
 
 /**
@@ -142,6 +142,7 @@ private:
   struct Message { Cmd cmd; uint8_t arg; };
 
   Outputs      &_out;
+  LoadCell      _load;
   QueueHandle_t _queue;
   mutable portMUX_TYPE _mux;
 
@@ -158,6 +159,9 @@ private:
   uint32_t _lastTickMs;
   uint32_t _holdStartMs;    // PRESS: 0 until target reached
   uint8_t  _resetPhase;
+  float    _pressPosMs;     // estimated extension: ms driven out minus ms driven back
+  float    _gatePosMs;      // same for the gate (retract = open)
+  uint32_t _dwellMs;        // CLOSE_GATE / RELEASE / RESETTING phase length
   bool     _pulseOn;
 
   BatchSnapshot _snap;      // published copy, guarded by _mux
@@ -166,6 +170,8 @@ private:
   void _enter(Step step);
   void _advance(uint32_t now, float dtS);
   void _publish(uint32_t now);
+  void _trackPosition(float dtMs);
+  static uint32_t _retractMs(float posMs);
 
   static void _taskEntry(void *self);
 };

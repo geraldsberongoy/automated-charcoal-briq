@@ -22,9 +22,6 @@ function gaugeFor(p) {
               `${p.flow_l.toFixed(2)} L`, p.target_l ? p.flow_l / p.target_l : 0];
     case 'MIX':
       return ['Mixing time left', `${left}  ·  ${p.mixer_a.toFixed(1)} A`, timed];
-    case 'SHAKE':
-    case 'LEVEL':
-      return ['Time left', left, timed];
     case 'OPEN GATE':
     case 'CLOSE GATE':
     case 'RELEASE':
@@ -139,7 +136,7 @@ function OperatorPanel({ p, sendCommand }) {
   if (p.step === 'UNLOAD') {
     return (
       <>
-        <div className="prompt-title">Step 10: Briquette ready</div>
+        <div className="prompt-title">Step 8: Briquette ready</div>
         <p className="prompt-desc">
           All motors are off. Remove the press box and put the briquette into your drying container.
         </p>
@@ -193,7 +190,7 @@ export default function BatchWorkspace({ stats, loading, sendCommand, logEntries
   return (
     <>
       <p className="section-label">Batch Progress · one machine action at a time</p>
-      <div className="wizard wizard--10">
+      <div className="wizard wizard--8">
         {RUN_STEPS.map((s, idx) => {
           const n = idx + 1;
           const isActive = n === active;
