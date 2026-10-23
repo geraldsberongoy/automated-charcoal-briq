@@ -55,7 +55,7 @@ Man-hours, throughput time, production rate (units/hr), batch yield (target at l
 
 **Main firmware** (`operator-node/src`, `include`): complete batch FSM (`BatchProcess`), Nextion screens drawn at runtime on the 800x480 panel, SoftAP + DNS captive portal + WebSocket `/ws` + `/api/stats`, React PWA in `operator-node/dashboard`. **Outputs are simulated** (`OUTPUTS_LIVE=0`) and the flow and force sensors are simulated.
 
-**Bench rig** (`operator-node/actuator-test`, env `actuator-test`, merged in PR #4): standalone sketch that drives the real relays from the Nextion, a phone page, or serial. Relay map as wired: IN1/IN2 trapdoor (GPIO25/26), IN3/IN4 press (GPIO27/33), IN5 mixer (GPIO23), IN6 water valve (GPIO32). AUTO RUN plays water, mix, trapdoor, mixer burst, close, press, home on timers. HX711 load cell (DT GPIO19, SCK GPIO18) reads and zeroes; the press stops at `PRESS_STOP_KG` (10 kg test value, scale still uncalibrated). Flow sensor code is present but off (`FLOW_ENABLED = false`) because GPIO34 counted noise.
+**Bench rig** (`operator-node/actuator-test`, env `actuator-test`, merged in PR #4): standalone sketch that drives the real relays from the Nextion, a phone page, or serial. Relay map as wired: IN1/IN2 trapdoor (GPIO14/27), IN3/IN4 press (GPIO26/25), IN5 mixer (GPIO33), IN6 water valve (GPIO32); IN1 on GPIO14 may click once at power-up. AUTO RUN plays water, mix, trapdoor, mixer burst, close, press, home on timers. HX711 load cell (DT GPIO19, SCK GPIO18) reads and zeroes; the press stops at `PRESS_STOP_KG` (10 kg test value, scale 13,935 counts/kg measured with a 2 kg weight). Flow sensor code is present but off (`FLOW_ENABLED = false`) because GPIO34 counted noise, flow pin moved to GPIO13.
 
 Wiring, load cell, solenoid, flow sensor and perfboard guides exist as claude.ai artifacts, private to the author's account.
 
@@ -78,7 +78,7 @@ Fix the build to match the thesis unless the thesis is the one that is wrong (se
 | 9 | Compression force threshold set by calibration; actuator thrust is 1,500 N | `PRESS_TARGET_N = 2000` in the simulation; bench scale uncalibrated | Calibrate the load cell, then set the real threshold below 1,500 N |
 | 10 | SoftAP supports 4 to 5 clients reliably | `AP_MAX_CONN = 8` | Documented as a reliability limit; keep 8 or lower it |
 | 11 | PWA self-contained, no CDNs (fonts, icons, CSS) | `index.css` imported Google Fonts | Fixed in this change (system font stack) |
-| 12 | Flow sensor drives valve closure at the preset volume | Bench flow sensor off; main firmware simulates flow | Fix the GPIO34 signal (pull-up) or ship timed water and say so |
+| 12 | Flow sensor drives valve closure at the preset volume | Bench flow sensor off; main firmware simulates flow | Fix the flow signal (moved from GPIO34 to GPIO13; bench noise not yet re-tested) or ship timed water and say so |
 
 ## 4. Places where the thesis disagrees with itself
 

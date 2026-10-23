@@ -256,11 +256,11 @@ svg .fpin { fill: var(--panel); stroke: var(--ink); stroke-width: 1.2; }
       <!-- left edge pins -->
       <g class="pin">
         <rect x="634" y="294" width="12" height="12"/><rect x="634" y="334" width="12" height="12"/><rect x="634" y="364" width="12" height="12"/>
-        <rect x="634" y="394" width="12" height="12"/><rect x="634" y="424" width="12" height="12"/><rect x="634" y="454" width="12" height="12"/>
+        <rect x="634" y="394" width="12" height="12"/><rect x="634" y="424" width="12" height="12"/><rect x="634" y="454" width="12" height="12"/><rect x="634" y="484" width="12" height="12"/>
       </g>
       <g class="pinl" text-anchor="start">
-        <text x="652" y="304">FLOW</text><text x="652" y="344">IN6</text><text x="652" y="374">IN4</text>
-        <text x="652" y="404">IN1</text><text x="652" y="434">IN2</text><text x="652" y="464">IN3</text>
+        <text x="652" y="304">FLOW</text><text x="652" y="344">IN6</text><text x="652" y="374">IN5</text>
+        <text x="652" y="404">IN4</text><text x="652" y="434">IN3</text><text x="652" y="464">IN2</text><text x="652" y="494">IN1</text>
       </g>
       <!-- power terminal -->
       <rect x="642" y="576" width="26" height="56" rx="3" fill="var(--panel)" stroke="var(--ink)"/>
@@ -268,11 +268,11 @@ svg .fpin { fill: var(--panel); stroke: var(--ink); stroke-width: 1.2; }
       <text class="pinl" x="674" y="594">+5V IN</text><text class="pinl" x="674" y="624">GND IN</text>
       <!-- right edge pins -->
       <g class="pin">
-        <rect x="964" y="254" width="12" height="12"/><rect x="964" y="334" width="12" height="12"/><rect x="964" y="364" width="12" height="12"/>
+        <rect x="964" y="334" width="12" height="12"/><rect x="964" y="364" width="12" height="12"/>
         <rect x="964" y="424" width="12" height="12"/><rect x="964" y="454" width="12" height="12"/>
       </g>
       <g class="pinl" text-anchor="end">
-        <text x="958" y="264">IN5</text><text x="958" y="344">HX DT</text><text x="958" y="374">HX SCK</text>
+        <text x="958" y="344">HX DT</text><text x="958" y="374">HX SCK</text>
         <text x="958" y="434">NX RX</text><text x="958" y="464">NX TX</text>
       </g>
       <!-- bottom strips -->
@@ -286,12 +286,12 @@ svg .fpin { fill: var(--panel); stroke: var(--ink); stroke-width: 1.2; }
       <text class="lblb" x="900" y="636" text-anchor="middle" style="fill:var(--w33)">3V3</text>
 
       <!-- ===== Dupont: relay inputs ===== -->
-      <path class="w" d="M520 330 L640 400" stroke="var(--sig)" style="stroke-width:2.5"/>
-      <path class="w" d="M520 360 L640 430" stroke="var(--sig)" style="stroke-width:2.5"/>
-      <path class="w" d="M520 390 L640 460" stroke="var(--sig)" style="stroke-width:2.5"/>
-      <path class="w" d="M520 420 L640 370" stroke="var(--sig)" style="stroke-width:2.5"/>
+      <path class="w" d="M520 330 L640 490" stroke="var(--sig)" style="stroke-width:2.5"/>
+      <path class="w" d="M520 360 L640 460" stroke="var(--sig)" style="stroke-width:2.5"/>
+      <path class="w" d="M520 390 L640 430" stroke="var(--sig)" style="stroke-width:2.5"/>
+      <path class="w" d="M520 420 L640 400" stroke="var(--sig)" style="stroke-width:2.5"/>
+      <path class="w" d="M520 450 L640 370" stroke="var(--sig)" style="stroke-width:2.5"/>
       <path class="w" d="M520 480 L640 340" stroke="var(--sig)" style="stroke-width:2.5"/>
-      <path class="w" d="M520 450 H560 V205 H995 V260 H970" stroke="var(--sig)" style="stroke-width:2.5"/>
       <!-- relay power -->
       <path class="w" d="M520 300 H590 V680 H765 V650" stroke="var(--gnd)" style="stroke-width:2.5"/>
       <path class="w" d="M520 520 H575 V695 H890 V650" stroke="var(--w33)" style="stroke-width:2.5"/>
@@ -469,10 +469,10 @@ svg .fpin { fill: var(--panel); stroke: var(--ink); stroke-width: 1.2; }
       <!-- ESP32 pin labels (inside the outline) -->
       <g text-anchor="start">
         <text class="pinl" x="462" y="154">EN</text><text class="pinl" x="462" y="174">VP</text><text class="pinl" x="462" y="194">VN</text>
-        <text class="pinu" x="462" y="214">D34</text><text class="pinl" x="462" y="234">D35</text>
+        <text class="pinl" x="462" y="214">D34</text><text class="pinl" x="462" y="234">D35</text>
         <text class="pinu" x="462" y="254">D32</text><text class="pinu" x="462" y="274">D33</text><text class="pinu" x="462" y="294">D25</text>
         <text class="pinu" x="462" y="314">D26</text><text class="pinu" x="462" y="334">D27</text>
-        <text class="pinl" x="462" y="354">D14 ✕</text><text class="pinl" x="462" y="374">D12 ✕</text><text class="pinl" x="462" y="394">D13</text>
+        <text class="pinu" x="462" y="354">D14</text><text class="pinl" x="462" y="374">D12 ✕</text><text class="pinu" x="462" y="394">D13</text>
         <text class="pinu" x="462" y="414">GND</text><text class="pinu" x="462" y="434">VIN</text>
       </g>
       <g text-anchor="end">
@@ -495,18 +495,19 @@ svg .fpin { fill: var(--panel); stroke: var(--ink); stroke-width: 1.2; }
       <path class="w" d="M650 430 V470" stroke="var(--w33)"/>
 
       <!-- Left breakout signals -->
-      <path class="w" d="M450 210 H372" stroke="var(--flow)"/>
-      <rect x="292" y="200" width="80" height="20" rx="4" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
-      <text class="lblb" x="332" y="214" text-anchor="middle">R1 10k</text>
-      <path class="w" d="M292 210 H250" stroke="var(--flow)"/>
+      <path class="w" d="M450 394 H372" stroke="var(--flow)"/>
+      <rect x="292" y="384" width="80" height="20" rx="4" fill="var(--panel)" stroke="var(--ink)" stroke-width="1.5"/>
+      <text class="lblb" x="332" y="398" text-anchor="middle">R1 10k</text>
+      <path class="w" d="M292 394 H250" stroke="var(--flow)"/>
       <path class="w" d="M450 250 H250" stroke="var(--sig)"/>
       <path class="w" d="M450 270 H250" stroke="var(--sig)"/>
       <path class="w" d="M450 290 H250" stroke="var(--sig)"/>
       <path class="w" d="M450 310 H250" stroke="var(--sig)"/>
       <path class="w" d="M450 330 H250" stroke="var(--sig)"/>
+      <path class="w" d="M450 350 H250" stroke="var(--sig)"/>
 
       <!-- Right breakout signals -->
-      <path class="w" d="M650 150 H850" stroke="var(--sig)"/>
+      
       <path class="w" d="M650 250 H850" stroke="var(--hx)"/>
       <path class="w" d="M650 270 H850" stroke="var(--hx)"/>
       <path class="w" d="M650 310 H850" stroke="var(--rx)"/>
@@ -514,8 +515,8 @@ svg .fpin { fill: var(--panel); stroke: var(--ink); stroke-width: 1.2; }
 
       <!-- Male breakout pins -->
       <g class="pin">
-        <rect x="244" y="204" width="12" height="12"/><rect x="244" y="244" width="12" height="12"/><rect x="244" y="264" width="12" height="12"/><rect x="244" y="284" width="12" height="12"/><rect x="244" y="304" width="12" height="12"/><rect x="244" y="324" width="12" height="12"/>
-        <rect x="844" y="144" width="12" height="12"/><rect x="844" y="244" width="12" height="12"/><rect x="844" y="264" width="12" height="12"/><rect x="844" y="304" width="12" height="12"/><rect x="844" y="324" width="12" height="12"/>
+        <rect x="244" y="388" width="12" height="12"/><rect x="244" y="244" width="12" height="12"/><rect x="244" y="264" width="12" height="12"/><rect x="244" y="284" width="12" height="12"/><rect x="244" y="304" width="12" height="12"/><rect x="244" y="324" width="12" height="12"/><rect x="244" y="344" width="12" height="12"/>
+        <rect x="844" y="244" width="12" height="12"/><rect x="844" y="264" width="12" height="12"/><rect x="844" y="304" width="12" height="12"/><rect x="844" y="324" width="12" height="12"/>
       </g>
       <!-- Power pin strips -->
       <g class="pin">
@@ -539,19 +540,20 @@ svg .fpin { fill: var(--panel); stroke: var(--ink); stroke-width: 1.2; }
 
       <!-- Edge labels: left -->
       <g text-anchor="end">
-        <text class="lblb" x="150" y="214" style="fill:var(--flow)">FLOW SIG</text>
+        <text class="lblb" x="150" y="398" style="fill:var(--flow)">FLOW SIG</text>
         <text class="lblb" x="150" y="254" style="fill:var(--sig)">RELAY IN6</text>
-        <text class="lblb" x="150" y="274" style="fill:var(--sig)">RELAY IN4</text>
-        <text class="lblb" x="150" y="294" style="fill:var(--sig)">RELAY IN1</text>
-        <text class="lblb" x="150" y="314" style="fill:var(--sig)">RELAY IN2</text>
-        <text class="lblb" x="150" y="334" style="fill:var(--sig)">RELAY IN3</text>
+        <text class="lblb" x="150" y="274" style="fill:var(--sig)">RELAY IN5</text>
+        <text class="lblb" x="150" y="294" style="fill:var(--sig)">RELAY IN4</text>
+        <text class="lblb" x="150" y="314" style="fill:var(--sig)">RELAY IN3</text>
+        <text class="lblb" x="150" y="334" style="fill:var(--sig)">RELAY IN2</text>
+        <text class="lblb" x="150" y="354" style="fill:var(--sig)">RELAY IN1</text>
         <text class="lblb" x="150" y="514" style="fill:var(--w5)">+5V IN</text>
         <text class="sub" x="150" y="530">from EcoFlow USB-A</text>
         <text class="lblb" x="150" y="554" style="fill:var(--gnd)">GND IN</text>
       </g>
       <!-- Edge labels: right -->
       <g text-anchor="start">
-        <text class="lblb" x="930" y="154" style="fill:var(--sig)">RELAY IN5</text>
+        
         <text class="lblb" x="930" y="254" style="fill:var(--hx)">HX711 DT</text>
         <text class="lblb" x="930" y="274" style="fill:var(--hx)">HX711 SCK</text>
         <text class="lblb" x="930" y="314" style="fill:var(--rx)">NEXTION RX</text>
@@ -560,7 +562,7 @@ svg .fpin { fill: var(--panel); stroke: var(--ink); stroke-width: 1.2; }
         <text class="sub" x="930" y="362">blue wire</text>
       </g>
       <line x1="856" y1="330" x2="928" y2="344" stroke="var(--tx)" stroke-width="1" stroke-dasharray="3 3"/>
-      <text class="sub" x="160" y="612">✕ = leave unconnected: D12, D14, D2, D5, D15 affect boot or pulse at power-up.</text>
+      <text class="sub" x="160" y="612">✕ = leave unconnected: D12, D2, D5, D15 affect boot or pulse at power-up. D14 is used for IN1: it pulses for a few ms at power-up, so the trapdoor-close relay may click once as the ESP32 starts.</text>
     </svg>
   </div>
   <div class="legend">
@@ -588,17 +590,17 @@ svg .fpin { fill: var(--panel); stroke: var(--ink); stroke-width: 1.2; }
         <tr><td><span class="dot" style="background:var(--gnd)"></span>GND</td><td>Screw terminal GND</td><td>GND rail (full width) → ESP32 <strong>GND</strong> (left column)</td><td>20 to 22 AWG</td></tr>
         <tr><td><span class="dot" style="background:var(--w33)"></span>3V3</td><td>ESP32 <strong>3V3</strong></td><td>3V3 rail (bottom right)</td><td>22 to 24 AWG</td></tr>
         <tr><td><span class="dot" style="background:var(--w5)"></span>C1</td><td>470 µF + leg on 5V rail</td><td>− leg (striped side) on GND rail</td><td>Next to the screw terminal</td></tr>
-        <tr><td><span class="dot" style="background:var(--sig)"></span>IN1</td><td>ESP32 D25</td><td>Left pin "RELAY IN1"</td><td rowspan="6">22 to 24 AWG, straight along the row</td></tr>
-        <tr><td><span class="dot" style="background:var(--sig)"></span>IN2</td><td>ESP32 D26</td><td>Left pin "RELAY IN2"</td></tr>
-        <tr><td><span class="dot" style="background:var(--sig)"></span>IN3</td><td>ESP32 D27</td><td>Left pin "RELAY IN3"</td></tr>
-        <tr><td><span class="dot" style="background:var(--sig)"></span>IN4</td><td>ESP32 D33</td><td>Left pin "RELAY IN4"</td></tr>
+        <tr><td><span class="dot" style="background:var(--sig)"></span>IN1</td><td>ESP32 D14</td><td>Left pin "RELAY IN1"</td><td rowspan="6">22 to 24 AWG, straight along the row</td></tr>
+        <tr><td><span class="dot" style="background:var(--sig)"></span>IN2</td><td>ESP32 D27</td><td>Left pin "RELAY IN2"</td></tr>
+        <tr><td><span class="dot" style="background:var(--sig)"></span>IN3</td><td>ESP32 D26</td><td>Left pin "RELAY IN3"</td></tr>
+        <tr><td><span class="dot" style="background:var(--sig)"></span>IN4</td><td>ESP32 D25</td><td>Left pin "RELAY IN4"</td></tr>
+        <tr><td><span class="dot" style="background:var(--sig)"></span>IN5</td><td>ESP32 D33</td><td>Left pin "RELAY IN5"</td></tr>
         <tr><td><span class="dot" style="background:var(--sig)"></span>IN6</td><td>ESP32 D32</td><td>Left pin "RELAY IN6"</td></tr>
-        <tr><td><span class="dot" style="background:var(--sig)"></span>IN5</td><td>ESP32 D23</td><td>Right pin "RELAY IN5"</td></tr>
         <tr><td><span class="dot" style="background:var(--hx)"></span>DT</td><td>ESP32 D19</td><td>Right pin "HX711 DT"</td><td rowspan="4">22 to 24 AWG</td></tr>
         <tr><td><span class="dot" style="background:var(--hx)"></span>SCK</td><td>ESP32 D18</td><td>Right pin "HX711 SCK"</td></tr>
         <tr><td><span class="dot" style="background:var(--rx)"></span>TX2</td><td>ESP32 TX2 (GPIO17)</td><td>Right pin "NEXTION RX"</td></tr>
         <tr><td><span class="dot" style="background:var(--tx)"></span>RX2</td><td>ESP32 RX2 (GPIO16)</td><td>Right pin "NEXTION TX"</td></tr>
-        <tr><td><span class="dot" style="background:var(--flow)"></span>FLOW</td><td>ESP32 D34</td><td>R1 10k, then left pin "FLOW SIG"</td><td>R1 lies flat along the row</td></tr>
+        <tr><td><span class="dot" style="background:var(--flow)"></span>FLOW</td><td>ESP32 D13</td><td>R1 10k, then left pin "FLOW SIG"</td><td>R1 lies flat along the row</td></tr>
       </tbody>
     </table>
   </div>
@@ -612,8 +614,8 @@ svg .fpin { fill: var(--panel); stroke: var(--ink); stroke-width: 1.2; }
       <thead><tr><th colspan="2">8-ch relay board (blue jumper removed)</th></tr></thead>
       <tbody>
         <tr><td>Relay GND</td><td>any GND pin</td></tr>
-        <tr><td>Relay IN1 to IN4, IN6</td><td>left "RELAY IN…" pins, same number</td></tr>
-        <tr><td>Relay IN5</td><td>right "RELAY IN5" pin</td></tr>
+        <tr><td>Relay IN1 to IN6</td><td>left "RELAY IN…" pins, same number; IN6 is at the top of the left column, IN1 at the bottom, so the ribbon is in reverse order</td></tr>
+        
         <tr><td>Relay VCC</td><td>any <strong>3V3</strong> pin</td></tr>
         <tr><td>Relay JD-VCC</td><td>any <strong>5V</strong> pin</td></tr>
         <tr><td>Relay IN7, IN8</td><td>leave empty</td></tr>
@@ -691,7 +693,7 @@ svg .fpin { fill: var(--panel); stroke: var(--ink); stroke-width: 1.2; }
     <li><h3>ESP32 power pins</h3>
       <ul><li>VIN to the 5V rail, left GND to the GND rail, 3V3 to the 3V3 rail.</li></ul></li>
     <li><h3>Signals</h3>
-      <ul><li>One wire per row, from the ESP32 header pin straight to its labeled edge pin. R1 goes in the D34 row.</li></ul></li>
+      <ul><li>One wire per row, from the ESP32 header pin straight to its labeled edge pin. R1 goes in the D13 row.</li></ul></li>
     <li><h3>Meter check, ESP32 out</h3>
       <ul><li>Ohms between 5V and GND, then 3V3 and GND: no short. (C1 makes the meter count up for a moment; that's fine.)</li>
       <li>Beep test each signal: ESP32 header pin to its edge pin, and no beep to its neighbors.</li></ul>

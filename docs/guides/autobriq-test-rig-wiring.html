@@ -144,11 +144,11 @@ svg .wlbl { font-size: 11px; fill: var(--muted); }
         <text x="250" y="174">GPIO16 RX2</text>
         <text x="250" y="204">GPIO17 TX2</text>
         <text x="250" y="254">GND</text>
-        <text x="250" y="284">GPIO25</text>
-        <text x="250" y="314">GPIO26</text>
-        <text x="250" y="344">GPIO27</text>
-        <text x="250" y="374">GPIO33</text>
-        <text x="250" y="404">GPIO23</text>
+        <text x="250" y="284">GPIO14</text>
+        <text x="250" y="314">GPIO27</text>
+        <text x="250" y="344">GPIO26</text>
+        <text x="250" y="374">GPIO25</text>
+        <text x="250" y="404">GPIO33</text>
         <text x="250" y="434">3V3</text>
       </g>
       <g class="pd">
@@ -246,15 +246,15 @@ svg .wlbl { font-size: 11px; fill: var(--muted); }
         <tr><td class="mono"><span class="dot" style="background:var(--w5)"></span>VIN</td><td>5 V power module output</td><td>Powers the ESP32</td></tr>
         <tr><td class="mono"><span class="dot" style="background:var(--gnd)"></span>GND</td><td>Common ground block</td><td>Shared ground for everything</td></tr>
         <tr><td class="mono"><span class="dot" style="background:var(--w5)"></span>3V3</td><td>Relay board VCC</td><td>Opto input side. Must be 3.3 V so a HIGH pin really turns the relay off</td></tr>
-        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO25</td><td>Relay IN1</td><td>LOW = 15 cm extends, trapdoor closes</td></tr>
-        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO26</td><td>Relay IN2</td><td>LOW = 15 cm retracts, trapdoor opens</td></tr>
-        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO27</td><td>Relay IN3</td><td>LOW = 40 cm extends, press goes down</td></tr>
-        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO33</td><td>Relay IN4 <span class="pill fix">not GPIO14</span></td><td>LOW = 40 cm retracts, press goes home. The spec says GPIO14, but GPIO14 pulses during boot and would twitch the press.</td></tr>
-        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO23</td><td>Relay IN5 <span class="pill new">mixer</span></td><td>LOW = mixer motor runs. CH5 closes the AC-DC supply's V+ line into the motor driver (Part 3).</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO14</td><td>Relay IN1</td><td>LOW = 15 cm extends, trapdoor closes</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO27</td><td>Relay IN2</td><td>LOW = 15 cm retracts, trapdoor opens</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO26</td><td>Relay IN3</td><td>LOW = 40 cm extends, press goes down</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO25</td><td>Relay IN4</td><td>LOW = 40 cm retracts, press goes home. </td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO33</td><td>Relay IN5 <span class="pill new">mixer</span></td><td>LOW = mixer motor runs. CH5 closes the AC-DC supply's V+ line into the motor driver (Part 3).</td></tr>
         <tr><td class="mono"><span class="dot" style="background:var(--tx)"></span>GPIO16</td><td>Nextion TX (blue)</td><td>Touch events into the ESP32</td></tr>
         <tr><td class="mono"><span class="dot" style="background:var(--rx)"></span>GPIO17</td><td>Nextion RX (yellow)</td><td>Screen drawing commands out</td></tr>
         <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO32</td><td>Relay IN6 <span class="pill new">water</span></td><td>LOW = solenoid valve opens (Part 4).</td></tr>
-        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO34</td><td>YF-S201 yellow, through one 10k resistor <span class="pill new">flow</span></td><td>One pulse per 1/450 L. Input-only pin, nothing else on it.</td></tr>
+        <tr><td class="mono"><span class="dot" style="background:var(--sig)"></span>GPIO13</td><td>YF-S201 yellow, through one 10k resistor <span class="pill new">flow</span></td><td>One pulse per 1/450 L. Input-only pin, nothing else on it.</td></tr>
       </tbody>
     </table>
   </div>
@@ -305,13 +305,13 @@ svg .wlbl { font-size: 11px; fill: var(--muted); }
 
       <g>
         <rect class="board" x="590" y="120" width="130" height="80" rx="4"/>
-        <text class="pin" x="604" y="140" style="font-weight:600">CH1</text><text class="pinlbl" x="640" y="140">IN1 · G25</text>
+        <text class="pin" x="604" y="140" style="font-weight:600">CH1</text><text class="pinlbl" x="640" y="140">IN1 · G14</text>
         <rect class="board" x="590" y="210" width="130" height="80" rx="4"/>
-        <text class="pin" x="604" y="230" style="font-weight:600">CH2</text><text class="pinlbl" x="640" y="230">IN2 · G26</text>
+        <text class="pin" x="604" y="230" style="font-weight:600">CH2</text><text class="pinlbl" x="640" y="230">IN2 · G27</text>
         <rect class="board" x="590" y="320" width="130" height="80" rx="4"/>
-        <text class="pin" x="604" y="340" style="font-weight:600">CH3</text><text class="pinlbl" x="640" y="340">IN3 · G27</text>
+        <text class="pin" x="604" y="340" style="font-weight:600">CH3</text><text class="pinlbl" x="640" y="340">IN3 · G26</text>
         <rect class="board" x="590" y="410" width="130" height="80" rx="4"/>
-        <text class="pin" x="604" y="430" style="font-weight:600">CH4</text><text class="pinlbl" x="640" y="430">IN4 · G33</text>
+        <text class="pin" x="604" y="430" style="font-weight:600">CH4</text><text class="pinlbl" x="640" y="430">IN4 · G25</text>
       </g>
       <g class="pinlbl">
         <text x="598" y="163">NO</text><text x="598" y="191">NC</text>
@@ -373,7 +373,7 @@ svg .wlbl { font-size: 11px; fill: var(--muted); }
 <section>
   <span class="eyebrow">Part 3</span>
   <h2>Mixer: AC-DC supply, relay 5 and the motor driver</h2>
-  <p>The mixer runs from its own AC-DC supply, not from the EcoFlow 12&nbsp;V. Relay CH5 is a plain switch in the supply's V+ line: COM takes PSU V+, NO feeds the motor driver's V+ input, NC stays empty. Tap <strong>MIXER ON</strong> on the Nextion and GPIO23 goes LOW, CH5 closes, and the driver turns the motor.</p>
+  <p>The mixer runs from its own AC-DC supply, not from the EcoFlow 12&nbsp;V. Relay CH5 is a plain switch in the supply's V+ line: COM takes PSU V+, NO feeds the motor driver's V+ input, NC stays empty. Tap <strong>MIXER ON</strong> on the Nextion and GPIO33 goes LOW, CH5 closes, and the driver turns the motor.</p>
   <div class="fig">
     <svg viewBox="0 0 920 330" role="img" aria-label="AC mains into AC-DC supply, relay 5 switching V+ to the motor driver, driver to mixer motor">
       <!-- AC outlet -->
@@ -397,11 +397,11 @@ svg .wlbl { font-size: 11px; fill: var(--muted); }
 
       <!-- Relay CH5 -->
       <rect class="board" x="500" y="40" width="140" height="80" rx="4"/>
-      <text class="pin" x="512" y="60" style="font-weight:600">CH5</text><text class="pinlbl" x="552" y="60">IN5 · G23</text>
+      <text class="pin" x="512" y="60" style="font-weight:600">CH5</text><text class="pinlbl" x="552" y="60">IN5 · G33</text>
       <g class="pinlbl"><text x="510" y="84">COM</text><text x="630" y="84" text-anchor="end">NO</text><text x="630" y="110" text-anchor="end">NC · empty</text></g>
       <g class="pd"><circle cx="500" cy="80" r="3.5"/><circle cx="640" cy="80" r="3.5"/></g>
       <path class="w sig" d="M570 40 V14"/>
-      <text class="wlbl" x="580" y="22">GPIO23 · Nextion MIXER ON</text>
+      <text class="wlbl" x="580" y="22">GPIO33 · Nextion MIXER ON</text>
 
       <!-- V+ through relay -->
       <path class="w w12" d="M430 70 H470 V80 H500"/>
@@ -447,9 +447,9 @@ svg .wlbl { font-size: 11px; fill: var(--muted); }
 <section>
   <span class="eyebrow">Part 4</span>
   <h2>Water: solenoid valve on relay 6, YF-S201 flow sensor</h2>
-  <p>Relay CH6 switches the solenoid from switched +12&nbsp;V, so the E-stop also shuts the water. The flow sensor runs on the 5&nbsp;V power module, and its signal reaches GPIO34 through one 10k resistor, which keeps the 5&nbsp;V pulse from pushing current into the 3.3&nbsp;V pin. In AUTO RUN, the valve closes at 1.0&nbsp;L (450 pulses per litre), or after 60&nbsp;s if the flow is too low.</p>
+  <p>Relay CH6 switches the solenoid from switched +12&nbsp;V, so the E-stop also shuts the water. The flow sensor runs on the 5&nbsp;V power module, and its signal reaches GPIO13 through one 10k resistor, which keeps the 5&nbsp;V pulse from pushing current into the 3.3&nbsp;V pin. In AUTO RUN, the valve closes at 1.0&nbsp;L (450 pulses per litre), or after 60&nbsp;s if the flow is too low.</p>
   <div class="fig">
-    <svg viewBox="0 0 920 360" role="img" aria-label="Relay 6 switching 12 volts to the solenoid valve with a flyback diode, and the flow sensor signal through a resistor divider into GPIO34">
+    <svg viewBox="0 0 920 360" role="img" aria-label="Relay 6 switching 12 volts to the solenoid valve with a flyback diode, and the flow sensor signal through a resistor divider into GPIO13">
       <!-- switched +12 -->
       <text class="wlbl" x="40" y="62">switched +12 V (after E-stop)</text>
       <path class="w w12" d="M40 80 H120"/>
@@ -493,7 +493,7 @@ svg .wlbl { font-size: 11px; fill: var(--muted); }
       <rect class="box" x="360" y="304" width="70" height="20" rx="3"/><text class="pin" x="395" y="318" text-anchor="middle">10k</text>
       <path class="w sig" d="M430 314 H620"/>
       <rect class="box" x="620" y="294" width="160" height="40" rx="6"/>
-      <text class="title" x="700" y="319" text-anchor="middle">ESP32 GPIO34</text>
+      <text class="title" x="700" y="319" text-anchor="middle">ESP32 GPIO13</text>
       <circle class="pd" cx="620" cy="314" r="4"/>
       <text class="wlbl" x="440" y="340">push yellow in firmly: loose = noise</text>
     </svg>
@@ -580,13 +580,13 @@ svg .wlbl { font-size: 11px; fill: var(--muted); }
       <tbody>
         <tr><td>No relay clicks at all</td><td>JD-VCC has no 5 V, or the blue jumper is still on while VCC is on 3V3.</td></tr>
         <tr><td>All relays on and won't turn off</td><td>Relay VCC is on 5 V instead of 3V3. A 3.3 V HIGH can't switch the opto off then.</td></tr>
-        <tr><td>Press twitches at boot</td><td>IN4 still wired to GPIO14. Move it to GPIO33.</td></tr>
+        <tr><td>Trapdoor relay clicks once at power-up</td><td>IN1 is on GPIO14, which pulses for a few ms at boot. Expected; the actuator does not move.</td></tr>
         <tr><td>Nextion blank or ignores taps</td><td>TX and RX swapped, or no shared ground. The Nextion's blue wire goes to GPIO16.</td></tr>
         <tr><td>Nextion shows the factory demo, taps do nothing, STOP ALL missing</td><td>The ESP32 died after boot. If it happens about 2 s in, Wi-Fi start-up current is browning it out: keep <code>WEB_ENABLED = false</code> or power the ESP32 and Nextion from the 5 V power module.</td></tr>
         <tr><td>Nextion has no MIXER or AUTO RUN button</td><td>Old sketch on the ESP32. Flash the <code>test/actuator-bench-mixer</code> build.</td></tr>
         <tr><td>Upload fails: "The chip stopped responding"</td><td>Close any serial monitor on the port, replug USB, hold BOOT until "Connecting..." shows. A failed upload leaves the ESP32 boot-looping until a good one lands.</td></tr>
         <tr><td>Mixer runs as soon as the PSU is plugged in</td><td>PSU V+ is on CH5 NC instead of NO, or CH5 is bypassed.</td></tr>
-        <tr><td>Water runs but litres stay at 0.00</td><td>Sensor not on 5 V, yellow wire not reaching GPIO34, or the sensor is fitted backwards. If the yellow wire shows no pulses on a meter, add a 10k from yellow to +5 V.</td></tr>
+        <tr><td>Water runs but litres stay at 0.00</td><td>Sensor not on 5 V, yellow wire not reaching GPIO13, or the sensor is fitted backwards. If the yellow wire shows no pulses on a meter, add a 10k from yellow to +5 V.</td></tr>
         <tr><td>AUTO RUN says "time cap hit" on water</td><td>Flow too low to reach 1.0 L in 60 s: low water pressure, or the valve needs more pressure to open fully. Raise the cap or lower <code>WATER_TARGET_L</code>.</td></tr>
         <tr><td>ESP32 resets when the valve closes</td><td>Flyback diode missing or backwards across the solenoid coil.</td></tr>
         <tr><td>CH5 clicks but the mixer doesn't turn</td><td>Driver's V− not on PSU V−, driver enable or speed knob at zero, or a loose motor lead.</td></tr>
